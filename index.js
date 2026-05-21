@@ -8,6 +8,9 @@ import cors from 'cors'
 const { Pool } = pkg 
 const JWT_SECRET = process.env.JWT_SECRET || 'brutalist_secret_key_123'
 
+// Securely assign the fallback initialization credentials using environment variables
+const ADMIN_SEED_PASSWORD = process.env.ADMIN_SEED_PASSWORD || 'ChangeMe_Strict_Random_2026!';
+
 let connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/unreader';
 
 if (connectionString && !connectionString.startsWith('postgresql://') && !connectionString.startsWith('postgres://')) {
@@ -81,8 +84,8 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_dms_participants ON dms(sender, receiver);
     `);
     
-    // 4. Seed Admins: Ensure accounts exist first, then grant admin access
-    const placeholderHash = await bcrypt.hash('temporary_admin_password_change_me', 10);
+    // 4. Seed Admins securely using ADMIN_SEED_PASSWORD variable
+    const placeholderHash = await bcrypt.hash(ADMIN_SEED_PASSWORD, 10);
     
     await db.query(`
       INSERT INTO users (username, password_hash) 
@@ -110,7 +113,6 @@ initDatabase();
 
 const app = express()
 
-// Fixed: Cleaned up CORS configuration. One single middleware handles everything, including OPTIONS.
 app.use(cors({
   origin: ["https://tock-dev.github.io", "null"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -264,7 +266,6 @@ wss.on('connection', (ws) => {
 
       if (!authUser) return;
 
-      // Fixed: Active message-time authorization protection check
       const liveCheck = await db.query('SELECT is_banned, timeout_until FROM users WHERE username = $1;', [authUser]);
       if (liveCheck.rows[0] && (liveCheck.rows[0].is_banned || BigInt(liveCheck.rows[0].timeout_until) > BigInt(Date.now()))) {
         ws.send(JSON.stringify({ type: 'terminated' })); 
@@ -289,7 +290,6 @@ wss.on('connection', (ws) => {
       }
 
       if (data.type === 'mod_delete' || data.type === 'mod_restore') {
-        // Fixed: Strictly checking channel structure mapping to squash SQL Injections
         const targetTable = ALLOWED_CHANNELS[data.channel];
         if (!targetTable) {
           ws.send(JSON.stringify({ type: 'error_alert', message: 'Invalid channel structure.' }));
@@ -297,12 +297,16 @@ wss.on('connection', (ws) => {
         }
 
         const res = await db.query(`SELECT username, sender FROM ${targetTable} WHERE id = $1;`, [data.id]);
-        const owner = res.rows[0]?.username || res.rows[0]?.sender;
+        if (res.rows.length === 0) return;
+
+        const owner = res.rows[0].username || res.rows[0].sender;
         const isOwner = (owner === authUser);
         
         if (isOwner || userRoles.is_admin || (userRoles.is_moderator && data.type === 'mod_delete')) {
           await db.query(`UPDATE ${targetTable} SET is_deleted = $1 WHERE id = $2;`, [data.type === 'mod_delete', data.id]);
-          if (!isOwner && userRoles.is_moderator && !userRoles.is_admin) {
+          
+          // Fixed: Track modification actions regardless of whether mod or admin performed the override
+          if (!isOwner && (userRoles.is_moderator || userRoles.is_admin)) {
             await db.query('INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);', 
               [authUser, data.type, owner, data.id, data.reason || 'No reason provided', Date.now()]);
           }
@@ -314,22 +318,38 @@ wss.on('connection', (ws) => {
         if (data.type === 'mod_timeout') {
           const targetRoles = await getUserRoles(data.target);
           if (targetRoles.is_admin) return ws.send(JSON.stringify({ type: 'error_alert', message: 'Cannot timeout an admin.' }));
+          
           await db.query('UPDATE users SET timeout_until = $1 WHERE username = $2;', [Date.now() + (parseInt(data.duration, 10)*60*1000), data.target]);
-          if (!userRoles.is_admin) {
-            await db.query('INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);', 
-              [authUser, 'timeout', data.target, data.reason || 'No reason provided', Date.now()]);
+          
+          // Fixed: Admins handing out timeouts are now comprehensively tracked inside mod_logs
+          await db.query('INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);', 
+            [authUser, 'timeout', data.target, data.reason || 'No reason provided', Date.now()]);
+            
+          if(activeClients.has(data.target)) { 
+            activeClients.get(data.target).send(JSON.stringify({ type: 'terminated', reason: 'You have been temporarily timed out by staff.' })); 
+            activeClients.get(data.target).close(); 
           }
-          if(activeClients.has(data.target)) { activeClients.get(data.target).send(JSON.stringify({ type: 'terminated' })); activeClients.get(data.target).close(); }
         }
         if (userRoles.is_admin) {
           if (data.type === 'mod_ban') {
             await db.query('UPDATE users SET is_banned = true WHERE username = $1;', [data.target]);
-            if(activeClients.has(data.target)) activeClients.get(data.target).close();
+            
+            await db.query('INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);', 
+              [authUser, 'ban', data.target, 'Permanent suspension issued.', Date.now()]);
+
+            if(activeClients.has(data.target)) {
+              activeClients.get(data.target).send(JSON.stringify({ type: 'terminated', reason: 'Your account has been permanently banned.' }));
+              activeClients.get(data.target).close();
+            }
           }
-          if (data.type === 'mod_pardon') await db.query('UPDATE users SET is_banned = false, timeout_until = 0 WHERE username = $1;', [data.target]);
+          if (data.type === 'mod_pardon') {
+            await db.query('UPDATE users SET is_banned = false, timeout_until = 0 WHERE username = $1;', [data.target]);
+            await db.query('INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);', 
+              [authUser, 'pardon', data.target, 'Staff clear out action', Date.now()]);
+          }
         }
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error("Socket Error:", err); }
   });
 
   ws.on('close', () => {
