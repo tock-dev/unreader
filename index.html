@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>un-reader BBS</title>
-  <link rel="stylesheet" media="screen" href="https://fontlibrary.org/face/symbola/css/symbola.css" type="text/css"/>
+  <link rel="stylesheet" media="screen" href="https://fontlibrary.org//face/symbola" type="text/css"/>
   <style type="text/css">
     :root {
       --bg-color: #ffffff;
@@ -99,7 +99,6 @@
     .auth-box input { width: 90%; padding: 6px; margin: 6px 0; font-family: monospace; border: 2px solid black; }
     .auth-box button { width: 96%; padding: 8px; margin-top: 8px; cursor: pointer; font-family: monospace; font-weight: bold; background: white; border: 2px solid black; box-shadow: 2px 2px 0 black; }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
 </head>
 <body>
 
@@ -155,7 +154,7 @@
           <div class="nav-item nav-item-active" id="nav-public" onclick="switchChannel('public', '')"> All of Unreader Chat</div>
           <div class="nav-item" id="nav-neighborhood" onclick="switchChannel('neighborhood', '')"> Neibourhood</div>
 
-          <div class="panel-header"> Topics (1/Wk)</div>
+          <div class="panel-header"> Topics</div>
           <div class="sidebar-input-container">
             <input type="text" id="topic-target-input" class="sidebar-input" placeholder="New Topic...">
             <button class="sidebar-btn" onclick="triggerCreateTopic()">ADD</button>
@@ -199,9 +198,8 @@
   </div>
 
   <script type="text/javascript">
-	const DEBUG = false
-    var BACKEND_URL = DEBUG ? "http://localhost:3000" : "https://unreader.onrender.com"; 
-    var WS_URL = DEBUG ? "ws://localhost:3000" : "wss://unreader.onrender.com";
+    var BACKEND_URL = "https://unreader.onrender.com";
+    var WS_URL = "wss://unreader.onrender.com";
 
     var token = localStorage.getItem('token');
     var myUsername = localStorage.getItem('username');
@@ -216,8 +214,11 @@
 
     function parseMarkup(text) {
       if (!text) return "";
-      const escaped = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      return marked.parse(escaped);
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                 .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+                 .replace(/\*(.*?)\*/g, "<strong>$1</strong>")
+                 .replace(/_(.*?)_/g, "<em>$1</em>")
+                 .replace(/`(.*?)`/g, "<code>$1</code>");
     }
 
     function formatTimeToken(unixTimestamp) {
@@ -238,19 +239,9 @@
 
     document.getElementById('auth-toggle').onclick = function() {
       isRegisterMode = !isRegisterMode;
-      const title = document.getElementById('auth-title');
-      const box = document.querySelector('.auth-box');
-      
-      title.textContent = isRegisterMode ? 'CREATE ACCOUNT' : 'LOGIN';
-      box.style.borderColor = isRegisterMode ? '#0000ff' : '#000000';
+      document.getElementById('auth-title').textContent = isRegisterMode ? 'REGISTER' : 'LOGIN';
       this.textContent = isRegisterMode ? 'Already have an account? Login' : 'Need an account? Register';
-      this.style.color = isRegisterMode ? 'red' : 'blue';
-      console.log("Toggle clicked. isRegisterMode is now: " + isRegisterMode);
     };
-
-    const triggerSubmit = function(e) { if ((e.keyCode || e.with) === 13) document.getElementById('auth-submit-btn').click(); };
-    document.getElementById('auth-user').onkeypress = triggerSubmit;
-    document.getElementById('auth-pass').onkeypress = triggerSubmit;
 
     document.getElementById('auth-submit-btn').onclick = function() {
       var username = document.getElementById('auth-user').value.trim();
@@ -258,33 +249,20 @@
       if(!username || !password) return alert('Fill in all log credentials.');
       var url = isRegisterMode ? '/api/register' : '/api/login';
       
-      console.log("SUBMIT CLICKED. isRegisterMode=" + isRegisterMode + ", username=" + username + ", url=" + url);
-      
       var xhr = new XMLHttpRequest();
       xhr.open('POST', BACKEND_URL + url, true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
-            try {
-              var data = JSON.parse(xhr.responseText);
-              if(data.error) return alert(data.error);
-              localStorage.setItem('token', data.token);
-              localStorage.setItem('username', data.username);
-              token = data.token; myUsername = data.username;
-              initApp();
-            } catch(e) {
-              console.error("JSON Parse error:", e);
-              alert("Server returned invalid response.");
-            }
+          var data = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            if(data.error) return alert(data.error);
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('username', data.username);
+            token = data.token; myUsername = data.username;
+            initApp();
           } else {
-            console.error("Server error:", xhr.status, xhr.responseText);
-            try {
-               var errData = JSON.parse(xhr.responseText);
-               alert("Error: " + (errData.error || "Authentication failed"));
-            } catch(e) {
-               alert("Could not connect to the server or authentication failed.");
-            }
+            alert(data.error || 'Authentication connection error.');
           }
         }
       };
@@ -306,22 +284,16 @@
       };
 
       socket.onmessage = function(event) {
-        try {
-          var data = JSON.parse(event.data);
-          if (data.type === 'terminated') {
-            alert(data.reason || 'Session closed due to automated validation rule.');
-            localStorage.clear(); window.location.reload(); return;
-          }
-          if (data.type === 'error_alert') { alert(data.message); return; }
-          if (data.type === 'msg_deleted' || data.type === 'msg_restored' || data.type === 'comment_refresh' || data.type === 'comment_deleted' || data.type === 'neighborhood_refresh') { 
-            loadHistory(); 
-            return; 
-          }
-          if (data.type === 'roster_update') { renderUserRoster(data.users); return; }
-          if (data.type === 'topics_update') { renderTopicList(data.topics); return; }
-          
-          if (currentHistoryIndex === 0) loadHistory();
-        } catch(e) { console.error("WS JSON error:", e); }
+        var data = JSON.parse(event.data);
+        if (data.type === 'terminated') {
+          alert(data.reason || 'Session expired.');
+          localStorage.clear(); window.location.reload(); return;
+        }
+        if (data.type === 'error_alert') { alert(data.message); return; }
+        if (data.type === 'refresh_feed') { loadHistory(); return; }
+        if (data.type === 'roster_update') { renderUserRoster(data.users); return; }
+        if (data.type === 'topics_update') { renderTopicList(data.topics); return; }
+        if (currentHistoryIndex === 0) loadHistory();
       };
       
       loadDMContacts(); loadHistory();
@@ -357,10 +329,8 @@
       xhr.setRequestHeader('Authorization', 'Bearer ' + token);
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4 && xhr.status === 200) {
-          try {
-            var contacts = JSON.parse(xhr.responseText);
-            for (var i = 0; i < contacts.length; i++) { ensureDMNavOption(contacts[i]); }
-          } catch(e) { console.error("DM Contacts JSON error:", e); }
+          var contacts = JSON.parse(xhr.responseText);
+          for (var i = 0; i < contacts.length; i++) { ensureDMNavOption(contacts[i]); }
         }
       };
       xhr.send();
@@ -419,6 +389,7 @@
     function appendMessage(data) {
       var chatWrapper = document.getElementById('chat-scroll-wrapper');
       var containerDiv = document.createElement('div'); containerDiv.className = 'message-container';
+      
       var msgDiv = document.createElement('div'); msgDiv.id = 'msg-id-' + data.id;
       var isMe = data.username === myUsername; var isBoss = isMasterAdmin(data.username);
       msgDiv.style.float = isMe ? 'right' : 'left';
@@ -496,20 +467,9 @@
               cDiv.innerHTML = '<strong style="cursor:pointer;">@'+c.username+'</strong>: <span class="c-txt"></span>';
               (function(u){ cDiv.querySelector('strong').onclick = function() { openProfileModal(u); }; })(c.username);
               cDiv.querySelector('.c-txt').innerHTML = parseMarkup(c.content);
-              if(c.username === myUsername || isMasterAdmin(myUsername)) {
-                var cDel = document.createElement('button'); cDel.style = 'float:right; font-size:8px; font-family:monospace; cursor:pointer; background:white; border:1px solid black;'; cDel.textContent = 'X';
-                (function(cid) { cDel.onclick = function() { if(confirm('Delete comment?')) sendModAction('mod_delete_comment', cid); }; })(c.id);
-                cDiv.appendChild(cDel);
-              }
             }
             cList.appendChild(cDiv);
           }
-        }
-        if (data.username === myUsername || isMasterAdmin(myUsername)) {
-          var delBtn = document.createElement('button'); delBtn.style = 'margin-top:8px; display:block; font-family:monospace; font-size:10px; cursor:pointer; background:white; border:1px solid black;';
-          delBtn.textContent = 'PURGE POST ENTRY';
-          delBtn.onclick = function() { if(confirm('Delete neighborhood post?')) sendModAction('mod_delete', data.id); };
-          box.appendChild(delBtn);
         }
       }
       chatWrapper.appendChild(box);
@@ -534,24 +494,8 @@
       var trayDiv = document.createElement('div'); trayDiv.className = 'mod-action-tray';
       trayDiv.style.float = isMe ? 'right' : 'left'; trayDiv.style.clear = 'both';
       
-      if (data.is_deleted) {
-        var rBtn = document.createElement('button'); rBtn.className = 'mod-tray-btn'; rBtn.textContent = 'UNDO PURGE';
-        rBtn.onclick = function() { sendModAction('mod_restore', data.id); }; trayDiv.appendChild(rBtn);
-      }
-      if (!isMasterAdmin(data.username)) {
-        var sel = document.createElement('select'); sel.className = 'mod-select';
-        sel.options.add(new Option('5 Min', 5)); sel.options.add(new Option('1 Hr', 60)); sel.options.add(new Option('24 Hr', 1440));
-        trayDiv.appendChild(sel);
-        var tBtn = document.createElement('button'); tBtn.className = 'mod-tray-btn'; tBtn.textContent = 'TIMEOUT';
-        tBtn.onclick = function() { socket.send(JSON.stringify({ type: 'mod_timeout', target: data.username, duration: sel.value })); };
-        trayDiv.appendChild(tBtn);
-        var bBtn = document.createElement('button'); bBtn.className = 'mod-tray-btn'; bBtn.textContent = 'BAN';
-        bBtn.onclick = function() { if(confirm('Ban '+data.username+'?')) socket.send(JSON.stringify({ type: 'mod_ban', target: data.username })); };
-        trayDiv.appendChild(bBtn);
-        var uBtn = document.createElement('button'); uBtn.className = 'mod-tray-btn'; uBtn.textContent = 'PARDON';
-        uBtn.onclick = function() { socket.send(JSON.stringify({ type: 'mod_pardon', target: data.username })); };
-        trayDiv.appendChild(uBtn);
-      }
+      var rBtn = document.createElement('button'); rBtn.className = 'mod-tray-btn'; rBtn.textContent = 'RESTORE';
+      rBtn.onclick = function() { sendModAction('mod_restore', data.id); }; trayDiv.appendChild(rBtn);
       targetNode.appendChild(trayDiv);
     }
 
@@ -576,14 +520,12 @@
       if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4 && xhr.status === 200) {
-          try {
-            var data = JSON.parse(xhr.responseText);
-            document.getElementById('page-display-index').textContent = "PAGE: " + currentHistoryIndex;
-            for (var i = 0; i < data.length; i++) {
-              if (currentMode === 'neighborhood') appendNeighborhoodPost(data[i]);
-              else appendMessage(data[i]);
-            }
-          } catch(e) { console.error("History JSON error:", e); }
+          var data = JSON.parse(xhr.responseText);
+          document.getElementById('page-display-index').textContent = "PAGE: " + currentHistoryIndex;
+          for (var i = 0; i < data.length; i++) {
+            if (currentMode === 'neighborhood') appendNeighborhoodPost(data[i]);
+            else appendMessage(data[i]);
+          }
         }
       };
       xhr.send();
@@ -592,6 +534,7 @@
     function sendMessage() {
       var input = document.getElementById('content'); var text = input.value.trim();
       if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+      
       if (currentMode === 'neighborhood') {
         var tInput = document.getElementById('nb-title-input');
         var titleText = tInput.value.trim();
@@ -616,23 +559,25 @@
       xhr.setRequestHeader('Authorization', 'Bearer ' + token);
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4 && xhr.status === 200) {
-          try {
-            var p = JSON.parse(xhr.responseText);
-            document.getElementById('info-username').textContent = p.username;
-            document.getElementById('info-location').textContent = p.location;
-            document.getElementById('info-bio').textContent = p.bio;
-            document.getElementById('info-avatar').textContent = p.avatar_emoji;
-            var isSelf = p.username === myUsername;
-            document.getElementById('info-edit-controls').style.display = isSelf ? 'block' : 'none';
-            document.getElementById('info-dm-btn').style.display = isSelf ? 'none' : 'block';
-            document.getElementById('info-dm-btn').onclick = function() { closeInfoModal(); switchChannel('dm', p.username); };
-            if(isSelf) {
-              document.getElementById('edit-avatar').value = p.avatar_emoji;
-              document.getElementById('edit-location').value = p.location;
-              document.getElementById('edit-bio').value = p.bio;
-            }
-            document.getElementById('modal-overlay').style.display = 'block';
-          } catch(e) { console.error("Profile JSON error:", e); }
+          var p = JSON.parse(xhr.responseText);
+          document.getElementById('info-username').textContent = p.username;
+          document.getElementById('info-location').textContent = p.location;
+          document.getElementById('info-bio').textContent = p.bio;
+          document.getElementById('info-avatar').textContent = p.avatar_emoji;
+          
+          var isSelf = p.username === myUsername;
+          document.getElementById('info-edit-controls').style.display = isSelf ? 'block' : 'none';
+          document.getElementById('info-dm-btn').style.display = isSelf ? 'none' : 'block';
+          document.getElementById('info-dm-btn').onclick = function() { closeInfoModal(); switchChannel('dm', p.username); };
+          
+          if(isSelf) {
+            document.getElementById('edit-avatar').value = p.avatar_emoji;
+            document.getElementById('edit-location').value = p.location;
+            document.getElementById('edit-bio').value = p.bio;
+            document.getElementById('change-pass-current').value = '';
+            document.getElementById('change-pass-new').value = '';
+          }
+          document.getElementById('modal-overlay').style.display = 'block';
         }
       };
       xhr.send();
@@ -644,11 +589,17 @@
       var av = document.getElementById('edit-avatar').value.trim();
       var loc = document.getElementById('edit-location').value.trim();
       var bio = document.getElementById('edit-bio').value.trim();
+      
       var xhr = new XMLHttpRequest(); xhr.open('POST', BACKEND_URL + '/api/profile', true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function() { if (xhr.readyState === 4) { closeInfoModal(); openProfileModal(myUsername); } };
-      xhr.send(JSON.stringify({ avatar_emoji: av, location: loc, bio: bio }));
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          closeInfoModal();
+          openProfileModal(myUsername);
+        }
+      };
+      xhr.send(JSON.stringify({ bio: bio, location: loc, avatar_emoji: av }));
     }
 
     function submitPasswordChange() {
