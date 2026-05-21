@@ -4,7 +4,7 @@
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>un-reader BBS</title>
-  <link rel="stylesheet" media="screen" href="https://fontlibrary.org//face/symbola" type="text/css"/>
+  <link rel="stylesheet" media="screen" href="https://fontlibrary.org/face/symbola/css/symbola.css" type="text/css"/>
   <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
   <style type="text/css">
     :root {
@@ -92,13 +92,15 @@
     .comment-item { font-size: 11px; padding: 4px 6px; border-bottom: 1px dotted #ccc; background: white; margin-bottom: 2px; }
 
     #modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); display: none; z-index: 2000; }
-    .info-window { position: absolute; top: 20%; left: 50%; transform: translate(-50%, -20%); width: 320px; background: white; border: 2px solid black; box-shadow: var(--shadow); }
-    .info-body { padding: 12px; font-size: 12px; }
+    .info-window { position: absolute; top: 15%; left: 50%; transform: translate(-50%, 0); width: 340px; background: white; border: 2px solid black; box-shadow: var(--shadow); }
+    .info-body { padding: 12px; font-size: 12px; max-height: 70vh; overflow-y: auto; }
 
     #auth-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.3); display: block; z-index: 3000; text-align: center; padding-top: 100px; }
     .auth-box { padding: 24px; width: 280px; margin: 0 auto; background: white; border: 2px solid black; box-shadow: var(--shadow); }
     .auth-box input { width: 90%; padding: 6px; margin: 6px 0; font-family: monospace; border: 2px solid black; }
     .auth-box button { width: 96%; padding: 8px; margin-top: 8px; cursor: pointer; font-family: monospace; font-weight: bold; background: white; border: 2px solid black; box-shadow: 2px 2px 0 black; }
+    
+    .mod-log-item { border-bottom: 1px dotted black; padding: 4px 0; font-family: monospace; font-size: 10px; }
   </style>
 </head>
 <body>
@@ -106,26 +108,43 @@
   <div id="modal-overlay" onclick="closeInfoModal()">
     <div class="info-window" onclick="event.stopPropagation()">
       <div class="title-bar"><div class="title-stripes"></div><div class="title-text" id="modal-title">GET INFO</div></div>
-      <div class="info-body">
-        <div style="font-size: 24px; text-align: center; margin-bottom: 8px;" id="info-avatar">👤</div>
-        <div style="font-weight: bold; margin-bottom: 4px;">User: <span id="info-username"></span></div>
-        <div style="margin-bottom: 4px;">Location: <span id="info-location"></span></div>
-        <div style="border: 1px solid black; padding: 6px; background: #fafafa; min-height: 40px; margin-bottom: 10px; white-space: pre-wrap;" id="info-bio"></div>
-        
-        <div id="info-edit-controls" style="display: none; border-top: 1px dashed black; padding-top: 8px; margin-bottom: 8px;">
-          <input type="text" id="edit-avatar" placeholder="Emoji" style="width: 40px; text-align: center; border:1px solid black; padding:3px; font-family:monospace;">
-          <input type="text" id="edit-location" placeholder="Location..." style="width: 180px; border:1px solid black; padding:3px; font-family:monospace;">
-          <textarea id="edit-bio" placeholder="Bio description..." style="width: 95%; margin-top: 4px; font-family: monospace; height: 40px; border:1px solid black; padding:3px; resize:none;"></textarea>
-          <button onclick="saveProfileChanges()" style="width: 100%; font-family: monospace; margin-top: 6px; font-weight: bold; padding:4px; cursor:pointer;">SAVE PROFILE</button>
+      <div class="info-body" id="modal-content">
+        <div id="profile-view">
+          <div style="font-size: 24px; text-align: center; margin-bottom: 8px;" id="info-avatar">👤</div>
+          <div style="font-weight: bold; margin-bottom: 4px;">User: <span id="info-username"></span></div>
+          <div style="margin-bottom: 4px;">Location: <span id="info-location"></span></div>
+          <div style="border: 1px solid black; padding: 6px; background: #fafafa; min-height: 40px; margin-bottom: 10px; white-space: pre-wrap;" id="info-bio"></div>
           
-          <div style="border-top: 1px dotted black; padding-top: 8px; margin-top: 8px;">
-            <span style="font-size: 10px; font-weight: bold; display: block; margin-bottom: 2px;">SECURITY PREFERENCE:</span>
-            <input type="password" id="change-pass-current" placeholder="Current Password" style="width: 93%; font-family: monospace; font-size: 11px; padding: 4px; border: 1px solid black; margin-bottom: 4px;">
-            <input type="password" id="change-pass-new" placeholder="New Password" style="width: 93%; font-family: monospace; font-size: 11px; padding: 4px; border: 1px solid black; margin-bottom: 4px;">
-            <button onclick="submitPasswordChange()" style="width: 100%; font-family: monospace; font-size: 11px; font-weight: bold; background: #eee; border:1px solid black; padding:3px; cursor:pointer;">UPDATE PASSWORD</button>
+          <div id="info-edit-controls" style="display: none; border-top: 1px dashed black; padding-top: 8px; margin-bottom: 8px;">
+            <input type="text" id="edit-avatar" placeholder="Emoji" style="width: 40px; text-align: center; border:1px solid black; padding:3px; font-family:monospace;">
+            <input type="text" id="edit-location" placeholder="Location..." style="width: 180px; border:1px solid black; padding:3px; font-family:monospace;">
+            <textarea id="edit-bio" placeholder="Bio description..." style="width: 95%; margin-top: 4px; font-family: monospace; height: 40px; border:1px solid black; padding:3px; resize:none;"></textarea>
+            <button onclick="saveProfileChanges()" style="width: 100%; font-family: monospace; margin-top: 6px; font-weight: bold; padding:4px; cursor:pointer;">SAVE PROFILE</button>
+            
+            <div style="border-top: 1px dotted black; padding-top: 8px; margin-top: 8px;">
+              <span style="font-size: 10px; font-weight: bold; display: block; margin-bottom: 2px;">SECURITY PREFERENCE:</span>
+              <input type="password" id="change-pass-current" placeholder="Current Password" style="width: 93%; font-family: monospace; font-size: 11px; padding: 4px; border: 1px solid black; margin-bottom: 4px;">
+              <input type="password" id="change-pass-new" placeholder="New Password" style="width: 93%; font-family: monospace; font-size: 11px; padding: 4px; border: 1px solid black; margin-bottom: 4px;">
+              <button onclick="submitPasswordChange()" style="width: 100%; font-family: monospace; font-size: 11px; font-weight: bold; background: #eee; border:1px solid black; padding:3px; cursor:pointer;">UPDATE PASSWORD</button>
+            </div>
           </div>
+          
+          <div id="admin-controls" style="display:none; border-top: 2px solid black; padding-top: 8px; margin-top: 8px;">
+            <span style="font-size: 10px; font-weight: bold; display: block; margin-bottom: 4px; color: red;">SYSTEM OPERATOR COMMANDS:</span>
+            <button id="admin-ban-btn" style="width: 48%; font-size: 10px; font-family: monospace;">BAN</button>
+            <button id="admin-pardon-btn" style="width: 48%; font-size: 10px; font-family: monospace;">PARDON</button>
+            <div style="margin-top:4px;">
+              <input type="number" id="admin-timeout-dur" value="60" style="width: 40px; font-size:10px;">
+              <button id="admin-timeout-btn" style="width: 70%; font-size: 10px; font-family: monospace;">TIMEOUT (MINS)</button>
+            </div>
+          </div>
+
+          <button id="info-dm-btn" style="width: 100%; font-family: monospace; font-weight: bold; padding: 4px; cursor: pointer; margin-top: 8px;">SEND DIRECT MESSAGE</button>
         </div>
-        <button id="info-dm-btn" style="width: 100%; font-family: monospace; font-weight: bold; padding: 4px; cursor: pointer;">SEND DIRECT MESSAGE</button>
+        <div id="mod-log-view" style="display:none;">
+          <div id="mod-log-list"></div>
+          <button onclick="showProfileInModal()" style="width: 100%; font-family: monospace; margin-top: 10px; font-weight: bold;">BACK TO PROFILE</button>
+        </div>
       </div>
     </div>
   </div>
@@ -169,13 +188,14 @@
           </div>
           <div id="dm-list"></div>
 
-          <div class="panel-header"> Active Users</div>
+          <div class="panel-header">🟢 Active Users</div>
           <div id="roster-list"></div>
           
           <div class="panel-header">System Operations</div>
           <div id="settings-box-container" style="padding: 6px;">
             <div id="mod-toggle-container" style="display:none; margin-bottom: 4px;">
               <button id="mod-mode-btn" class="mod-indicator-btn" onclick="toggleModMode()">MOD MODE: OFF</button>
+              <button id="view-logs-btn" style="width: 95%; font-family: monospace; font-size: 10px; margin-top: 4px; cursor: pointer; border: 1px solid black; background: white;" onclick="openModLogs()">VIEW MOD LOGS</button>
             </div>
           </div>
         </td>
@@ -211,8 +231,7 @@
     var isRegisterMode = false;
     var currentHistoryIndex = 0;
     var modModeActive = false;
-
-    function isMasterAdmin(name) { return name === 'augustinejames' || name === 'tockdev'; }
+    var userRoles = { is_admin: false, is_moderator: false };
 
     function parseMarkup(text) {
       if (!text) return "";
@@ -247,9 +266,6 @@
       var password = document.getElementById('auth-pass').value;
       if(!username || !password) return alert('Fill in all log credentials.');
       var url = isRegisterMode ? '/api/register' : '/api/login';
-
-      console.log("SUBMIT: isRegisterMode=" + isRegisterMode + ", url=" + url);
-
       var xhr = new XMLHttpRequest();
       xhr.open('POST', BACKEND_URL + url, true);
       xhr.setRequestHeader('Content-Type', 'application/json');
@@ -267,7 +283,7 @@
             try {
               var errData = JSON.parse(xhr.responseText);
               alert("Server error: " + (errData.error || "Access Denied"));
-            } catch(e) { alert("Structural connection failure (Status " + xhr.status + ")."); }
+            } catch(e) { alert("Structural connection failure."); }
           }
         }
       };
@@ -279,15 +295,10 @@
     function initApp() {
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('user-display').textContent = '@' + myUsername;
-      if (isMasterAdmin(myUsername)) document.getElementById('mod-toggle-container').style.display = 'block';
       
       if (socket) { try { socket.close(); } catch(e){} }
       socket = new WebSocket(WS_URL);
-      
-      socket.onopen = function() { 
-        socket.send(JSON.stringify({ type: 'auth', token: token })); 
-      };
-
+      socket.onopen = function() { socket.send(JSON.stringify({ type: 'auth', token: token })); };
       socket.onmessage = function(event) {
         var data = JSON.parse(event.data);
         if (data.type === 'terminated') {
@@ -297,10 +308,18 @@
         if (data.type === 'error_alert') { alert(data.message); return; }
         if (data.type === 'refresh_feed') { loadHistory(); return; }
         if (data.type === 'roster_update') { renderUserRoster(data.users); return; }
-        if (data.type === 'topics_update') { renderTopicList(data.topics); return; }
+        if (data.type === 'topics_update') { 
+          renderTopicList(data.topics);
+          if (data.user_roles) {
+            userRoles = data.user_roles;
+            if (userRoles.is_admin || userRoles.is_moderator) {
+              document.getElementById('mod-toggle-container').style.display = 'block';
+            }
+          }
+          return; 
+        }
         if (currentHistoryIndex === 0) loadHistory();
       };
-      
       loadDMContacts(); loadHistory();
     }
 
@@ -367,16 +386,13 @@
       currentMode = mode; currentTarget = target || ''; currentHistoryIndex = 0;
       var items = document.getElementsByClassName('nav-item');
       for (var i=0; i<items.length; i++) items[i].className = 'nav-item';
-      
       if(mode === 'public') document.getElementById('nav-public').className = 'nav-item nav-item-active';
       else if(mode === 'neighborhood') document.getElementById('nav-neighborhood').className = 'nav-item nav-item-active';
       else if(mode === 'dm') { ensureDMNavOption(target); document.getElementById('nav-dm-' + target).className = 'nav-item nav-item-active'; }
       else if(mode === 'topic') { var node = document.getElementById('nav-topic-' + target); if(node) node.className = 'nav-item nav-item-active'; }
-
       var titleInput = document.getElementById('nb-title-input');
       var contentInput = document.getElementById('content');
       var inputContainer = document.getElementById('input-bar-container');
-
       if(mode === 'neighborhood') {
         titleInput.style.display = 'block';
         inputContainer.style.height = '85px';
@@ -394,31 +410,22 @@
     function appendMessage(data) {
       var chatWrapper = document.getElementById('chat-scroll-wrapper');
       var containerDiv = document.createElement('div'); containerDiv.className = 'message-container';
-      
       var msgDiv = document.createElement('div'); msgDiv.id = 'msg-id-' + data.id;
-      var isMe = data.username === myUsername; var isBoss = isMasterAdmin(data.username);
+      var isMe = data.username === myUsername;
       msgDiv.style.float = isMe ? 'right' : 'left';
       
       var styleClass = 'message ';
       if (data.is_deleted) styleClass += 'purged-msg';
-      else if (isBoss) styleClass += 'boss-msg';
       else styleClass += isMe ? 'my-msg' : 'other-msg';
       msgDiv.className = styleClass;
       
       var timeStr = formatTimeToken(data.timestamp);
-      var nameDisplay = isBoss ? '👑 ' + data.username : data.username;
-
-      var meta = document.createElement('div');
-      meta.className = 'message-meta';
-      meta.style.cursor = 'pointer';
-      meta.textContent = nameDisplay + ' • ' + timeStr;
+      var meta = document.createElement('div'); meta.className = 'message-meta'; meta.style.cursor = 'pointer';
+      meta.textContent = data.username + ' • ' + timeStr;
       (function(username) { meta.onclick = function() { openProfileModal(username); }; })(data.username);
 
-      var txtBody = document.createElement('div');
-      txtBody.className = 'message-text';
-
-      msgDiv.appendChild(meta);
-      msgDiv.appendChild(txtBody);
+      var txtBody = document.createElement('div'); txtBody.className = 'message-text';
+      msgDiv.appendChild(meta); msgDiv.appendChild(txtBody);
       
       if (data.is_deleted) {
         txtBody.innerHTML = '<em>[MESSAGE PURGED]</em>';
@@ -440,7 +447,6 @@
       var chatWrapper = document.getElementById('chat-scroll-wrapper');
       var box = document.createElement('div'); box.className = 'nb-post-box';
       box.id = 'nb-post-' + data.id;
-      
       if (data.is_deleted) {
         box.innerHTML = '<em>[POST RECORD PURGED]</em>';
       } else {
@@ -456,11 +462,9 @@
                             '<button onclick="submitComment('+data.id+')" style="font-family:monospace; font-size:11px; cursor:pointer;">REPLY</button>' +
                           '</div>' +
                         '</div>';
-                        
         box.querySelector('.nb-header').onclick = function() { openProfileModal(data.username); };
         box.querySelector('.nb-title').textContent = data.title;
         box.querySelector('.message-text').innerHTML = parseMarkup(data.content);
-        
         var cList = box.querySelector('.comment-list');
         if(data.comments && data.comments.length > 0) {
           for(var i=0; i<data.comments.length; i++) {
@@ -477,6 +481,7 @@
           }
         }
       }
+      injectModTray(box, data, false);
       chatWrapper.appendChild(box);
     }
 
@@ -495,17 +500,31 @@
     }
 
     function injectModTray(targetNode, data, isMe) {
-      if (!isMasterAdmin(myUsername) || !modModeActive || data.id === -1) return;
+      if ((!userRoles.is_admin && !userRoles.is_moderator) || !modModeActive || data.id === -1) return;
       var trayDiv = document.createElement('div'); trayDiv.className = 'mod-action-tray';
       trayDiv.style.float = isMe ? 'right' : 'left'; trayDiv.style.clear = 'both';
       
-      var rBtn = document.createElement('button'); rBtn.className = 'mod-tray-btn'; rBtn.textContent = 'RESTORE';
-      rBtn.onclick = function() { sendModAction('mod_restore', data.id); }; trayDiv.appendChild(rBtn);
+      if (!data.is_deleted) {
+        var dBtn = document.createElement('button'); dBtn.className = 'mod-tray-btn'; dBtn.textContent = 'PURGE';
+        dBtn.onclick = function() {
+          var r = prompt("Reason for purge?");
+          if (r !== null) sendModAction('mod_delete', data.id, r);
+        };
+        trayDiv.appendChild(dBtn);
+      } else {
+        var rBtn = document.createElement('button'); rBtn.className = 'mod-tray-btn'; rBtn.textContent = 'RESTORE';
+        rBtn.onclick = function() {
+          if (userRoles.is_admin || confirm("You can only restore your own actions as a moderator. Proceed?")) {
+            sendModAction('mod_restore', data.id);
+          }
+        };
+        trayDiv.appendChild(rBtn);
+      }
       targetNode.appendChild(trayDiv);
     }
 
-    function sendModAction(type, id) {
-      socket.send(JSON.stringify({ type: type, id: id, channel: currentMode }));
+    function sendModAction(type, id, reason) {
+      socket.send(JSON.stringify({ type: type, id: id, channel: currentMode, reason: reason }));
     }
 
     function jumpPage(val) {
@@ -520,7 +539,6 @@
       if(currentMode === 'dm') endpoint = '/dm-history?target=' + currentTarget + '&index=';
       else if(currentMode === 'topic') endpoint = '/topic-history?slug=' + currentTarget + '&index=';
       else if(currentMode === 'neighborhood') endpoint = '/neighborhood-history?index=';
-
       xhr.open('GET', BACKEND_URL + endpoint + currentHistoryIndex, true);
       if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
       xhr.onreadystatechange = function() {
@@ -539,7 +557,6 @@
     function sendMessage() {
       var input = document.getElementById('content'); var text = input.value.trim();
       if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
-      
       if (currentMode === 'neighborhood') {
         var tInput = document.getElementById('nb-title-input');
         var titleText = tInput.value.trim();
@@ -547,11 +564,7 @@
         socket.send(JSON.stringify({ type: 'neighborhood_post', title: titleText, content: text }));
         tInput.value = '';
       } else {
-        socket.send(JSON.stringify({ 
-          type: currentMode === 'public' ? 'message' : (currentMode === 'topic' ? 'topic_message' : 'dm'), 
-          content: text, 
-          target: currentTarget 
-        }));
+        socket.send(JSON.stringify({ type: currentMode === 'public' ? 'message' : (currentMode === 'topic' ? 'topic_message' : 'dm'), content: text, target: currentTarget }));
       }
       input.value = '';
     }
@@ -565,23 +578,76 @@
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4 && xhr.status === 200) {
           var p = JSON.parse(xhr.responseText);
-          document.getElementById('info-username').textContent = p.username;
-          document.getElementById('info-location').textContent = p.location;
-          document.getElementById('info-bio').textContent = p.bio;
-          document.getElementById('info-avatar').textContent = p.avatar_emoji;
-          
-          var isSelf = p.username === myUsername;
-          document.getElementById('info-edit-controls').style.display = isSelf ? 'block' : 'none';
-          document.getElementById('info-dm-btn').style.display = isSelf ? 'none' : 'block';
-          document.getElementById('info-dm-btn').onclick = function() { closeInfoModal(); switchChannel('dm', p.username); };
-          
-          if(isSelf) {
-            document.getElementById('edit-avatar').value = p.avatar_emoji;
-            document.getElementById('edit-location').value = p.location;
-            document.getElementById('edit-bio').value = p.bio;
-            document.getElementById('change-pass-current').value = '';
-            document.getElementById('change-pass-new').value = '';
-          }
+          showProfileInModal(p);
+        }
+      };
+      xhr.send();
+    }
+
+    function showProfileInModal(p) {
+      if (!p) {
+        document.getElementById('profile-view').style.display = 'block';
+        document.getElementById('mod-log-view').style.display = 'none';
+        return;
+      }
+      document.getElementById('info-username').textContent = p.username;
+      document.getElementById('info-location').textContent = p.location;
+      document.getElementById('info-bio').textContent = p.bio;
+      document.getElementById('info-avatar').textContent = p.avatar_emoji;
+      
+      var isSelf = p.username === myUsername;
+      document.getElementById('info-edit-controls').style.display = isSelf ? 'block' : 'none';
+      document.getElementById('info-dm-btn').style.display = isSelf ? 'none' : 'block';
+      document.getElementById('info-dm-btn').onclick = function() { closeInfoModal(); switchChannel('dm', p.username); };
+      
+      if(isSelf) {
+        document.getElementById('edit-avatar').value = p.avatar_emoji;
+        document.getElementById('edit-location').value = p.location;
+        document.getElementById('edit-bio').value = p.bio;
+        document.getElementById('change-pass-current').value = '';
+        document.getElementById('change-pass-new').value = '';
+      }
+
+      if (userRoles.is_admin) {
+        document.getElementById('admin-controls').style.display = 'block';
+        document.getElementById('admin-ban-btn').onclick = function() { if(confirm('Ban '+p.username+'?')) socket.send(JSON.stringify({ type: 'mod_ban', target: p.username })); };
+        document.getElementById('admin-pardon-btn').onclick = function() { socket.send(JSON.stringify({ type: 'mod_pardon', target: p.username })); };
+        document.getElementById('admin-timeout-btn').onclick = function() {
+          var dur = document.getElementById('admin-timeout-dur').value;
+          socket.send(JSON.stringify({ type: 'mod_timeout', target: p.username, duration: dur }));
+        };
+      } else if (userRoles.is_moderator && !isSelf) {
+        document.getElementById('admin-controls').style.display = 'block';
+        document.getElementById('admin-ban-btn').style.display = 'none';
+        document.getElementById('admin-pardon-btn').style.display = 'none';
+        document.getElementById('admin-timeout-btn').onclick = function() {
+          var dur = document.getElementById('admin-timeout-dur').value;
+          var r = prompt("Reason for timeout?");
+          if (r) socket.send(JSON.stringify({ type: 'mod_timeout', target: p.username, duration: dur, reason: r }));
+        };
+      } else {
+        document.getElementById('admin-controls').style.display = 'none';
+      }
+
+      document.getElementById('profile-view').style.display = 'block';
+      document.getElementById('mod-log-view').style.display = 'none';
+      document.getElementById('modal-overlay').style.display = 'block';
+    }
+
+    function openModLogs() {
+      var xhr = new XMLHttpRequest(); xhr.open('GET', BACKEND_URL + '/api/mod-logs', true);
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          var logs = JSON.parse(xhr.responseText);
+          var list = document.getElementById('mod-log-list'); list.innerHTML = '<strong>MODERATOR ACTION LOG:</strong><br><br>';
+          logs.forEach(function(l) {
+            var div = document.createElement('div'); div.className = 'mod-log-item';
+            div.textContent = `[${formatTimeToken(l.timestamp)}] ${l.mod_username}: ${l.action_type.toUpperCase()} on ${l.target_username || 'ID '+l.target_id} | Reason: ${l.reason}`;
+            list.appendChild(div);
+          });
+          document.getElementById('profile-view').style.display = 'none';
+          document.getElementById('mod-log-view').style.display = 'block';
           document.getElementById('modal-overlay').style.display = 'block';
         }
       };
@@ -594,41 +660,25 @@
       var av = document.getElementById('edit-avatar').value.trim();
       var loc = document.getElementById('edit-location').value.trim();
       var bio = document.getElementById('edit-bio').value.trim();
-      
       var xhr = new XMLHttpRequest(); xhr.open('POST', BACKEND_URL + '/api/profile', true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-          closeInfoModal();
-          openProfileModal(myUsername);
-        }
-      };
+      xhr.onreadystatechange = function() { if (xhr.readyState === 4 && xhr.status === 200) { closeInfoModal(); openProfileModal(myUsername); } };
       xhr.send(JSON.stringify({ bio: bio, location: loc, avatar_emoji: av }));
     }
 
     function submitPasswordChange() {
       var currentPass = document.getElementById('change-pass-current').value;
       var newPass = document.getElementById('change-pass-new').value;
-
       if (!currentPass || !newPass) return alert('Please fill out both password fields.');
-
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', BACKEND_URL + '/api/change-password', true);
+      var xhr = new XMLHttpRequest(); xhr.open('POST', BACKEND_URL + '/api/change-password', true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
           var res = JSON.parse(xhr.responseText);
-          if (xhr.status === 200 && res.success) {
-            alert('Password successfully updated!');
-            document.getElementById('change-pass-current').value = '';
-            document.getElementById('change-pass-new').value = '';
-            closeInfoModal();
-          } else {
-            alert(res.error || 'Failed to update password.');
-          }
+          if (xhr.status === 200 && res.success) { alert('Password updated!'); closeInfoModal(); }
+          else alert(res.error || 'Failed to update password.');
         }
       };
       xhr.send(JSON.stringify({ currentPassword: currentPass, newPassword: newPass }));
