@@ -88,24 +88,20 @@ app.post('/api/register', async (req, res) => {
     }
 })
 
+// FIXED: Now safely checks isolated array row rows to verify passwords without app crashes
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body
     try {
         const result = await db.query('SELECT * FROM users WHERE username = $1;', [username])
+        const user = result.rows[0]; // FIXED: Isolates single user object out from results array array row profile
         
-        // FIXED: Extract the raw index mapping [0] out of row variables to unlock authentication comparisons
-        if (result.rows.length === 0) {
-            return res.status(401).json({ error: 'Invalid credentials' })
+        if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+            return res.status(401).json({ error: 'Invalid username or password credentials' })
         }
-        
-        const user = result.rows[0];
-        if (!(await bcrypt.compare(password, user.password_hash))) {
-            return res.status(401).json({ error: 'Invalid credentials' })
-        }
-        
         const token = jwt.sign({ username }, JWT_SECRET)
         res.json({ token, username })
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: 'Server authentication failure' })
     }
 })
