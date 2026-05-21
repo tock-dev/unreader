@@ -11,7 +11,13 @@ if (!JWT_SECRET) {
   throw new Error("CRITICAL SERVER CONFIGURATION ERROR: process.env.JWT_SECRET is completely missing.");
 }
 
-const db = new Pool({ connectionString: process.env.DATABASE_URL })
+// HARDENED DATABASE POOL CONFIGURATION WITH SSL ALLOWANCES FOR RENDER
+const db = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 async function initDatabase() {
   await db.query(`
