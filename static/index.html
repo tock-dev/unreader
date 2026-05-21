@@ -52,7 +52,7 @@
 
     .message-container { width: 100%; margin-bottom: 12px; clear: both; }
     .message { border: 2px solid black; padding: 8px 12px; max-width: 70%; width: auto; box-shadow: 2px 2px 0px black; position: relative; }
-    .message-meta { font-size: 11px; font-weight: bold; color: #555; margin-bottom: 4px; }
+    .message-meta { font-size: 11px; font-weight: bold; color: #555; margin-bottom: 4px; cursor: pointer; }
     .message-text { font-size: 14px; white-space: pre-wrap; }
     
     .my-msg { float: right; background-color: #e2f0cb; text-align: left; }
@@ -79,14 +79,25 @@
       font-size: 10px; cursor: pointer; background: white; padding: 0 4px; font-weight: bold;
     }
 
-    #mod-box-container, #settings-box-container {
-      margin: 4px; padding: 6px; background: #ffcccc; border: 2px dashed red;
+    #settings-box-container {
+      margin: 4px; padding: 6px; background: #e0e0e0; border: 2px solid black;
     }
-    #settings-box-container { background: #e0e0e0; border: 2px solid black; }
-    .mod-input, .settings-input { width: 90%; padding: 4px; margin-bottom: 4px; font-family: monospace; font-size: 11px; }
-    .mod-btn, .settings-btn { width: 95%; font-family: monospace; font-size: 11px; font-weight: bold; background: black; color: white; cursor: pointer; padding: 4px 0; border: none; margin-bottom: 4px; }
-    .settings-btn { background: #333; }
-    #mod-unban-btn { background: green; }
+    .settings-input { width: 90%; padding: 4px; margin-bottom: 4px; font-family: monospace; font-size: 11px; }
+    .settings-btn { width: 95%; font-family: monospace; font-size: 11px; font-weight: bold; background: #333; color: white; cursor: pointer; padding: 4px 0; border: none; }
+
+    /* Special Mod click Menu Overlay Panel */
+    #mod-menu-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); display: none; z-index: 200;
+      text-align: center; padding-top: 150px;
+    }
+    .mod-menu-box { width: 260px; margin: 0 auto; padding: 20px; background: #ffcccc; border: 3px dashed red; box-shadow: 4px 4px 0px black; }
+    .mod-menu-btn { width: 100%; margin: 4px 0; padding: 6px; font-family: monospace; font-weight: bold; background: black; color: white; border: none; cursor: pointer; }
+    .mod-menu-btn-close { background: white; color: black; border: 2px solid black; }
+
+    #user-roster-list { max-height: 120px; overflow-y: auto; background: white; margin: 2px; padding: 4px; border: 1px solid black; }
+    .roster-user { padding: 4px; font-size: 12px; cursor: pointer; border-bottom: 1px dashed gray; }
+    .roster-user:hover { background: #eee; }
 
     #auth-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: #222; display: block; z-index: 100; text-align: center; padding-top: 100px; }
     .auth-box { padding: 30px; width: 300px; margin: 0 auto; background: white; }
@@ -96,6 +107,19 @@
   </style>
 </head>
 <body>
+
+  <!-- Dynamic Mod click Interface Menu -->
+  <div id="mod-menu-overlay">
+    <div class="mod-menu-box paper">
+      <h3 style="margin-top:0; color:red;">SYS_OP INTERVENTION</h3>
+      <div id="mod-menu-target-label" style="font-weight:bold; margin-bottom:10px;">User: None</div>
+      <button class="mod-menu-btn" onclick="executeModAction('kick')">TERMINATE SESSION</button>
+      <button class="mod-menu-btn" onclick="executeModAction('timeout_10')">TIMEOUT 10 MINS</button>
+      <button class="mod-menu-btn" onclick="executeModAction('timeout_24h')">TIMEOUT 24 HOURS</button>
+      <button class="mod-menu-btn" onclick="executeModAction('unban')">REMOVE RESTRICTION</button>
+      <button class="mod-menu-btn mod-menu-btn-close" onclick="closeModMenu()">CANCEL</button>
+    </div>
+  </div>
 
   <div id="auth-screen">
     <div class="paper auth-box">
@@ -118,7 +142,10 @@
   <table id="workspace-table">
     <tr>
       <td id="sidebar-cell">
-        <div class="panel-header">Channels</div>
+        <div class="panel-header">Online Users</div>
+        <div id="user-roster-list"></div>
+
+        <div class="panel-header" style="border-top: 2px solid black;">Channels</div>
         <div class="nav-item nav-item-active" id="nav-public" onclick="switchChannel('public', '')">🌍 Global Chat</div>
         <div class="panel-header" style="border-top: 2px solid black;">Direct Messages</div>
         <input class="paper" type="text" id="dm-target-input" placeholder="+ Type user & press Enter..." autocomplete="off">
@@ -128,16 +155,6 @@
         <div id="settings-box-container">
           <input type="password" id="settings-new-pass" class="paper settings-input" placeholder="New Password...">
           <button id="settings-save-btn" class="settings-btn">UPDATE PASSWORD</button>
-        </div>
-
-        <!-- Expanded Terminal System Operator Actions Box Component -->
-        <div id="mod-sidebar-panel" style="display: none;">
-          <div class="panel-header" style="border-top: 2px dashed red; color: red;">SYS_OP PANEL</div>
-          <div id="mod-box-container">
-            <input type="text" id="mod-target-user" class="paper mod-input" placeholder="Target Username..." autocomplete="off">
-            <button id="mod-ban-btn" class="mod-btn">BAN ACCOUNT</button>
-            <button id="mod-unban-btn" class="mod-btn">UNBAN ACCOUNT</button>
-          </div>
         </div>
       </td>
       <td id="chat-cell">
@@ -152,9 +169,8 @@
   </table>
 
   <script type="text/javascript">
-    // ⚠️ CONFIGURATION TARGET: RE-PASTE YOUR LIVE SERVICE RENDER DOMAIN STRING VALUES HERE
-    var BACKEND_URL = "https://onrender.com"; 
-    var WS_URL = "wss://://onrender.com";
+    var BACKEND_URL = "https://unreader.onrender.com"; 
+    var WS_URL = "wss://unreader.onrender.com";
 
     var token = localStorage.getItem('token');
     var myUsername = localStorage.getItem('username');
@@ -163,6 +179,12 @@
     var socket = null;
     var isRegisterMode = false;
     var typingClearTimer = null;
+    
+    // Pagination state tracking properties
+    var currentHistoryIndex = 0;
+    var isFetchingHistory = false;
+    var hasMoreHistory = true;
+    var activeMenuTargetUser = "";
 
     var authToggle = document.getElementById('auth-toggle');
     authToggle.onclick = function() {
@@ -187,11 +209,9 @@
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
-          if (xhr.status >= 400) {
-            var errData = JSON.parse(xhr.responseText);
-            return alert(errData.error || 'Authentication rejected.');
-          }
           var data = JSON.parse(xhr.responseText);
+          if(data.error) return alert(data.error);
+          
           localStorage.setItem('token', data.token);
           localStorage.setItem('username', data.username);
           token = data.token;
@@ -214,8 +234,9 @@
         if (xhr.readyState === 4) {
           var data = JSON.parse(xhr.responseText);
           if (data.error) return alert(data.error);
+          
           document.getElementById('settings-new-pass').value = '';
-          alert('Password profile systematically modified successfully!');
+          alert('Password modified successfully!');
         }
       };
       xhr.send(JSON.stringify({ password: newPassword }));
@@ -230,28 +251,30 @@
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('user-display').textContent = '@' + myUsername;
       
-      if (isMasterAdmin(myUsername)) {
-        document.getElementById('mod-sidebar-panel').style.display = 'block';
-      }
-      
       socket = new WebSocket(WS_URL);
+      
       socket.onopen = function() { socket.send(JSON.stringify({ type: 'auth', token: token })); };
 
       socket.onmessage = function(event) {
         var data = JSON.parse(event.data);
         
         if (data.type === 'terminated') {
-          alert('Your session was terminated. Reason: Account Status Mutation/Ban.');
+          alert('Your session was terminated by an administrator.');
           localStorage.clear();
           window.location.reload();
           return;
         }
 
-        // FIXED: Deletes the entire visual shell card element from the domestic view matrix completely
+        // Catch active streaming online user presence rosters
+        if (data.type === 'roster_update') {
+          renderOnlineRoster(data.users);
+          return;
+        }
+
         if (data.type === 'msg_deleted') {
-          var targetWrapper = document.getElementById('msg-wrapper-id-' + data.id);
-          if (targetWrapper) {
-            targetWrapper.parentNode.removeChild(targetWrapper);
+          var targetNode = document.getElementById('msg-id-' + data.id);
+          if (targetNode) {
+            targetNode.parentNode.removeChild(targetNode);
           }
           return;
         }
@@ -262,42 +285,71 @@
         }
 
         if (data.type === 'public' && currentMode === 'public') {
-          appendMessage({ id: data.id, username: data.username, content: data.content, timestamp: data.timestamp });
+          appendMessage({ id: data.id, username: data.username, content: data.content, timestamp: data.timestamp }, false);
         } else if (data.type === 'dm') {
           var senderPartner = data.sender === myUsername ? data.receiver : data.sender;
           ensureDMNavOption(senderPartner);
           if (currentMode === 'dm' && currentDMTarget === senderPartner) {
             clearTypingIndicator();
-            appendMessage({ id: data.id, username: data.sender, content: data.content, timestamp: data.timestamp });
+            appendMessage({ id: data.id, username: data.sender, content: data.content, timestamp: data.timestamp }, false);
           }
         }
       };
       
       loadDMContacts(); 
-      loadHistory();
+      loadHistory(true);
     }
 
-    // Bind administrative button events dynamically
-    document.getElementById('mod-ban-btn').onclick = function() { executeModAction('mod_ban'); };
-    document.getElementById('mod-unban-btn').onclick = function() { executeModAction('mod_unban'); };
+    function renderOnlineRoster(usersList) {
+      var rosterBox = document.getElementById('user-roster-list');
+      rosterBox.innerHTML = '';
+      for (var i = 0; i < usersList.length; i++) {
+        var name = usersList[i];
+        var item = document.createElement('div');
+        item.className = 'roster-user';
+        item.textContent = '🟢 ' + name;
+        
+        // Context click mapping hooks
+        (function(targetName) {
+          item.onclick = function() {
+            if (isMasterAdmin(myUsername)) {
+              openModMenu(targetName);
+            } else if (targetName !== myUsername) {
+              ensureDMNavOption(targetName);
+              switchChannel('dm', targetName);
+            }
+          };
+        })(name);
+        rosterBox.appendChild(item);
+      }
+    }
 
-    function executeModAction(typeString) {
-      var target = document.getElementById('mod-target-user').value.trim();
-      if (!target) return alert('Enter a target user string');
-      if (isMasterAdmin(target)) return alert('Operation Denied: Target profile matches active operator profiles.');
+    function openModMenu(username) {
+      activeMenuTargetUser = username;
+      document.getElementById('mod-menu-target-label').textContent = 'User: ' + username;
+      document.getElementById('mod-menu-overlay').style.display = 'block';
+    }
+
+    function closeModMenu() {
+      document.getElementById('mod-menu-overlay').style.display = 'none';
+    }
+
+    function executeModAction(actionType) {
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
       
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: typeString, target: target }));
-        document.getElementById('mod-target-user').value = '';
-        alert('Action (' + typeString + ') synchronized for: ' + target);
+      if (actionType === 'kick') {
+        if (isMasterAdmin(activeMenuTargetUser)) return alert('Operation blocked');
+        socket.send(JSON.stringify({ type: 'mod_kick', target: activeMenuTargetUser }));
+      } else if (actionType === 'timeout_10') {
+        if (isMasterAdmin(activeMenuTargetUser)) return alert('Operation blocked');
+        socket.send(JSON.stringify({ type: 'mod_cmd', cmd: '/timeout', target: activeMenuTargetUser, duration: 10 }));
+      } else if (actionType === 'timeout_24h') {
+        if (isMasterAdmin(activeMenuTargetUser)) return alert('Operation blocked');
+        socket.send(JSON.stringify({ type: 'mod_cmd', cmd: '/timeout', target: activeMenuTargetUser, duration: 1440 }));
+      } else if (actionType === 'unban') {
+        socket.send(JSON.stringify({ type: 'mod_cmd', cmd: '/unban', target: activeMenuTargetUser }));
       }
-    }
-
-    function triggerMsgDeletion(msgId) {
-      if (!isMasterAdmin(myUsername)) return;
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'mod_delete', id: msgId, channel: currentMode }));
-      }
+      closeModMenu();
     }
 
     function loadDMContacts() {
@@ -354,6 +406,9 @@
       currentDMTarget = target;
       clearTypingIndicator();
       
+      currentHistoryIndex = 0;
+      hasMoreHistory = true;
+      
       var navItems = document.getElementById('sidebar-cell').getElementsByTagName('div');
       for (var i = 0; i < navItems.length; i++) {
         if(navItems[i].className.indexOf('nav-item') !== -1) {
@@ -368,16 +423,14 @@
         if (activeTab) activeTab.className = 'nav-item nav-item-active';
       }
       document.getElementById('chat-scroll-wrapper').innerHTML = '';
-      loadHistory();
+      loadHistory(true);
     }
 
-    function appendMessage(data) {
+    function appendMessage(data, prependToTop) {
       var chatWrapper = document.getElementById('chat-scroll-wrapper');
       var containerDiv = document.createElement('div');
       containerDiv.className = 'message-container';
-      
-      // FIXED: Maps unique wrapper IDs to safely target layout deletion scripts
-      containerDiv.id = 'msg-wrapper-id-' + data.id;
+      containerDiv.id = 'msg-id-' + data.id;
       
       var msgDiv = document.createElement('div');
       var isMe = data.username === myUsername;
@@ -399,30 +452,109 @@
 
       msgDiv.innerHTML = '<div class="' + metaStyleClass + '">' + nameDisplay + ' • ' + timeStr + '</div><div class="message-text"></div>';
       
+      // User meta context menu hook triggers
+      msgDiv.querySelector('.message-meta').onclick = function() {
+        if (isMasterAdmin(myUsername)) openModMenu(data.username);
+      };
+
       if (isMasterAdmin(myUsername)) {
         var delBtn = document.createElement('button');
         delBtn.className = 'del-btn';
         delBtn.textContent = 'X';
-        delBtn.onclick = function() { triggerMsgDeletion(data.id); };
+        delBtn.onclick = function() { 
+          if(socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'mod_delete', id: data.id, channel: currentMode }));
+          }
+        };
         msgDiv.appendChild(delBtn);
       }
 
       msgDiv.querySelector('.message-text').textContent = data.content;
-      
       containerDiv.appendChild(msgDiv);
-      chatWrapper.appendChild(containerDiv);
-      chatWrapper.scrollTop = chatWrapper.scrollHeight;
+      
+      if (prependToTop) {
+        chatWrapper.insertBefore(containerDiv, chatWrapper.firstChild);
+      } else {
+        chatWrapper.appendChild(containerDiv);
+        chatWrapper.scrollTop = chatWrapper.scrollHeight;
+      }
     }
 
-    function loadHistory() {
+    function loadHistory(initialLoad) {
+      if (isFetchingHistory || !hasMoreHistory) return;
+      isFetchingHistory = true;
+
+      var chatWrapper = document.getElementById('chat-scroll-wrapper');
+      var oldScrollHeight = chatWrapper.scrollHeight;
+
       var xhr = new XMLHttpRequest();
       if (currentMode === 'public') {
-        xhr.open('GET', BACKEND_URL + '/history?index=0', true);
+        xhr.open('GET', BACKEND_URL + '/history?index=' + currentHistoryIndex, true);
       } else {
-        xhr.open('GET', BACKEND_URL + '/dm-history?target=' + currentDMTarget, true);
+        xhr.open('GET', BACKEND_URL + '/dm-history?target=' + currentDMTarget + '&index=' + currentHistoryIndex, true);
         xhr.setRequestHeader('Authorization', 'Bearer ' + token);
       }
       
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4 && xhr.status === 200) {
           var data = JSON.parse(xhr.responseText);
+          
+          if (data.length < 10) {
+            hasMoreHistory = false;
+          }
+
+          // Loop backward to maintain chronological balance when prepping scrolling margins
+          for (var i = data.length - 1; i >= 0; i--) {
+            var msg = data[i];
+            if (currentMode === 'public') {
+              appendMessage(msg, true);
+            } else {
+              appendMessage({ id: msg.id, username: msg.sender, content: msg.content, timestamp: msg.timestamp }, true);
+            }
+          }
+
+          isFetchingHistory = false;
+          currentHistoryIndex++;
+
+          if (initialLoad) {
+            chatWrapper.scrollTop = chatWrapper.scrollHeight;
+          } else {
+            // Lock and anchor scroll threshold relative positions during downward historical injections
+            chatWrapper.scrollTop = chatWrapper.scrollHeight - oldScrollHeight;
+          }
+        }
+      };
+      xhr.send();
+    }
+
+    // Capture scrolling Peak boundary triggers
+    document.getElementById('chat-scroll-wrapper').onscroll = function(e) {
+      if (e.target.scrollTop === 0) {
+        loadHistory(false);
+      }
+    };
+
+    var input = document.getElementById('content');
+    input.oninput = function() {
+        if (currentMode === 'dm' && socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'typing', target: currentDMTarget }));
+        }
+    };
+
+    function sendMessage() {
+      var text = input.value.trim();
+      if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+      socket.send(JSON.stringify({ type: currentMode, content: text, target: currentDMTarget }));
+      input.value = '';
+    }
+
+    document.getElementById('send').onclick = sendMessage;
+    input.onkeypress = function(e) {
+      var key = e.keyCode || e.which;
+      if (key === 13) sendMessage();
+    };
+
+    if (token && myUsername) initApp();
+  </script>
+</body>
+</html>
