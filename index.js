@@ -62,6 +62,16 @@ initDatabase().catch(err => {
 });
 
 const app = express()
+
+// STANDARD CORS MIDDLEWARE: Dynamic safety alignment for GitHub Pages origins
+app.use(cors({
+  origin: ["https://tock-dev.github.io", "https://tock-dev.github.io/", "null"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Authorization", "Content-Type", "Origin", "Accept"],
+  credentials: true,
+  optionsSuccessStatus: 204
+}));
+
 app.use(express.json())
 
 app.use((req, res, next) => {
@@ -109,8 +119,13 @@ async function broadcastTopics() {
 }
 
 app.get('/dm-contacts', authenticateToken, async (req, res) => {
-  const result = await db.query(`SELECT DISTINCT username FROM (SELECT receiver AS username FROM dms WHERE sender = $1 UNION SELECT sender AS username FROM dms WHERE receiver = $1) AS c WHERE username != $1;`, [req.user.username]);
-  res.json(result.rows.map(r => r.username));
+  try {
+    const result = await db.query(`SELECT DISTINCT username FROM (SELECT receiver AS username FROM dms WHERE sender = $1 UNION SELECT sender AS username FROM dms WHERE receiver = $1) AS c WHERE username != $1;`, [req.user.username]);
+    return res.json(result.rows.map(r => r.username));
+  } catch (err) {
+    console.error("Error fetching DM contacts:", err.message);
+    return res.status(500).json({ error: "Failed to fetch DM contacts." });
+  }
 });
 
 app.post('/api/register', async (req, res) => {
@@ -150,17 +165,27 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.get('/api/profile/:username', authenticateToken, async (req, res) => {
-  const r = await db.query('SELECT * FROM profiles WHERE username = $1;', [req.params.username]);
-  if (!r.rows[0]) {
-    return res.json({ username: req.params.username, bio: 'Hello world.', location: 'Cyberspace', avatar_emoji: '👤' });
+  try {
+    const r = await db.query('SELECT * FROM profiles WHERE username = $1;', [req.params.username]);
+    if (!r.rows[0]) {
+      return res.json({ username: req.params.username, bio: 'Hello world.', location: 'Cyberspace', avatar_emoji: '👤' });
+    }
+    return res.json(r.rows[0]);
+  } catch (err) {
+    console.error("Profile view error:", err.message);
+    return res.status(500).json({ error: "Failed to retrieve profile data." });
   }
-  res.json(r.rows[0]);
 });
 
 app.post('/api/profile', authenticateToken, async (req, res) => {
   const { bio, location, avatar_emoji } = req.body;
-  await db.query('INSERT INTO profiles (username, bio, location, avatar_emoji) VALUES ($4, $1, $2, $3) ON CONFLICT (username) DO UPDATE SET bio=$1, location=$2, avatar_emoji=$3;', [bio, location, avatar_emoji, req.user.username]);
-  res.json({ success: true });
+  try {
+    await db.query('INSERT INTO profiles (username, bio, location, avatar_emoji) VALUES ($4, $1, $2, $3) ON CONFLICT (username) DO UPDATE SET bio=$1, location=$2, avatar_emoji=$3;', [bio, location, avatar_emoji, req.user.username]);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Profile modification error:", err.message);
+    return res.status(500).json({ error: "Failed to update profile settings." });
+  }
 });
 
 app.post('/api/change-password', authenticateToken, async (req, res) => {
@@ -178,37 +203,52 @@ app.post('/api/change-password', authenticateToken, async (req, res) => {
 
     const newHash = await bcrypt.hash(newPassword, 10);
     await db.query('UPDATE users SET password_hash = $1 WHERE username = $2;', [newHash, req.user.username]);
-    res.json({ success: true, message: "Security parameters successfully reset." });
+    return res.json({ success: true, message: "Security parameters successfully reset." });
   } catch (err) {
-    res.status(500).json({ error: "Internal processing database error." });
+    return res.status(500).json({ error: "Internal processing database error." });
   }
 });
 
 app.get('/history', authenticateToken, async (req, res) => {
-  const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
-  const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
-  const r = await db.query('SELECT id, username, timestamp, content, is_deleted FROM messages ORDER BY id DESC LIMIT 10 OFFSET $1;', [off]);
-  res.json(r.rows.reverse());
+  try {
+    const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
+    const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
+    const r = await db.query('SELECT id, username, timestamp, content, is_deleted FROM messages ORDER BY id DESC LIMIT 10 OFFSET $1;', [off]);
+    return res.json(r.rows.reverse());
+  } catch (err) {
+    console.error("History query breakdown:", err.message);
+    return res.status(500).json({ error: "Failed to process message feed log histories safely." });
+  }
 });
 
 app.get('/dm-history', authenticateToken, async (req, res) => {
-  const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
-  const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
-  const r = await db.query(`SELECT id, sender AS username, receiver, timestamp, content, is_deleted FROM dms WHERE (sender = $1 AND receiver = $2) OR (sender = $2 AND receiver = $1) ORDER BY id DESC LIMIT 10 OFFSET $3;`, [req.user.username, req.query.target, off]);
-  res.json(r.rows.reverse());
+  try {
+    const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
+    const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
+    const r = await db.query(`SELECT id, sender AS username, receiver, timestamp, content, is_deleted FROM dms WHERE (sender = $1 AND receiver = $2) OR (sender = $2 AND receiver = $1) ORDER BY id DESC LIMIT 10 OFFSET $3;`, [req.user.username, req.query.target, off]);
+    return res.json(r.rows.reverse());
+  } catch (err) {
+    console.error("DM history breakdown:", err.message);
+    return res.status(500).json({ error: "Failed to pull message threads." });
+  }
 });
 
 app.get('/topic-history', authenticateToken, async (req, res) => {
-  const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
-  const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
-  const r = await db.query('SELECT id, topic_slug, username, timestamp, content, is_deleted FROM topic_messages WHERE topic_slug = $1 ORDER BY id DESC LIMIT 10 OFFSET $2;', [req.query.slug, off]);
-  res.json(r.rows.reverse());
+  try {
+    const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
+    const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
+    const r = await db.query('SELECT id, topic_slug, username, timestamp, content, is_deleted FROM topic_messages WHERE topic_slug = $1 ORDER BY id DESC LIMIT 10 OFFSET $2;', [req.query.slug, off]);
+    return res.json(r.rows.reverse());
+  } catch (err) {
+    console.error("Topic history breakdown:", err.message);
+    return res.status(500).json({ error: "Failed to pull topic logs." });
+  }
 });
 
 app.get('/neighborhood-history', authenticateToken, async (req, res) => {
-  const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
-  const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
   try {
+    const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
+    const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
     const query = `
       SELECT p.*, COALESCE(json_agg(c.* ORDER BY c.id ASC) FILTER (WHERE c.id IS NOT NULL), '[]') as comments
       FROM neighborhood_posts p
@@ -217,13 +257,15 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
       ORDER BY p.id DESC LIMIT 10 OFFSET $1;
     `;
     const posts = await db.query(query, [off]);
-    res.json(posts.rows.reverse());
-  } catch(err) { res.status(500).json({ error: 'Failed to build feed logs.' }); }
+    return res.json(posts.rows.reverse());
+  } catch(err) { 
+    console.error("Neighborhood logs error:", err.message);
+    return res.status(500).json({ error: 'Failed to build feed logs.' }); 
+  }
 });
 
 const PORT = process.env.PORT || 10000;
 
-// Explicitly binding to 0.0.0.0 to accept external requests through Render's load balancer
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server strictly locked onto public routing port: ${PORT}`);
 });

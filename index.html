@@ -198,8 +198,9 @@
   </div>
 
   <script type="text/javascript">
-    var BACKEND_URL = "https://unreader.onrender.com";
-    var WS_URL = "wss://unreader.onrender.com";
+    const DEBUG = false;
+    var BACKEND_URL = DEBUG ? "http://localhost:3000" : "https://unreader-v4yf.onrender.com"; 
+    var WS_URL = DEBUG ? "ws://localhost:3000" : "wss://unreader-v4yf.onrender.com";
 
     var token = localStorage.getItem('token');
     var myUsername = localStorage.getItem('username');
@@ -248,21 +249,27 @@
       var password = document.getElementById('auth-pass').value;
       if(!username || !password) return alert('Fill in all log credentials.');
       var url = isRegisterMode ? '/api/register' : '/api/login';
-      
+
+      console.log("SUBMIT: isRegisterMode=" + isRegisterMode + ", url=" + url);
+
       var xhr = new XMLHttpRequest();
       xhr.open('POST', BACKEND_URL + url, true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
-          var data = JSON.parse(xhr.responseText);
-          if (xhr.status >= 200 && xhr.status < 300) {
-            if(data.error) return alert(data.error);
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('username', data.username);
-            token = data.token; myUsername = data.username;
-            initApp();
+          if (xhr.status === 200) {
+            try {
+              var data = JSON.parse(xhr.responseText);
+              localStorage.setItem('token', data.token);
+              localStorage.setItem('username', data.username);
+              token = data.token; myUsername = data.username;
+              initApp();
+            } catch(e) { alert("Server returned an invalid packet signature."); }
           } else {
-            alert(data.error || 'Authentication connection error.');
+            try {
+              var errData = JSON.parse(xhr.responseText);
+              alert("Server error: " + (errData.error || "Access Denied"));
+            } catch(e) { alert("Structural connection failure (Status " + xhr.status + ")."); }
           }
         }
       };
