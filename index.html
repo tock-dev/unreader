@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, interactive-widget=resizes-content">
   <title>un-reader</title>
   <style type="text/css">
     /* SYSTEM 7 HIGH-CONTRAST E-INK AESTHETICS */
@@ -144,6 +144,7 @@
           </div>
         </td>
         <td id="chat-cell">
+          <!-- Static Snap Navigation Header Desk Bar for E-Ink Refresh Sync -->
           <div id="pagination-header-bar">
             <button class="page-btn" id="prev-page-btn" onclick="jumpToPreviousPage()">&lt; NEWER LOGS</button>
             <span id="page-display-index">PAGE: 0</span>
@@ -164,8 +165,8 @@
 
   <script type="text/javascript">
     // ⚠️ CONFIGURATION TARGET: REPLACE BOTH URLS BELOW WITH YOUR RENDER APP ADDRESS
-    var BACKEND_URL = "https://unreader.onrender.com"; 
-    var WS_URL = "wss://unreader.onrender.com";
+    var BACKEND_URL = "https://onrender.com"; 
+    var WS_URL = "wss://://onrender.com";
 
     var token = localStorage.getItem('token');
     var myUsername = localStorage.getItem('username');
@@ -259,7 +260,6 @@
         }
         
         if (currentHistoryIndex === 0) {
-          // FIXED: Now matches server variable properties ('message' vs 'public')
           if (data.type === 'message' && currentMode === 'public') {
             loadHistory();
           } else if (data.type === 'dm') {
@@ -445,8 +445,12 @@
           }
           for (var i = 0; i < data.length; i++) {
             var msg = data[i];
-            if (currentMode === 'public') appendMessage(msg);
-            else appendMessage({ id: msg.id, username: msg.sender, content: msg.content, timestamp: msg.timestamp });
+            if (currentMode === 'public') {
+              appendMessage(msg);
+            } else {
+              // UNIFIED DATA PROPERTY WRAPPER: Parses .username or .sender natively safely
+              appendMessage({ id: msg.id, username: msg.username || msg.sender, content: msg.content, timestamp: msg.timestamp });
+            }
           }
         }
       };
@@ -464,7 +468,6 @@
       var text = input.value.trim();
       if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
       
-      // FIXED: Packages data arrays correctly to match index.js parameters
       var payload = {
         type: currentMode === 'public' ? 'message' : 'dm',
         content: text,
