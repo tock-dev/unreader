@@ -145,25 +145,29 @@ app.post('/api/change-password', authenticateToken, async (req, res) => {
 });
 
 app.get('/history', authenticateToken, async (req, res) => {
-  const off = parseInt(req.query.index ?? '0', 10) * 10;
+  const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
+  const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
   const r = await db.query('SELECT id, username, timestamp, content, is_deleted FROM messages ORDER BY id DESC LIMIT 10 OFFSET $1;', [off]);
   res.json(r.rows.reverse());
 });
 
 app.get('/dm-history', authenticateToken, async (req, res) => {
-  const off = parseInt(req.query.index ?? '0', 10) * 10;
+  const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
+  const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
   const r = await db.query(`SELECT id, sender AS username, receiver, timestamp, content, is_deleted FROM dms WHERE (sender = $1 AND receiver = $2) OR (sender = $2 AND receiver = $1) ORDER BY id DESC LIMIT 10 OFFSET $3;`, [req.user.username, req.query.target, off]);
   res.json(r.rows.reverse());
 });
 
 app.get('/topic-history', authenticateToken, async (req, res) => {
-  const off = parseInt(req.query.index ?? '0', 10) * 10;
+  const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
+  const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
   const r = await db.query('SELECT id, topic_slug, username, timestamp, content, is_deleted FROM topic_messages WHERE topic_slug = $1 ORDER BY id DESC LIMIT 10 OFFSET $2;', [req.query.slug, off]);
   res.json(r.rows.reverse());
 });
 
 app.get('/neighborhood-history', authenticateToken, async (req, res) => {
-  const off = parseInt(req.query.index ?? '0', 10) * 10;
+  const pageIndex = req.query.index ? parseInt(req.query.index, 10) : 0;
+  const off = (isNaN(pageIndex) ? 0 : pageIndex) * 10;
   try {
     const query = `
       SELECT p.*, COALESCE(json_agg(c.* ORDER BY c.id ASC) FILTER (WHERE c.id IS NOT NULL), '[]') as comments
@@ -196,16 +200,33 @@ wss.on('connection', (ws) => {
       const data = JSON.parse(msg);
 
       if (data.type === 'auth') {
-        const decoded = jwt.verify(data.token, JWT_SECRET); authUser = decoded.username;
-        const check = await db.query('SELECT is_banned, timeout_until FROM users WHERE username = $1;', [authUser]);
-        if (check.rows[0] && (check.rows[0].is_banned || BigInt(check.rows[0].timeout_until) > BigInt(Date.now()))) {
-          ws.send(JSON.stringify({ type: 'terminated', reason: 'Account status restriction applied.' })); ws.close(); return;
+        try {
+          let cleanToken = data.token;
+          if (cleanToken && cleanToken.startsWith('Bearer ')) {
+            cleanToken = cleanToken.slice(7);
+          }
+
+          const decoded = jwt.verify(cleanToken, JWT_SECRET); 
+          authUser = decoded.username;
+          
+          const check = await db.query('SELECT is_banned, timeout_until FROM users WHERE username = $1;', [authUser]);
+          if (check.rows[0] && (check.rows[0].is_banned || BigInt(check.rows[0].timeout_until) > BigInt(Date.now()))) {
+            ws.send(JSON.stringify({ type: 'terminated', reason: 'Account status restriction applied.' })); 
+            ws.close(); 
+            return;
+          }
+          
+          activeClients.set(authUser, ws);
+          broadcastSystemUpdate({ type: 'roster_update', users: Array.from(activeClients.keys()) });
+          
+          const topicsRes = await db.query('SELECT * FROM topics ORDER BY id DESC;');
+          ws.send(JSON.stringify({ type: 'topics_update', topics: topicsRes.rows }));
+          
+          console.log(`WebSocket successfully authenticated user: ${authUser}`);
+        } catch (err) {
+          console.error("WebSocket Auth Failed:", err.message);
+          ws.send(JSON.stringify({ type: 'error_alert', message: 'WebSocket authentication failed. Please re-login.' }));
         }
-        activeClients.set(authUser, ws);
-        broadcastSystemUpdate({ type: 'roster_update', users: Array.from(activeClients.keys()) });
-        
-        const topicsRes = await db.query('SELECT * FROM topics ORDER BY id DESC;');
-        ws.send(JSON.stringify({ type: 'topics_update', topics: topicsRes.rows }));
         return;
       }
 
