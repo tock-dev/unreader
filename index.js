@@ -182,7 +182,12 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => console.log(`Server system online via port: ${PORT}`));
+
+// FIXED BINDING: Explicitly pass '0.0.0.0' to receive web socket and HTTP traffic outside the host localhost loop
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server system online and routing via port: ${PORT}`);
+});
+
 const wss = new WebSocketServer({ server });
 
 const ALLOWED_CHANNELS = {
