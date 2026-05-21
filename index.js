@@ -1,4 +1,5 @@
 import express from 'express'
+import cors from 'cors'
 import { WebSocketServer, WebSocket } from 'ws'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
@@ -45,18 +46,14 @@ initDatabase().catch(err => console.error(err));
 
 const app = express()
 
-// CRITICAL CORS CORRECTION INTERCEPTOR: Executes before any subsequent parsing middleware
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "https://tock-dev.github.io");
-  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Origin, Accept"); 
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  next();
-});
+// STANDARD CORS MIDDLEWARE: Handles preflight OPTIONS requests cleanly for Render
+app.use(cors({
+  origin: "https://tock-dev.github.io",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Authorization", "Content-Type", "Origin", "Accept"],
+  credentials: true,
+  optionsSuccessStatus: 204
+}));
 
 app.use(express.json())
 
@@ -181,11 +178,11 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
   } catch(err) { res.status(500).json({ error: 'Failed to build feed logs.' }); }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-// FIXED BINDING: Explicitly pass '0.0.0.0' to receive web socket and HTTP traffic outside the host localhost loop
+// Explicitly binding to 0.0.0.0 to accept external requests through Render's load balancer
 const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server system online and routing via port: ${PORT}`);
+  console.log(`Server strictly locked onto public routing port: ${PORT}`);
 });
 
 const wss = new WebSocketServer({ server });
