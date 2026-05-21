@@ -1,3 +1,9 @@
+<!-- ⚠️ CONFIGURATION TARGET: REPLACE BOTH URLS BELOW WITH YOUR RENDER APP ADDRESS -->
+<script>
+  const BACKEND_URL = "https://unreader.onrender.com"; 
+  const WS_URL = "wss://unreader.onrender.com";
+</script>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -5,20 +11,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>un-reader</title>
   <style>
-    body { margin: 0; padding: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; font-family: monospace; background-color: #f0f0f0; }
-    .paper { border: 3px solid black; background-color: white; color: black; margin: 2px; box-shadow: 2px 2px 0px black; }
-    #title-bar { padding: 4px; height: 5vh; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+    body { 
+      margin: 0; padding: 0; overflow: hidden; 
+      height: 100vh; display: flex; flex-direction: column;
+      font-family: monospace; background-color: #f0f0f0;
+    }
+    .paper { 
+      border: 3px solid black; background-color: white; 
+      color: black; margin: 2px; box-shadow: 2px 2px 0px black;
+    }
+    #title-bar { 
+      padding: 4px; height: 5vh; display: flex; 
+      justify-content: space-between; align-items: center; box-sizing: border-box;
+    }
     #title-bar h1 { font-size: 2.2vh; margin: 0 10px; text-transform: uppercase; letter-spacing: 1px; }
     #logout-btn { cursor: pointer; padding: 2px 8px; font-family: monospace; font-size: 1.4vh; margin-right: 10px;}
+    
     #workspace { display: flex; flex-grow: 1; height: 86vh; overflow: hidden; }
     #sidebar { width: 25vw; display: flex; flex-direction: column; background: #e6e6e6; border-right: 3px solid black; }
     .panel-header { font-weight: bold; padding: 8px; text-transform: uppercase; border-bottom: 2px solid black; background: white; font-size: 1.4vh; }
     .nav-item { padding: 10px; cursor: pointer; border-bottom: 1px solid black; font-size: 1.6vh; background: white; margin: 2px; }
     .nav-item:hover, .nav-item.active { background-color: black; color: white; }
     #dm-target-input { margin: 4px; padding: 6px; font-family: monospace; font-size: 1.4vh; outline: none; }
+
     #chat-area { flex-grow: 1; display: flex; flex-direction: column; height: 100%; position: relative; }
-    
-    /* NEW: Visual positioning parameters for typing notification elements */
     #typing-indicator { position: absolute; bottom: 8vh; left: 15px; font-size: 1.3vh; font-weight: bold; color: #555; font-style: italic; min-height: 20px; }
     
     #chat { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 30px; }
@@ -27,11 +43,13 @@
     #input button { display: flex; align-items: center; justify-content: center; width: 5vh; height: 5vh; cursor: pointer; padding: 0; }
     #input button:hover { background-color: #000; }
     #input button:hover svg { stroke: #fff; }
+
     .message { border: 2px solid black; border-radius: 4px; padding: 8px 12px; max-width: 60vw; width: fit-content; word-wrap: break-word; box-shadow: 2px 2px 0px black; }
     .message-meta { font-size: 1.1vh; font-weight: bold; color: #555; margin-bottom: 4px; }
     .message-text { font-size: 1.6vh; white-space: pre-wrap; }
     .my-msg { align-self: flex-end; background-color: #e2f0cb; }
     .other-msg { align-self: flex-start; background-color: white; }
+
     #auth-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 100; }
     .auth-box { padding: 30px; width: 300px; text-align: center; }
     .auth-box input { width: 90%; padding: 8px; margin: 8px 0; font-family: monospace; }
@@ -70,7 +88,7 @@
 
     <div id="chat-area">
       <div id="chat"></div>
-      <div id="typing-indicator"></div> <!-- Container element hook for typing alert status -->
+      <div id="typing-indicator"></div>
       <div id="input" class="paper">
         <input class="paper" type="text" id="content" placeholder="Enter a message..." autocomplete="off" />
         <button class="paper" id="send">
@@ -90,7 +108,6 @@
     let currentDMTarget = '';
     let socket = null;
     let isRegisterMode = false;
-    let typingTimeout = null;
 
     const authToggle = document.getElementById('auth-toggle');
     authToggle.addEventListener('click', () => {
@@ -105,7 +122,7 @@
       if(!username || !password) return alert('Please fill in all fields');
 
       const url = isRegisterMode ? '/api/register' : '/api/login';
-      const res = await fetch(url, {
+      const res = await fetch(`${BACKEND_URL}${url}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -129,16 +146,13 @@
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('user-display').textContent = `@${myUsername}`;
       
-      // Fixed: Auto-adjust protocols securely based on site encryption layer context
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      socket = new WebSocket(`${wsProtocol}//${window.location.host}`);
+      socket = new WebSocket(WS_URL);
       
       socket.onopen = () => { socket.send(JSON.stringify({ type: 'auth', token })); };
 
       socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
         
-        // NEW: Intercept and render incoming typing states
         if (data.type === 'typing' && currentMode === 'dm' && currentDMTarget === data.sender) {
             showTypingState(`${data.sender} is typing...`);
             return;
@@ -150,7 +164,7 @@
           const senderPartner = data.sender === myUsername ? data.receiver : data.sender;
           ensureDMNavOption(senderPartner);
           if (currentMode === 'dm' && currentDMTarget === senderPartner) {
-            clearTypingIndicator(); // Instantly hide typing notice when text layout arrives
+            clearTypingIndicator();
             appendMessage({ username: data.sender, content: data.content, timestamp: data.timestamp });
           }
         }
@@ -158,13 +172,13 @@
       loadHistory();
     }
 
-    // NEW: Flash notification controller methods
     function showTypingState(text) {
         const indicator = document.getElementById('typing-indicator');
         indicator.textContent = text;
         clearTimeout(window.typingClearTimer);
-        window.typingClearTimer = setTimeout(clearTypingIndicator, 3000); // clear indicator after 3 seconds of silence
+        window.typingClearTimer = setTimeout(clearTypingIndicator, 3000);
     }
+    
     function clearTypingIndicator() {
         document.getElementById('typing-indicator').textContent = '';
     }
@@ -217,11 +231,11 @@
       try {
         let res, data;
         if (currentMode === 'public') {
-          res = await fetch('/history?index=0');
+          res = await fetch(`${BACKEND_URL}/history?index=0`);
           data = await res.json();
           data.forEach(msg => appendMessage(msg));
         } else {
-          res = await fetch(`/dm-history?target=${currentDMTarget}`, { headers: { 'Authorization': `Bearer ${token}` } });
+          res = await fetch(`${BACKEND_URL}/dm-history?target=${currentDMTarget}`, { headers: { 'Authorization': `Bearer ${token}` } });
           data = await res.json();
           data.forEach(msg => appendMessage({ username: msg.sender, content: msg.content, timestamp: msg.timestamp }));
         }
@@ -229,14 +243,9 @@
     }
 
     const input = document.getElementById('content');
-    
-    // NEW: Track key strokes to dispatch streaming updates towards target receivers
     input.addEventListener('input', () => {
         if (currentMode === 'dm' && socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-                type: 'typing',
-                target: currentDMTarget
-            }));
+            socket.send(JSON.stringify({ type: 'typing', target: currentDMTarget }));
         }
     });
 
