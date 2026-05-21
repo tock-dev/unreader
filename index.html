@@ -35,7 +35,7 @@
     #user-display { position: absolute; right: 10px; z-index: 2; font-size: 11px; font-weight: bold; background: white; padding: 2px 6px; border: 1px solid black; cursor: pointer; }
 
     #workspace-table { width: 100%; height: calc(100% - 37px); border-collapse: collapse; table-layout: fixed; }
-    #sidebar-cell { width: 220px; background: #fafafa; border-right: 2px solid black; vertical-align: top; padding: 0; overflow-y: auto; }
+    #sidebar-cell { width: 230px; background: #fafafa; border-right: 2px solid black; vertical-align: top; padding: 0; overflow-y: auto; }
     #chat-cell { vertical-align: top; padding: 0; position: relative; background-color: #ffffff; }
 
     .panel-header { font-weight: bold; padding: 6px 8px; text-transform: uppercase; border-bottom: 2px solid black; border-top: 2px solid black; background: #eee; font-size: 10px; letter-spacing: 1px; }
@@ -49,7 +49,9 @@
     .nav-item:hover { background: #f0f0f0; }
     .nav-item-active { background-color: #000000 !important; color: #ffffff !important; font-weight: bold; }
     
-    .sidebar-input { margin: 4px; padding: 4px; font-family: monospace; font-size: 11px; outline: none; width: calc(100% - 18px); border: 1px solid black; }
+    .sidebar-input-container { display: flex; padding: 4px; background: white; border-bottom: 1px solid #eee; }
+    .sidebar-input { flex-grow: 1; padding: 3px; font-family: monospace; font-size: 11px; outline: none; border: 1px solid black; }
+    .sidebar-btn { font-family: monospace; font-size: 10px; font-weight: bold; background: white; border: 1px solid black; margin-left: 2px; cursor: pointer; }
 
     .mod-indicator-btn { background: #fff; border: 2px dashed red !important; color: red; width: 95%; font-weight: bold; font-family: monospace; font-size: 11px; cursor: pointer; padding: 4px 0; text-align: center; }
     .mod-indicator-active { background: red !important; color: white !important; border-style: solid !important; }
@@ -58,16 +60,18 @@
     .page-btn { background: #ffffff; border: 2px solid #000000; padding: 2px 8px; font-family: monospace; font-weight: bold; cursor: pointer; font-size: 11px; box-shadow: 1px 1px 0 black; }
     #page-display-index { margin: 0 10px; font-weight: bold; font-size: 12px; }
 
-    #chat-scroll-wrapper { position: absolute; top: 40px; bottom: 60px; left: 0; right: 0; overflow-y: auto; padding: 12px; }
+    #chat-scroll-wrapper { position: absolute; top: 40px; bottom: 80px; left: 0; right: 0; overflow-y: auto; padding: 12px; }
     
-    #input-bar-container { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; background-color: #eee; padding: 8px; box-sizing: border-box; border-top: 2px solid black; z-index: 20; }
-    #content { float: left; width: 78%; padding: 6px; font-size: 13px; font-family: monospace; border: 2px solid black; outline: none; background: white; }
+    #input-bar-container { position: absolute; bottom: 0; left: 0; right: 0; min-height: 52px; background-color: #eee; padding: 8px; box-sizing: border-box; border-top: 2px solid black; z-index: 20; }
+    #nb-title-input { display: none; width: 98%; padding: 4px; margin-bottom: 4px; font-family: monospace; font-size: 12px; border: 2px solid black; outline: none; }
+    #content { float: left; width: 78%; padding: 6px; font-size: 13px; font-family: monospace; border: 2px solid black; outline: none; background: white; box-sizing: border-box; }
     #send { float: right; width: 18%; height: 32px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 12px; background: white; border: 2px solid black; box-shadow: 2px 2px 0 black; }
 
     .message-container { width: 100%; margin-bottom: 10px; clear: both; display: block; position: relative; }
     .message { border: 2px solid black; padding: 6px 10px; max-width: 75%; width: auto; position: relative; background: white; box-shadow: 2px 2px 0px black; }
     .message-meta { font-size: 10px; font-weight: bold; color: #555; margin-bottom: 3px; text-transform: uppercase; }
     .message-text { font-size: 13px; white-space: pre-wrap; line-height: 1.3; color: black; }
+    .message-text a { color: blue; text-decoration: underline; font-weight: bold; }
     
     .my-msg { border-style: dashed; }
     .other-msg { border-style: solid; }
@@ -80,11 +84,14 @@
     .mod-select { font-family: monospace; font-size: 10px; border: 1px solid black; margin-right: 4px; background: white; }
 
     /* NEIGHBORHOOD POST STYLES */
-    .nb-post-box { border: 2px solid black; padding: 10px; margin-bottom: 15px; background: white; box-shadow: 3px 3px 0px black; position: relative; }
-    .nb-title { font-size: 15px; font-weight: bold; margin: 0 0 5px 0; text-transform: uppercase; border-bottom: 1px solid black; padding-bottom: 3px; }
-    .nb-meta { font-size: 10px; color: #666; margin-bottom: 8px; }
-    .comment-area { border-top: 1px dashed black; margin-top: 10px; padding-top: 8px; background: #fafafa; }
-    .comment-item { font-size: 11px; padding: 4px 6px; border-bottom: 1px dotted #ccc; }
+    .nb-post-box { border: 2px solid black; padding: 12px; margin-bottom: 15px; background: white; box-shadow: 3px 3px 0px black; position: relative; }
+    .nb-header { font-size: 11px; color: #555; border-bottom: 1px solid black; padding-bottom: 4px; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; }
+    .nb-title { font-size: 16px; font-weight: bold; margin: 0 0 6px 0; text-transform: uppercase; color: #000; }
+    
+    .comment-toggle-btn { background: #eee; border: 1px solid black; font-family: monospace; font-size: 11px; padding: 2px 6px; cursor: pointer; margin-top: 4px; font-weight: bold; }
+    .comment-area { display: none; border-top: 1px dashed black; margin-top: 10px; padding-top: 8px; background: #fafafa; }
+    .comment-list { max-height: 200px; overflow-y: auto; margin-bottom: 6px; }
+    .comment-item { font-size: 11px; padding: 4px 6px; border-bottom: 1px dotted #ccc; background: white; margin-bottom: 2px; }
 
     /* SYSTEM GET-INFO POPUP DIALOGUE */
     #modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); display: none; z-index: 2000; }
@@ -146,11 +153,17 @@
           <div class="nav-item" id="nav-neighborhood" onclick="switchChannel('neighborhood', '')">🏘️ Neighborhood</div>
 
           <div class="panel-header">💬 Topics (1/Wk Max)</div>
-          <input type="text" id="topic-target-input" class="sidebar-input" placeholder="+ Create Topic & Enter...">
+          <div class="sidebar-input-container">
+            <input type="text" id="topic-target-input" class="sidebar-input" placeholder="New Topic title...">
+            <button class="sidebar-btn" onclick="triggerCreateTopic()">ADD</button>
+          </div>
           <div id="topic-list"></div>
           
           <div class="panel-header">✉️ Direct Messages</div>
-          <input type="text" id="dm-target-input" class="sidebar-input" placeholder="+ Target name & Enter...">
+          <div class="sidebar-input-container">
+            <input type="text" id="dm-target-input" class="sidebar-input" placeholder="Username...">
+            <button class="sidebar-btn" onclick="triggerAddDM()">CHAT</button>
+          </div>
           <div id="dm-list"></div>
 
           <div class="panel-header">🟢 Active Users</div>
@@ -176,6 +189,7 @@
           <div id="typing-indicator"></div>
           
           <div id="input-bar-container">
+            <input type="text" id="nb-title-input" placeholder="Enter post heading / title here...">
             <input type="text" id="content" placeholder="Type data message here..." autocomplete="off">
             <button id="send">SEND</button>
           </div>
@@ -203,10 +217,20 @@
       if (!text) return "";
       var escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       return escaped
+        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
         .replace(/\*(.*?)\*/g, "<strong>$1</strong>")
         .replace(/_(.*?)_/g, "<em>$1</em>")
         .replace(/~(.*?)~/g, "<del>$1</del>")
         .replace(/`(.*?)`/g, "<code style='background:#eee;padding:1px 3px;border:1px solid #ccc;'>$1</code>");
+    }
+
+    // Explicit helper utility designed to prevent "Invalid Date" scenarios across historical payload transitions
+    function formatTimeToken(unixTimestamp) {
+      if (!unixTimestamp) return "MOMENTS AGO";
+      var parsedNum = Number(unixTimestamp);
+      if (isNaN(parsedNum)) return "MOMENTS AGO";
+      var d = new Date(parsedNum);
+      return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
     function toggleModMode() {
@@ -256,11 +280,14 @@
       socket.onmessage = function(event) {
         var data = JSON.parse(event.data);
         if (data.type === 'terminated') {
-          alert(data.reason || 'Session rejected due to active moderation restriction.');
+          alert(data.reason || 'Session closed due to automated validation rule.');
           localStorage.clear(); window.location.reload(); return;
         }
         if (data.type === 'error_alert') { alert(data.message); return; }
-        if (data.type === 'msg_deleted' || data.type === 'msg_restored') { loadHistory(); return; }
+        if (data.type === 'msg_deleted' || data.type === 'msg_restored' || data.type === 'comment_refresh' || data.type === 'comment_deleted' || data.type === 'neighborhood_refresh') { 
+          loadHistory(); 
+          return; 
+        }
         if (data.type === 'roster_update') { renderUserRoster(data.users); return; }
         if (data.type === 'topics_update') { renderTopicList(data.topics); return; }
         
@@ -311,22 +338,20 @@
       document.getElementById('dm-list').appendChild(item);
     }
 
-    document.getElementById('dm-target-input').onkeypress = function(e) {
-      if ((e.keyCode || e.which) === 13) {
-        var target = e.target.value.trim(); if(!target || target === myUsername) return;
-        ensureDMNavOption(target); switchChannel('dm', target); e.target.value = '';
-      }
-    };
+    function triggerAddDM() {
+      var inp = document.getElementById('dm-target-input');
+      var target = inp.value.trim(); if(!target || target === myUsername) return;
+      ensureDMNavOption(target); switchChannel('dm', target); inp.value = '';
+    }
 
-    document.getElementById('topic-target-input').onkeypress = function(e) {
-      if ((e.keyCode || e.which) === 13) {
-        var title = e.target.value.trim(); if(!title) return;
-        if(socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: 'create_topic', title: title }));
-        }
-        e.target.value = '';
+    function triggerCreateTopic() {
+      var inp = document.getElementById('topic-target-input');
+      var title = inp.value.trim(); if(!title) return;
+      if(socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'create_topic', title: title }));
       }
-    };
+      inp.value = '';
+    }
 
     function switchChannel(mode, target) {
       currentMode = mode; currentTarget = target || ''; currentHistoryIndex = 0;
@@ -339,9 +364,21 @@
       else if(mode === 'dm') { ensureDMNavOption(target); document.getElementById('nav-dm-' + target).className = 'nav-item nav-item-active'; }
       else if(mode === 'topic') { var node = document.getElementById('nav-topic-' + target); if(node) node.className = 'nav-item nav-item-active'; }
 
-      var placeholder = "Type your data stream packet here...";
-      if(mode === 'neighborhood') placeholder = "POST TO BOARD FORMAT: [Title] // [Message Content]";
-      document.getElementById('content').placeholder = placeholder;
+      var titleInput = document.getElementById('nb-title-input');
+      var contentInput = document.getElementById('content');
+      var inputContainer = document.getElementById('input-bar-container');
+
+      if(mode === 'neighborhood') {
+        titleInput.style.display = 'block';
+        inputContainer.style.height = '85px';
+        document.getElementById('chat-scroll-wrapper').style.bottom = '95px';
+        contentInput.placeholder = "Write post description context details here...";
+      } else {
+        titleInput.style.display = 'none';
+        inputContainer.style.height = '52px';
+        document.getElementById('chat-scroll-wrapper').style.bottom = '60px';
+        contentInput.placeholder = "Type your data stream packet here...";
+      }
 
       loadHistory();
     }
@@ -360,7 +397,7 @@
       else styleClass += isMe ? 'my-msg' : 'other-msg';
       msgDiv.className = styleClass;
       
-      var timeStr = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      var timeStr = formatTimeToken(data.timestamp);
       var nameDisplay = isBoss ? '👑 ' + data.username + ' [SYS_OP]' : data.username;
 
       msgDiv.innerHTML = '<div class="message-meta" style="cursor:pointer;" onclick="openProfileModal(\''+data.username+'\')">' + nameDisplay + ' • ' + timeStr + '</div><div class="message-text"></div>';
@@ -376,7 +413,7 @@
         }
       }
       containerDiv.appendChild(msgDiv);
-      injectModTray(containerDiv, data, isMe, 'message');
+      injectModTray(containerDiv, data, isMe);
       chatWrapper.appendChild(containerDiv);
       chatWrapper.scrollTop = chatWrapper.scrollHeight;
     }
@@ -389,22 +426,22 @@
       if (data.is_deleted) {
         box.innerHTML = '<em>[POST RECORD PURGED BY THE ARCHITECTS]</em>';
       } else {
-        var timeStr = new Date(data.timestamp).toLocaleString();
-        box.innerHTML = '<div class="nb-title"></div>' +
-                        '<div class="nb-meta" style="cursor:pointer;" onclick="openProfileModal(\''+data.username+'\')">BY: @'+data.username+' — '+timeStr+'</div>' +
-                        '<div class="message-text" style="font-size:13px; margin-bottom:10px;"></div>' +
-                        '<div class="comment-area">' +
-                          '<div class="comment-list" id="comments-for-'+data.id+'"></div>' +
-                          '<div style="margin-top:6px;">' +
-                            '<input type="text" placeholder="Write a comment..." id="input-comment-for-'+data.id+'" style="width:75%; font-family:monospace; font-size:11px; border:1px solid black; padding:2px;"> ' +
-                            '<button onclick="submitComment('+data.id+')" style="font-family:monospace; font-size:11px; cursor:pointer;">REPLY</button>' +
+        var timeStr = formatTimeToken(data.timestamp);
+        box.innerHTML = '<div class="nb-header" style="cursor:pointer;" onclick="openProfileModal(\''+data.username+'\')">@' + data.username + ' posted on ' + timeStr + '</div>' +
+                        '<div class="nb-title"></div>' +
+                        '<div class="message-text" style="font-size:13px; margin-bottom:10px; color:#222;"></div>' +
+                        '<button class="comment-toggle-btn" onclick="toggleCommentsSection('+data.id+')">[Show/Hide Comments]</button>' +
+                        '<div class="comment-area" id="comment-area-for-'+data.id+'">' +
+                          '<div class="comment-list"></div>' +
+                          '<div style="margin-top:6px; display:flex;">' +
+                            '<input type="text" placeholder="Write a response packet..." id="input-comment-for-'+data.id+'" style="flex-grow:1; font-family:monospace; font-size:11px; border:1px solid black; padding:4px;"> ' +
+                            '<button onclick="submitComment('+data.id+')" style="font-family:monospace; font-size:11px; font-weight:bold; background:white; border:1px solid black; margin-left:4px; cursor:pointer;">REPLY</button>' +
                           '</div>' +
                         '</div>';
                         
         box.querySelector('.nb-title').textContent = data.title;
         box.querySelector('.message-text').innerHTML = parseMarkup(data.content);
         
-        // Render existing comments nested directly inside the board entry
         var cList = box.querySelector('.comment-list');
         if(data.comments && data.comments.length > 0) {
           for(var i=0; i<data.comments.length; i++) {
@@ -414,11 +451,11 @@
             if (c.is_deleted) {
               cDiv.innerHTML = '<em>[Comment Purged]</em>';
             } else {
-              cDiv.innerHTML = '<strong style="cursor:pointer;" onclick="openProfileModal(\''+c.username+'\')">@'+c.username+':</strong> <span class="c-txt"></span>';
+              cDiv.innerHTML = '<strong style="cursor:pointer;" onclick="openProfileModal(\''+c.username+'\')">@'+c.username+'</strong> <span style="font-size:9px; color:#777;">('+formatTimeToken(c.timestamp)+'):</span> <span class="c-txt"></span>';
               cDiv.querySelector('.c-txt').innerHTML = parseMarkup(c.content);
               
               if(c.username === myUsername || isMasterAdmin(myUsername)) {
-                var cDel = document.createElement('button'); cDel.style = 'float:right; font-size:8px; font-family:monospace; cursor:pointer;'; cDel.textContent = 'X';
+                var cDel = document.createElement('button'); cDel.style = 'float:right; font-size:8px; font-family:monospace; cursor:pointer; background:white; border:1px solid black;'; cDel.textContent = 'X';
                 (function(cid) { cDel.onclick = function() { if(confirm('Delete comment?')) sendModAction('mod_delete_comment', cid); }; })(c.id);
                 cDiv.appendChild(cDel);
               }
@@ -428,14 +465,19 @@
         }
 
         if (data.username === myUsername || isMasterAdmin(myUsername)) {
-          var delBtn = document.createElement('button'); delBtn.style = 'margin-top:8px; font-family:monospace; font-size:10px; cursor:pointer;';
-          delBtn.textContent = 'PURGE POST';
+          var delBtn = document.createElement('button'); delBtn.style = 'margin-top:8px; display:block; font-family:monospace; font-size:10px; cursor:pointer; background:white; border:1px solid black;';
+          delBtn.textContent = 'PURGE POST ENTRY';
           delBtn.onclick = function() { if(confirm('Delete neighborhood post?')) sendModAction('mod_delete', data.id); };
           box.appendChild(delBtn);
         }
       }
-      injectModTray(box, data, false, 'neighborhood');
+      injectModTray(box, data, false);
       chatWrapper.appendChild(box);
+    }
+
+    function toggleCommentsSection(postId) {
+      var target = document.getElementById('comment-area-for-' + postId);
+      target.style.display = (target.style.display === 'block') ? 'none' : 'block';
     }
 
     function submitComment(postId) {
@@ -447,7 +489,7 @@
       inp.value = '';
     }
 
-    function injectModTray(targetNode, data, isMe, channelType) {
+    function injectModTray(targetNode, data, isMe) {
       if (!isMasterAdmin(myUsername) || !modModeActive || data.id === -1) return;
       var trayDiv = document.createElement('div'); trayDiv.className = 'mod-action-tray';
       trayDiv.style.float = isMe ? 'right' : 'left'; trayDiv.style.clear = 'both';
@@ -514,9 +556,11 @@
       if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
       
       if (currentMode === 'neighborhood') {
-        var parts = text.split('//');
-        if (parts.length < 2) return alert('Format must be: [Title] // [Message Content]');
-        socket.send(JSON.stringify({ type: 'neighborhood_post', title: parts[0].trim(), content: parts[1].trim() }));
+        var tInput = document.getElementById('nb-title-input');
+        var titleText = tInput.value.trim();
+        if(!titleText) return alert('Neighborhood configuration dynamic failure. Posts require a structural title layout header.');
+        socket.send(JSON.stringify({ type: 'neighborhood_post', title: titleText, content: text }));
+        tInput.value = '';
       } else {
         socket.send(JSON.stringify({ type: currentMode === 'public' ? 'message' : (currentMode === 'topic' ? 'topic_message' : 'dm'), content: text, target: currentTarget }));
       }
@@ -526,7 +570,6 @@
     document.getElementById('send').onclick = sendMessage;
     document.getElementById('content').onkeypress = function(e) { if ((e.keyCode || e.which) === 13) sendMessage(); };
 
-    // SYSTEM PROFILE MODAL UTILITIES
     function openProfileModal(targetUser) {
       var xhr = new XMLHttpRequest(); xhr.open('GET', BACKEND_URL + '/api/profile/' + targetUser, true);
       xhr.setRequestHeader('Authorization', 'Bearer ' + token);
