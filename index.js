@@ -7,7 +7,7 @@ const { Client } = pkg
 
 const JWT_SECRET = process.env.JWT_SECRET || 'brutalist_secret_key_123'
 
-// Connect to your external Postgres database
+// Instantiating continuous database connection profiles
 const db = new Client({
     connectionString: process.env.DATABASE_URL
 })
@@ -49,15 +49,29 @@ app.use((req, res, next) => {
 
 const activeClients = new Map()
 
-app.get('/', async (req, res) => {
+// Fetch all unique users this account has interactive DM logs mapped alongside
+app.get('/dm-contacts', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Unauthorized payload access block' });
+
     try {
-        const indexPath = path.join('static', 'index.html')
-        const index = await fs.readFile(indexPath, 'utf8')
-        res.setHeader('Content-Type', 'text/html').send(index)
+        const token = authHeader.split(' ')[1] || authHeader.split(' ')[0];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const me = decoded.username;
+
+        const result = await db.query(`
+            SELECT DISTINCT username FROM (
+                SELECT receiver AS username FROM dms WHERE sender = $1
+                UNION
+                SELECT sender AS username FROM dms WHERE receiver = $1
+            ) AS contacts WHERE username != $1;
+        `, [me]);
+
+        res.json(result.rows.map(row => row.username));
     } catch (err) {
-        res.status(500).send('Missing index.html file.')
+        res.status(401).json({ error: 'Session signature failure matching profile' });
     }
-})
+});
 
 app.post('/api/register', async (req, res) => {
     const { username, password } = req.body
@@ -102,7 +116,7 @@ app.get('/dm-history', async (req, res) => {
     const target = req.query.target
     if (!authHeader || !target) return res.status(401).json({ error: 'Unauthorized' })
     try {
-        const token = authHeader.split(' ')[1]
+        const token = authHeader.split(' ')[1] || authHeader.split(' ')[0];
         const decoded = jwt.verify(token, JWT_SECRET)
         const me = decoded.username
         const result = await db.query(`
