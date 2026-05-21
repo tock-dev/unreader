@@ -217,7 +217,7 @@
     function parseMarkup(text) {
       if (!text) return "";
       const escaped = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      return marked.parse(escaped);
+      return marked.parse(escaped).trim();
     }
 
     function formatTimeToken(unixTimestamp) {
