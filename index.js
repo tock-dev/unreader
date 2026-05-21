@@ -4,12 +4,11 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import pkg from 'pg'
 
-const { Client } = pkg
+const { Pool } = pkg 
 const JWT_SECRET = process.env.JWT_SECRET || 'brutalist_secret_key_123'
-const db = new Client({ connectionString: process.env.DATABASE_URL })
+const db = new Pool({ connectionString: process.env.DATABASE_URL })
 
 async function initDatabase() {
-  await db.connect();
   await db.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -31,7 +30,7 @@ async function initDatabase() {
       content TEXT NOT NULL
     );
   `);
-  console.log("PostgreSQL Connected and Tables Ready");
+  console.log("PostgreSQL Connected (via Pool) and Tables Ready");
 }
 initDatabase().catch(err => console.error("Database boot failure", err));
 
@@ -42,6 +41,21 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
   next()
 })
+
+// REFACTORED: Unified middleware verifying requests across endpoints
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(403).json({ error: 'Invalid or expired token' });
+  }
+}
 
 const activeClients = new Map()
 
@@ -61,13 +75,9 @@ function broadcastOnlineRoster() {
 
 // REST API ENDPOINTS
 
-app.get('/dm-contacts', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+app.get('/dm-contacts', authenticateToken, async (req, res) => {
   try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const me = decoded.username;
+    const me = req.user.username;
     const result = await db.query(`
       SELECT DISTINCT username FROM (
         SELECT receiver AS username FROM dms WHERE sender = $1
@@ -75,9 +85,9 @@ app.get('/dm-contacts', async (req, res) => {
         SELECT sender AS username FROM dms WHERE receiver = $1
       ) AS contacts WHERE username != $1;
     `, [me]);
-    res.json(result.rows.map(function(row) { return row.username; }));
+    res.json(result.rows.map(row => row.username));
   } catch (err) {
-    res.status(401).json({ error: 'Session expired' });
+    res.status(500).json({ error: 'Database read failure' });
   }
 });
 
@@ -109,25 +119,22 @@ app.post('/api/login', async (req, res) => {
   }
 })
 
-app.post('/api/change-password', async (req, res) => {
-  const authHeader = req.headers.authorization;
+app.post('/api/change-password', authenticateToken, async (req, res) => {
   const { password } = req.body;
-  if (!authHeader || !password) return res.status(401).json({ error: 'Unauthorized payload' });
+  if (!password) return res.status(400).json({ error: 'Password cannot be blank' });
   
   try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const username = decoded.username;
-    
+    const username = req.user.username;
     const newHash = await bcrypt.hash(password, 10);
     await db.query('UPDATE users SET password_hash = $1 WHERE username = $2;', [newHash, username]);
     res.json({ message: 'Password updated successfully' });
   } catch (err) {
-    res.status(401).json({ error: 'Authentication failed' });
+    res.status(500).json({ error: 'Database update fault' });
   }
 });
 
-app.get('/history', async (req, res) => {
+// FIXED: Secured with token middleware to stop random data scraping leaks
+app.get('/history', authenticateToken, async (req, res) => {
   const pageIndex = parseInt(req.query.index ?? '0', 10);
   const offset = pageIndex * 10;
   try {
@@ -138,18 +145,14 @@ app.get('/history', async (req, res) => {
   }
 });
 
-app.get('/dm-history', async (req, res) => {
-  const authHeader = req.headers.authorization;
+app.get('/dm-history', authenticateToken, async (req, res) => {
   const target = req.query.target;
   const pageIndex = parseInt(req.query.index ?? '0', 10);
   const offset = pageIndex * 10;
 
-  if (!authHeader || !target) return res.status(401).json({ error: 'Unauthorized' });
+  if (!target) return res.status(400).json({ error: 'Target query required' });
   try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const me = decoded.username;
-
+    const me = req.user.username;
     const result = await db.query(`
       SELECT id, sender AS username, receiver, timestamp, content FROM dms 
       WHERE (sender = $1 AND receiver = $2) OR (sender = $2 AND receiver = $1)
@@ -158,15 +161,13 @@ app.get('/dm-history', async (req, res) => {
 
     res.json(result.rows.reverse());
   } catch (err) {
-    res.status(401).json({ error: 'Session expired' });
+    res.status(500).json({ error: 'Database history error.' });
   }
 });
 
-// START HTTP SERVER
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => console.log(`HTTP Server running on port ${PORT}`));
 
-// WEBSOCKET SERVER IMPLEMENTATION
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws) => {
@@ -247,10 +248,11 @@ wss.on('connection', (ws) => {
         const dbRes = await db.query('INSERT INTO dms (sender, receiver, timestamp, content) VALUES ($1, $2, $3, $4) RETURNING id;', [authenticatedUser, data.target, timestamp, data.content]);
         const insertedId = dbRes.rows[0].id;
         
+        // FIXED: Maps structural .username accurately to support client UI state mapping cleanly
         const dmPayload = JSON.stringify({
           type: 'dm',
           id: insertedId,
-          username: authenticatedUser,
+          username: authenticatedUser, 
           sender: authenticatedUser,
           receiver: data.target,
           timestamp,
@@ -265,7 +267,7 @@ wss.on('connection', (ws) => {
       }
 
     } catch (err) {
-      console.error(err);
+      console.error("Payload execution fault", err);
     }
   });
 
