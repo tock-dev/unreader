@@ -149,9 +149,9 @@
   </table>
 
   <script type="text/javascript">
-    // ⚠️ CONFIGURATION TARGET: UPDATE LINKS ACCORDING TO DEPLOYMENT PROFILES
-    var BACKEND_URL = "https://unreader.onrender.com"; 
-    var WS_URL = "wss://unreader.onrender.com";
+    // ⚠️ CONFIGURATION TARGET: RE-PASTE YOUR LIVE PRODUCTION LINKS HERE
+    var BACKEND_URL = "https://onrender.com"; 
+    var WS_URL = "wss://://onrender.com";
 
     var token = localStorage.getItem('token');
     var myUsername = localStorage.getItem('username');
@@ -162,17 +162,17 @@
     var typingClearTimer = null;
 
     var authToggle = document.getElementById('auth-toggle');
-    authToggle.onclick = function() {
+    authToggle.addEventListener('click', function() {
       isRegisterMode = !isRegisterMode;
       document.getElementById('auth-title').textContent = isRegisterMode ? 'Register' : 'Login';
       authToggle.textContent = isRegisterMode ? 'Already have an account? Login' : 'Need to create an account? Register';
-    };
+    });
 
     function isMasterAdmin(name) {
       return name === 'augustinejames' || name === 'tockdev';
     }
 
-    document.getElementById('auth-submit').onclick = function() {
+    document.getElementById('auth-submit').addEventListener('click', function() {
       var username = document.getElementById('auth-user').value.trim();
       var password = document.getElementById('auth-pass').value;
       if(!username || !password) return alert('Please fill in all fields');
@@ -184,24 +184,27 @@
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
-          if (xhr.status === 200 || xhr.status === 401 || xhr.status === 400) {
-            var data = JSON.parse(xhr.responseText);
-            if(data.error) return alert(data.error);
-            
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('username', data.username);
-            token = data.token;
-            myUsername = data.username;
-            initApp();
-          } else {
-            alert('Server pipeline connection failed. Status: ' + xhr.status);
+          if (xhr.status !== 200) {
+            try {
+              var errData = JSON.parse(xhr.responseText);
+              return alert(errData.error || 'Server rejected request');
+            } catch(e) {
+              return alert('Network error occurred during pipeline authentication');
+            }
           }
+          
+          var data = JSON.parse(xhr.responseText);
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('username', data.username);
+          token = data.token;
+          myUsername = data.username;
+          initApp();
         }
       };
       xhr.send(JSON.stringify({ username: username, password: password }));
-    };
+    });
 
-    document.getElementById('settings-save-btn').onclick = function() {
+    document.getElementById('settings-save-btn').addEventListener('click', function() {
       var newPassword = document.getElementById('settings-new-pass').value;
       if (!newPassword) return alert('Please input a fresh password string');
 
@@ -213,18 +216,17 @@
         if (xhr.readyState === 4) {
           var data = JSON.parse(xhr.responseText);
           if (data.error) return alert(data.error);
-          
           document.getElementById('settings-new-pass').value = '';
           alert('Password profile systematically modified successfully!');
         }
       };
       xhr.send(JSON.stringify({ password: newPassword }));
-    };
+    });
 
-    document.getElementById('logout-btn').onclick = function() {
+    document.getElementById('logout-btn').addEventListener('click', function() {
       localStorage.clear();
       window.location.reload();
-    };
+    });
 
     function initApp() {
       document.getElementById('auth-screen').style.display = 'none';
@@ -277,7 +279,7 @@
       loadHistory();
     }
 
-    document.getElementById('mod-kick-btn').onclick = function() {
+    document.getElementById('mod-kick-btn').addEventListener('click', function() {
       var target = document.getElementById('mod-target-user').value.trim();
       if (!target) return alert('Enter a target user string');
       if (isMasterAdmin(target)) return alert('Operation Aborted: Cannot terminate root profiles');
@@ -290,7 +292,7 @@
         document.getElementById('mod-target-user').value = '';
         alert('Termination order broadcasted for: ' + target);
       }
-    };
+    });
 
     function triggerMsgDeletion(msgId) {
       if (!isMasterAdmin(myUsername)) return;
@@ -340,7 +342,7 @@
       targetList.appendChild(item);
     }
 
-    document.getElementById('dm-target-input').onkeypress = function(e) {
+    document.getElementById('dm-target-input').addEventListener('keypress', function(e) {
       var key = e.keyCode || e.which;
       if (key === 13) {
         var target = e.target.value.trim();
@@ -349,7 +351,7 @@
         switchChannel('dm', target);
         e.target.value = '';
       }
-    };
+    });
 
     function switchChannel(mode, target) {
       if(!target) target = '';
@@ -374,8 +376,8 @@
       loadHistory();
     }
 
+    var chat = document.getElementById('chat-scroll-wrapper');
     function appendMessage(data) {
-      var chatWrapper = document.getElementById('chat-scroll-wrapper');
       var containerDiv = document.createElement('div');
       containerDiv.className = 'message-container';
       
@@ -411,8 +413,8 @@
       msgDiv.querySelector('.message-text').textContent = data.content;
       
       containerDiv.appendChild(msgDiv);
-      chatWrapper.appendChild(containerDiv);
-      chatWrapper.scrollTop = chatWrapper.scrollHeight;
+      chat.appendChild(containerDiv);
+      chat.scrollTop = chat.scrollHeight;
     }
 
     function loadHistory() {
@@ -441,11 +443,11 @@
     }
 
     var input = document.getElementById('content');
-    input.oninput = function() {
+    input.addEventListener('input', function() {
         if (currentMode === 'dm' && socket && socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ type: 'typing', target: currentDMTarget }));
         }
-    };
+    });
 
     function sendMessage() {
       var text = input.value.trim();
@@ -454,11 +456,11 @@
       input.value = '';
     }
 
-    document.getElementById('send').onclick = sendMessage;
-    input.onkeypress = function(e) {
+    document.getElementById('send').addEventListener('click', sendMessage);
+    input.addEventListener('keypress', function(e) {
       var key = e.keyCode || e.which;
       if (key === 13) sendMessage();
-    };
+    });
 
     if (token && myUsername) initApp();
   </script>
