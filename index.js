@@ -5,6 +5,8 @@ import jwt from 'jsonwebtoken'
 import pkg from 'pg'
 import cors from 'cors'
 
+console.log('App just started')
+
 const { Pool } = pkg 
 const JWT_SECRET = process.env.JWT_SECRET || 'brutalist_secret_key_123'
 
@@ -19,6 +21,8 @@ if (connectionString && !connectionString.startsWith('postgresql://') && !connec
 }
 
 const db = new Pool({ connectionString })
+
+console.log('Connected to the database')
 
 async function initDatabase() {
   try {
