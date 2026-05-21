@@ -3,8 +3,6 @@ import { WebSocketServer, WebSocket } from 'ws'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import pkg from 'pg'
-import path from 'node:path' // FIXED: Added missing import
-import fs from 'node:fs/promises'
 const { Client } = pkg
 
 const JWT_SECRET = process.env.JWT_SECRET || 'brutalist_secret_key_123'
@@ -19,7 +17,8 @@ async function initDatabase() {
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL
+            password_hash TEXT NOT NULL,
+            is_banned BOOLEAN DEFAULT FALSE
         );
         CREATE TABLE IF NOT EXISTS messages (
             id SERIAL PRIMARY KEY, 
@@ -59,7 +58,7 @@ app.get('/dm-contacts', async (req, res) => {
     if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
-        const token = authHeader.split(' ')[1]; // FIXED: Access index 1 safely
+        const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, JWT_SECRET);
         const me = decoded.username;
 
@@ -94,12 +93,17 @@ app.post('/api/login', async (req, res) => {
     const { username, password } = req.body
     try {
         const result = await db.query('SELECT * FROM users WHERE username = $1;', [username])
-        const user = result.rows[0]; // FIXED: Must get index 0 from result.rows array
+        const user = result.rows[0]
+        
         if (!user || !(await bcrypt.compare(password, user.password_hash))) {
             return res.status(401).json({ error: 'Invalid credentials' })
         }
-        const token = jwt.sign({ username: user.username }, JWT_SECRET)
-        res.json({ token, username: user.username })
+        if (user.is_banned) {
+            return res.status(403).json({ error: 'Your account has been permanently banned.' })
+        }
+        
+        const token = jwt.sign({ username }, JWT_SECRET)
+        res.json({ token, username })
     } catch (err) {
         res.status(500).json({ error: 'Server authentication failure' })
     }
@@ -166,6 +170,15 @@ wss.on('connection', (ws) => {
             if (data.type === 'auth') {
                 const decoded = jwt.verify(data.token, JWT_SECRET)
                 authenticatedUser = decoded.username
+                
+                // Confirm user isn't banned before mapping socket line
+                const checkUser = await db.query('SELECT is_banned FROM users WHERE username = $1;', [authenticatedUser]);
+                if (checkUser.rows[0] && checkUser.rows[0].is_banned) {
+                    ws.send(JSON.stringify({ type: 'terminated', reason: 'banned' }));
+                    ws.close();
+                    return;
+                }
+                
                 activeClients.set(authenticatedUser, ws)
                 return
             }
@@ -173,12 +186,20 @@ wss.on('connection', (ws) => {
             if (!authenticatedUser) return;
             const timestamp = Date.now()
 
-            if (data.type === 'mod_kick' && isMasterAdmin(authenticatedUser)) {
-                const targetSocket = activeClients.get(data.target);
-                if (targetSocket) {
-                    targetSocket.send(JSON.stringify({ type: 'terminated' }));
-                    targetSocket.close();
-                    activeClients.delete(data.target);
+            // Administrative Rule Pipeline: Ban / Unban Engine
+            if ((data.type === 'mod_ban' || data.type === 'mod_unban') && isMasterAdmin(authenticatedUser)) {
+                if (isMasterAdmin(data.target)) return;
+                
+                const banStatus = (data.type === 'mod_ban');
+                await db.query('UPDATE users SET is_banned = $1 WHERE username = $2;', [banStatus, data.target]);
+                
+                if (banStatus) {
+                    const targetSocket = activeClients.get(data.target);
+                    if (targetSocket) {
+                        targetSocket.send(JSON.stringify({ type: 'terminated', reason: 'banned' }));
+                        targetSocket.close();
+                        activeClients.delete(data.target);
+                    }
                 }
                 return;
             }
@@ -205,7 +226,7 @@ wss.on('connection', (ws) => {
 
             if (data.type === 'public') {
                 const dbRes = await db.query('INSERT INTO messages (username, timestamp, content) VALUES ($1, $2, $3) RETURNING id;', [authenticatedUser, timestamp, data.content])
-                const insertedId = dbRes.rows[0].id; // FIXED: Accurate Postgres row assignment mapping
+                const insertedId = dbRes.rows[0].id;
                 
                 const payload = JSON.stringify({ id: insertedId, type: 'public', username: authenticatedUser, timestamp, content: data.content })
                 wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(payload) })
@@ -213,7 +234,7 @@ wss.on('connection', (ws) => {
 
             if (data.type === 'dm') {
                 const dbRes = await db.query('INSERT INTO dms (sender, receiver, timestamp, content) VALUES ($1, $2, $3, $4) RETURNING id;', [authenticatedUser, data.target, timestamp, data.content])
-                const insertedId = dbRes.rows[0].id; // FIXED: Accurate Postgres row assignment mapping
+                const insertedId = dbRes.rows[0].id;
                 
                 const payload = JSON.stringify({ id: insertedId, type: 'dm', sender: authenticatedUser, receiver: data.target, timestamp, content: data.content })
                 ws.send(payload)
