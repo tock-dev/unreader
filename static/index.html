@@ -1,3 +1,9 @@
+<!-- ⚠️ CONFIGURATION TARGET: REPLACE BOTH URLS BELOW WITH YOUR RENDER APP ADDRESS -->
+<script type="text/javascript">
+  const BACKEND_URL = "https://onrender.com"; 
+  const WS_URL = "wss://://onrender.com";
+</script>
+
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://w3.org">
 <html lang="en">
 <head>
@@ -58,15 +64,22 @@
     .my-msg { float: right; background-color: #e2f0cb; text-align: left; }
     .other-msg { float: left; background-color: white; }
 
+    /* 👑 EXCLUSIVE STYLING RULES FOR ADMIN COHORT PROFILES (augustinejames & tockdev) */
     .boss-msg {
       float: right;
-      background-color: #ffe066 !important;
+      background: linear-gradient(135deg, #ffe066 0%, #ff80df 100%) !important;
       border: 4px solid black !important;
-      box-shadow: 4px 4px 0px #00ffff !important;
+      box-shadow: 4px 4px 0px #00ffff, 8px 8px 0px #000000 !important;
+      animation: neonPulse 2s infinite alternate;
     }
     .boss-meta {
       color: #7a00cc !important;
-      font-weight: bold !important;
+      font-weight: 900 !important;
+      letter-spacing: 0.5px;
+    }
+    @keyframes neonPulse {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-2px); }
     }
 
     .del-btn {
@@ -74,11 +87,12 @@
       font-size: 10px; cursor: pointer; background: white; padding: 0 4px; font-weight: bold;
     }
 
-    #mod-box-container {
-      margin: 4px; padding: 6px; background: #ffcccc; border: 2px dashed red;
-    }
-    .mod-input { width: 90%; padding: 4px; margin-bottom: 4px; font-family: monospace; font-size: 11px; }
-    .mod-btn { width: 95%; font-family: monospace; font-size: 11px; font-weight: bold; background: black; color: white; cursor: pointer; padding: 4px 0; border: none; }
+    /* Sidebar Mod/Setting Panels */
+    #mod-sidebar-panel, #settings-sidebar-panel { margin: 2px; }
+    .sidebar-panel-box { margin: 4px; padding: 6px; border: 2px dashed black; background: #eee; }
+    #mod-box-container { border-color: red; background: #ffcccc; }
+    .panel-input { width: 90%; padding: 4px; margin-bottom: 4px; font-family: monospace; font-size: 11px; }
+    .panel-btn { width: 95%; font-family: monospace; font-size: 11px; font-weight: bold; background: black; color: white; cursor: pointer; padding: 4px 0; border: none; }
 
     #auth-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: #222; display: block; z-index: 100; text-align: center; padding-top: 100px; }
     .auth-box { padding: 30px; width: 300px; margin: 0 auto; background: white; }
@@ -116,12 +130,21 @@
         <input class="paper" type="text" id="dm-target-input" placeholder="+ Type user & press Enter..." autocomplete="off">
         <div id="dm-list"></div>
         
-        <!-- Streamlined Terminal-Style Mod Box Component -->
+        <!-- Account Settings Component -->
+        <div id="settings-sidebar-panel">
+          <div class="panel-header" style="border-top: 2px solid black;">Settings</div>
+          <div class="sidebar-panel-box">
+            <input type="password" id="settings-new-pass" class="paper panel-input" placeholder="New Password...">
+            <button id="settings-pass-btn" class="panel-btn">CHANGE PASSWORD</button>
+          </div>
+        </div>
+
+        <!-- Terminal-Style Mod Box Component -->
         <div id="mod-sidebar-panel" style="display: none;">
           <div class="panel-header" style="border-top: 2px dashed red; color: red;">SYS_OP PANEL</div>
-          <div id="mod-box-container">
-            <input type="text" id="mod-target-user" class="paper mod-input" placeholder="Target Username..." autocomplete="off">
-            <button id="mod-kick-btn" class="mod-btn">TERMINATE USER SESSION</button>
+          <div id="mod-box-container" class="sidebar-panel-box">
+            <input type="text" id="mod-target-user" class="paper panel-input" placeholder="Target Username..." autocomplete="off">
+            <button id="mod-kick-btn" class="panel-btn" style="background: red;">TERMINATE USER</button>
           </div>
         </div>
       </td>
@@ -137,9 +160,6 @@
   </table>
 
   <script type="text/javascript">
-    var BACKEND_URL = "https://onrender.com"; 
-    var WS_URL = "wss://://onrender.com";
-
     var token = localStorage.getItem('token');
     var myUsername = localStorage.getItem('username');
     var currentMode = 'public';
@@ -182,6 +202,27 @@
         }
       };
       xhr.send(JSON.stringify({ username: username, password: password }));
+    };
+
+    // Change Password Execution Block
+    document.getElementById('settings-pass-btn').onclick = function() {
+      var newPass = document.getElementById('settings-new-pass').value;
+      if(!newPass || newPass.length < 4) return alert('Password must be at least 4 characters long.');
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', BACKEND_URL + '/api/change-password', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          var data = JSON.parse(xhr.responseText);
+          if(data.error) return alert(data.error);
+          
+          document.getElementById('settings-new-pass').value = '';
+          alert('Password successfully re-configured!');
+        }
+      };
+      xhr.send(JSON.stringify({ password: newPass }));
     };
 
     document.getElementById('logout-btn').onclick = function() {
