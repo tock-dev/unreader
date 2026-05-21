@@ -1,7 +1,7 @@
-<!-- ⚠️ CONFIGURATION TARGET: REPLACE BOTH URLS BELOW WITH YOUR RENDER APP ADDRESS -->
+ <!-- ⚠️ CONFIGURATION TARGET: REPLACE BOTH URLS BELOW WITH YOUR RENDER APP ADDRESS -->
 <script type="text/javascript">
-  const BACKEND_URL = "https://onrender.com"; 
-  const WS_URL = "wss://://onrender.com";
+  const BACKEND_URL = "https://unreader.onrender.com"; 
+  const WS_URL = "wss://unreader.onrender.com";
 </script>
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://w3.org">
@@ -48,6 +48,24 @@
     .message-text { font-size: 1.6vh; white-space: pre-wrap; }
     .my-msg { align-self: flex-end; background-color: #e2f0cb; }
     .other-msg { align-self: flex-start; background-color: white; }
+
+    /* 👑 EXCLUSIVE STYLING RULES FOR AUGUSTINEJAMES PROFILE */
+    .boss-msg {
+      background: linear-gradient(135deg, #ffe066 0%, #ff80df 100%) !important;
+      border: 4px solid black !important;
+      box-shadow: 4px 4px 0px #00ffff, 8px 8px 0px #000000 !important;
+      animation: neonPulse 2s infinite alternate;
+      align-self: flex-end;
+    }
+    .boss-meta {
+      color: #7a00cc !important;
+      font-weight: 900 !important;
+      letter-spacing: 0.5px;
+    }
+    @keyframes neonPulse {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-2px); }
+    }
 
     #auth-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 100; }
     .auth-box { padding: 30px; width: 300px; text-align: center; }
@@ -169,7 +187,7 @@
         }
       };
       
-      loadDMContacts(); // Hydrate active contacts from cloud DB on initialization 
+      loadDMContacts(); 
       loadHistory();
     }
 
@@ -241,9 +259,25 @@
     function appendMessage(data) {
       const msgDiv = document.createElement('div');
       const isMe = data.username === myUsername;
-      msgDiv.className = 'message paper ' + (isMe ? 'my-msg' : 'other-msg');
+      
+      // IDENTITY DECODER TRIGGER FOR POWER ACCOUNT ELEVATION
+      const isBoss = data.username === 'augustinejames';
+      
+      let messageStyleClass = 'message paper ';
+      if (isBoss) {
+          messageStyleClass += 'boss-msg';
+      } else if (isMe) {
+          messageStyleClass += 'my-msg';
+      } else {
+          messageStyleClass += 'other-msg';
+      }
+      msgDiv.className = messageStyleClass;
+      
       const timeStr = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      msgDiv.innerHTML = '<div class="message-meta">' + data.username + ' • ' + timeStr + '</div><div class="message-text"></div>';
+      const nameDisplay = isBoss ? '👑 augustinejames [SYS_OP]' : data.username;
+      const metaStyleClass = isBoss ? 'message-meta boss-meta' : 'message-meta';
+
+      msgDiv.innerHTML = '<div class="' + metaStyleClass + '">' + nameDisplay + ' • ' + timeStr + '</div><div class="message-text"></div>';
       msgDiv.querySelector('.message-text').textContent = data.content;
       chat.appendChild(msgDiv);
       chat.scrollTop = chat.scrollHeight;
