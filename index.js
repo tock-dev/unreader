@@ -5,7 +5,11 @@ import jwt from 'jsonwebtoken'
 import pkg from 'pg'
 
 const { Pool } = pkg 
-const JWT_SECRET = process.env.JWT_SECRET || 'brutalist_secret_key_123'
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("CRITICAL SERVER CONFIGURATION ERROR: process.env.JWT_SECRET is completely missing.");
+}
+
 const db = new Pool({ connectionString: process.env.DATABASE_URL })
 
 async function initDatabase() {
@@ -42,14 +46,11 @@ initDatabase().catch(err => console.error(err));
 const app = express()
 app.use(express.json())
 
-// Global explicit headers mapping rule to allow local files to hit your live Render deployment
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*"); 
   res.header("Access-Control-Allow-Headers", "Authorization, Content-Type, *"); 
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 })
 
@@ -114,6 +115,27 @@ app.post('/api/profile', authenticateToken, async (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/change-password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "Missing required password verification params." });
+  }
+  try {
+    const result = await db.query('SELECT password_hash FROM users WHERE username = $1;', [req.user.username]);
+    const user = result.rows[0];
+    if (!user) return res.status(404).json({ error: "Identity profile not tracked." });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) return res.status(401).json({ error: "Current structural credentials mismatch." });
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await db.query('UPDATE users SET password_hash = $1 WHERE username = $2;', [newHash, req.user.username]);
+    res.json({ success: true, message: "Security parameters successfully reset." });
+  } catch (err) {
+    res.status(500).json({ error: "Internal processing database error." });
+  }
+});
+
 app.get('/history', authenticateToken, async (req, res) => {
   const off = parseInt(req.query.index ?? '0', 10) * 10;
   const r = await db.query('SELECT id, username, timestamp, content, is_deleted FROM messages ORDER BY id DESC LIMIT 10 OFFSET $1;', [off]);
@@ -135,11 +157,14 @@ app.get('/topic-history', authenticateToken, async (req, res) => {
 app.get('/neighborhood-history', authenticateToken, async (req, res) => {
   const off = parseInt(req.query.index ?? '0', 10) * 10;
   try {
-    const posts = await db.query('SELECT id, username, title, content, timestamp, is_deleted FROM neighborhood_posts ORDER BY id DESC LIMIT 10 OFFSET $1;', [off]);
-    for(let i=0; i<posts.rows.length; i++) {
-      const comments = await db.query('SELECT id, post_id, username, content, timestamp, is_deleted FROM neighborhood_comments WHERE post_id = $1 ORDER BY id ASC;', [posts.rows[i].id]);
-      posts.rows[i].comments = comments.rows;
-    }
+    const query = `
+      SELECT p.*, COALESCE(json_agg(c.* ORDER BY c.id ASC) FILTER (WHERE c.id IS NOT NULL), '[]') as comments
+      FROM neighborhood_posts p
+      LEFT JOIN neighborhood_comments c ON p.id = c.post_id
+      GROUP BY p.id
+      ORDER BY p.id DESC LIMIT 10 OFFSET $1;
+    `;
+    const posts = await db.query(query, [off]);
     res.json(posts.rows.reverse());
   } catch(err) { res.status(500).json({ error: 'Failed to build feed logs.' }); }
 });
@@ -147,6 +172,13 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => console.log(`Server system online via port: ${PORT}`));
 const wss = new WebSocketServer({ server });
+
+const ALLOWED_CHANNELS = {
+  'public': 'messages',
+  'topic': 'topic_messages',
+  'neighborhood': 'neighborhood_posts',
+  'dm': 'dms'
+};
 
 wss.on('connection', (ws) => {
   let authUser = null;
@@ -159,7 +191,7 @@ wss.on('connection', (ws) => {
         const decoded = jwt.verify(data.token, JWT_SECRET); authUser = decoded.username;
         const check = await db.query('SELECT is_banned, timeout_until FROM users WHERE username = $1;', [authUser]);
         if (check.rows[0] && (check.rows[0].is_banned || BigInt(check.rows[0].timeout_until) > BigInt(Date.now()))) {
-          ws.send(JSON.stringify({ type: 'terminated' })); ws.close(); return;
+          ws.send(JSON.stringify({ type: 'terminated', reason: 'Account status restriction applied.' })); ws.close(); return;
         }
         activeClients.set(authUser, ws);
         broadcastSystemUpdate({ type: 'roster_update', users: Array.from(activeClients.keys()) });
@@ -184,11 +216,13 @@ wss.on('connection', (ws) => {
       }
 
       if (data.type === 'topic_message') {
+        if(!data.target) return;
         await db.query('INSERT INTO topic_messages (topic_slug, username, timestamp, content) VALUES ($1, $2, $3, $4);', [data.target, authUser, String(Date.now()), data.content]);
         broadcastSystemUpdate({ type: 'refresh_feed' });
       }
 
       if (data.type === 'dm') {
+        if(!data.target) return;
         await db.query('INSERT INTO dms (sender, receiver, timestamp, content) VALUES ($1, $2, $3, $4);', [authUser, data.target, String(Date.now()), data.content]);
         broadcastSystemUpdate({ type: 'refresh_feed' });
       }
@@ -203,12 +237,20 @@ wss.on('connection', (ws) => {
         broadcastSystemUpdate({ type: 'refresh_feed' });
       }
 
-      if (data.type === 'mod_delete') {
-        let t = 'messages';
-        if (data.channel === 'topic') t = 'topic_messages';
-        else if (data.channel === 'neighborhood') t = 'neighborhood_posts';
-        else if (data.channel === 'dm') t = 'dms';
-        await db.query(`UPDATE ${t} SET is_deleted = true WHERE id = $1;`, [data.id]);
+      if (data.type === 'mod_delete' || data.type === 'mod_restore') {
+        if(!isMasterAdmin(authUser)) {
+          ws.send(JSON.stringify({ type: 'error_alert', message: 'Access denied.' }));
+          return;
+        }
+        
+        const targetTable = ALLOWED_CHANNELS[data.channel];
+        if(!targetTable) {
+          ws.send(JSON.stringify({ type: 'error_alert', message: 'Invalid infrastructure target space.' }));
+          return;
+        }
+
+        const stateValue = (data.type === 'mod_delete');
+        await db.query(`UPDATE ${targetTable} SET is_deleted = $1 WHERE id = $2;`, [stateValue, data.id]);
         broadcastSystemUpdate({ type: 'refresh_feed' });
       }
 
