@@ -103,6 +103,26 @@ app.post('/api/login', async (req, res) => {
     }
 })
 
+// Secure Password Alteration Route Profile
+app.post('/api/change-password', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    const { password } = req.body;
+    if (!authHeader || !password) return res.status(401).json({ error: 'Invalid operation criteria' });
+
+    try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const targetUser = decoded.username;
+
+        const freshHash = await bcrypt.hash(password, 10);
+        await db.query('UPDATE users SET password_hash = $1 WHERE username = $2;', [freshHash, targetUser]);
+        
+        res.json({ success: true });
+    } catch (err) {
+        res.status(401).json({ error: 'Session expired or mutation failed' });
+    }
+});
+
 app.get('/history', async (req, res) => {
     const offset = parseInt(req.query.index ?? '0', 10) * 10
     try {
@@ -152,7 +172,6 @@ wss.on('connection', (ws) => {
             if (!authenticatedUser) return;
             const timestamp = Date.now()
 
-            // Root Command Override Hook: Manual Session Termination
             if (data.type === 'mod_kick' && isMasterAdmin(authenticatedUser)) {
                 const targetSocket = activeClients.get(data.target);
                 if (targetSocket) {
@@ -163,7 +182,6 @@ wss.on('connection', (ws) => {
                 return;
             }
 
-            // Root Command Override Hook: Instant SQL Erasure
             if (data.type === 'mod_delete' && isMasterAdmin(authenticatedUser)) {
                 if (data.channel === 'public') {
                     await db.query('DELETE FROM messages WHERE id = $1;', [data.id]);
