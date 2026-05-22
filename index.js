@@ -77,6 +77,24 @@ async function initDatabase() {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='topic_messages' AND column_name='deleted_by') THEN ALTER TABLE topic_messages ADD COLUMN deleted_by TEXT; END IF;
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='neighborhood_posts' AND column_name='deleted_by') THEN ALTER TABLE neighborhood_posts ADD COLUMN deleted_by TEXT; END IF;
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='neighborhood_comments' AND column_name='deleted_by') THEN ALTER TABLE neighborhood_comments ADD COLUMN deleted_by TEXT; END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='sender') THEN ALTER TABLE messages ADD COLUMN sender TEXT; END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='topic_messages' AND column_name='sender') THEN ALTER TABLE topic_messages ADD COLUMN sender TEXT; END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='neighborhood_posts' AND column_name='sender') THEN ALTER TABLE neighborhood_posts ADD COLUMN sender TEXT; END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='neighborhood_comments' AND column_name='sender') THEN ALTER TABLE neighborhood_comments ADD COLUMN sender TEXT; END IF;
+
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='username') THEN
+          UPDATE messages SET sender = username WHERE sender IS NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='topic_messages' AND column_name='username') THEN
+          UPDATE topic_messages SET sender = username WHERE sender IS NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='neighborhood_posts' AND column_name='username') THEN
+          UPDATE neighborhood_posts SET sender = username WHERE sender IS NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='neighborhood_comments' AND column_name='username') THEN
+          UPDATE neighborhood_comments SET sender = username WHERE sender IS NULL;
+        END IF;
       END $$;
     `);
     await db.query(`UPDATE users SET is_admin = true WHERE username IN ('augustinejames', 'tockdev');`);
