@@ -293,6 +293,10 @@ wss.on('connection', (ws, req) => {
             return;
         }
         const owner = targetObj.username || targetObj.sender;
+        if (!owner) {
+            log(`CRITICAL: Owner not found for ID ${data.id} in ${targetTable}`);
+            return;
+        }
         
         const isOwner = (owner === authUser);
         const canUndo = userRoles.is_admin || (userRoles.is_moderator && targetObj.deleted_by === authUser);

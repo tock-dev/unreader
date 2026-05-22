@@ -444,7 +444,8 @@
       var chatWrapper = document.getElementById('chat-scroll-wrapper');
       var containerDiv = document.createElement('div'); containerDiv.className = 'message-container';
       var msgDiv = document.createElement('div'); msgDiv.id = 'msg-id-' + data.id;
-      var isMe = data.username === myUsername;
+      var effectiveUsername = data.username || data.sender || "UNKNOWN_NODE";
+      var isMe = effectiveUsername === myUsername;
       msgDiv.style.float = isMe ? 'right' : 'left';
       
       var styleClass = 'message ';
@@ -458,9 +459,9 @@
       
       var timeStr = formatTimeToken(data.timestamp);
       var meta = document.createElement('div'); meta.className = 'message-meta'; meta.style.cursor = 'pointer';
-      var nameDisplay = (data.is_admin ? '👑 ' : (data.is_moderator ? '🛡️ ' : '')) + (data.username || "UNKNOWN_NODE");
+      var nameDisplay = (data.is_admin ? '👑 ' : (data.is_moderator ? '🛡️ ' : '')) + effectiveUsername;
       meta.textContent = nameDisplay + ' • ' + timeStr;
-      (function(username) { meta.onclick = function() { openProfileModal(username); }; })(data.username);
+      (function(username) { meta.onclick = function() { openProfileModal(username); }; })(effectiveUsername);
 
       var txtBody = document.createElement('div'); txtBody.className = 'message-text';
       msgDiv.appendChild(meta); msgDiv.appendChild(txtBody);
@@ -490,7 +491,8 @@
         box.innerHTML = '<em>[POST RECORD PURGED]</em>';
       } else {
         var timeStr = formatTimeToken(data.timestamp);
-        var nameDisplay = (data.is_admin ? '👑 ' : (data.is_moderator ? '🛡️ ' : '')) + (data.username || "UNKNOWN_NODE");
+        var effectiveUsername = data.username || data.sender || "UNKNOWN_NODE";
+        var nameDisplay = (data.is_admin ? '👑 ' : (data.is_moderator ? '🛡️ ' : '')) + effectiveUsername;
         box.innerHTML = '<div class="nb-header" style="cursor:pointer;">@' + nameDisplay + ' • ' + timeStr + '</div>' +
                         '<div class="nb-title"></div>' +
                         '<div class="message-text" style="font-size:13px; margin-bottom:10px;"></div>' +
@@ -502,7 +504,7 @@
                             '<button onclick="submitComment('+data.id+')" style="font-family:monospace; font-size:11px; cursor:pointer;">REPLY</button>' +
                           '</div>' +
                         '</div>';
-        box.querySelector('.nb-header').onclick = function() { openProfileModal(data.username); };
+        box.querySelector('.nb-header').onclick = function() { openProfileModal(effectiveUsername); };
         box.querySelector('.nb-title').textContent = data.title;
         box.querySelector('.message-text').innerHTML = parseMarkup(data.content);
         var cList = box.querySelector('.comment-list');
@@ -513,12 +515,13 @@
             if (c.is_deleted) {
               cDiv.innerHTML = '<em>[Comment Purged]</em>';
             } else {
-              var cName = (c.is_admin ? '👑 ' : (c.is_moderator ? '🛡️ ' : '')) + (c.username || "UNKNOWN_NODE");
+              var cEffectiveUsername = c.username || c.sender || "UNKNOWN_NODE";
+              var cName = (c.is_admin ? '👑 ' : (c.is_moderator ? '🛡️ ' : '')) + cEffectiveUsername;
               cDiv.innerHTML = '<strong style="cursor:pointer;">@'+cName+'</strong>: <span class="c-txt"></span>';
-              (function(u){ cDiv.querySelector('strong').onclick = function() { openProfileModal(u); }; })(c.username);
+              (function(u){ cDiv.querySelector('strong').onclick = function() { openProfileModal(u); }; })(cEffectiveUsername);
               cDiv.querySelector('.c-txt').innerHTML = parseMarkup(c.content);
               
-              if(c.username === myUsername || userRoles.is_admin || userRoles.is_moderator) {
+              if(cEffectiveUsername === myUsername || userRoles.is_admin || userRoles.is_moderator) {
                 var cDel = document.createElement('button'); cDel.style = 'float:right; font-size:8px; font-family:monospace; cursor:pointer; background:white; border:1px solid black;'; cDel.textContent = 'X';
                 (function(cid) { cDel.onclick = function() { 
                   var r = prompt("Reason?");
