@@ -391,29 +391,30 @@
               <strong>Username:</strong> ${u.username}<br>
               <strong>Last IP:</strong> ${u.last_ip || 'Unknown'}<br>
               <strong>Status:</strong> ${status}<br>
-              <strong>Roles:</strong> Admin: ${u.is_admin}, Mod: ${u.is_moderator}<br><br>
-              
+              <strong>Roles:</strong> Admin: ${u.is_admin}, Mod: ${u.is_moderator}<br>`;
+            // Show alts if any
+            if (u.alts && u.alts.length > 0) {
+              html += `<strong>Alt Accounts:</strong> ${u.alts.map(a => a.username).join(', ')}<br>`;
+            }
+            html += `<br>
               <div style="border-top: 1px dotted black; padding-top:8px; margin-top:8px;">
-                <strong>Operator Timout:</strong><br>
-                Duration (mins): <input type="number" id="admin-timeout-dur" value="60" style="width: 40px; font-family:monospace; padding:2px; border:1px solid black; background:white;"> 
+                <strong>Operator Timeout:</strong><br>
+                Duration (mins): <input type="number" id="admin-timeout-dur" value="60" style="width: 40px; font-family:monospace; padding:2px; border:1px solid black; background:white;">
                 <button class="retro-btn" onclick="submitTimeout('${u.username}')">TIMEOUT</button>
               </div>`;
-            
             if (userRoles.is_admin) {
               html += `<div style="border-top: 1px dotted black; padding-top:8px; margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-                <button class="retro-btn" onclick="setModeratorAction('${u.username}', ${!u.is_moderator})">${u.is_moderator ? 'REMOVE MOD ROLE' : 'PROMOTE TO MOD'}</button> 
-                <button class="retro-btn danger-btn" onclick="adminAction('mod_ban', '${u.username}')">BAN USER</button> 
+                <button class="retro-btn" onclick="setModeratorAction('${u.username}', ${!u.is_moderator})">${u.is_moderator ? 'REMOVE MOD ROLE' : 'PROMOTE TO MOD'}</button>
+                <button class="retro-btn danger-btn" onclick="adminAction('mod_ban', '${u.username}')">BAN USER</button>
                 <button class="retro-btn" onclick="adminAction('mod_pardon', '${u.username}')">PARDON USER</button>
+                <button class="retro-btn danger-btn" onclick="banIP('${u.username}')">BAN IP</button>
               </div>`;
             }
             html += `</div>`;
             res.innerHTML = html;
-            
-            // Apply preferences to dynamically added child fields
+            // Apply dark mode styles to dynamic inputs
             if (localStorage.getItem('unreader-darkmode') === 'enabled') {
-              res.querySelectorAll('input').forEach(e => e.style.backgroundColor = '#121212');
-              res.querySelectorAll('input').forEach(e => e.style.color = '#ffffff');
-              res.querySelectorAll('input').forEach(e => e.style.borderColor = '#ffffff');
+              res.querySelectorAll('input').forEach(e => { e.style.backgroundColor = '#121212'; e.style.color = '#ffffff'; e.style.borderColor = '#ffffff'; });
             }
           } else { 
             res.innerHTML = 'User identity not found.'; 
@@ -426,12 +427,14 @@
     function submitTimeout(targetUser) {
       var dur = document.getElementById('admin-timeout-dur').value;
       if (!socket || socket.readyState !== WebSocket.OPEN) return alert('Socket offline.');
-      var r = prompt("Reason for timeout?");
-      if (r) {
-        log("Sending mod_timeout packet for:", targetUser);
-        socket.send(JSON.stringify({ type: 'mod_timeout', target: targetUser, duration: dur, reason: r }));
-        setTimeout(function() { searchUserAction(); openModLogs(); }, 500);
-      }
+      // Admins do not need to provide a reason for timeout
+      var reason = userRoles.is_admin ? '' : prompt("Reason for timeout?");
+      if (!userRoles.is_admin && !reason) return;
+      var payload = { type: 'mod_timeout', target: targetUser, duration: dur };
+      if (reason) payload.reason = reason;
+      log("Sending mod_timeout packet for:", targetUser, payload);
+      socket.send(JSON.stringify(payload));
+      setTimeout(function() { searchUserAction(); openModLogs(); }, 500);
     }
 
     function setModeratorAction(target, isMod) {
@@ -448,6 +451,26 @@
       log("Sending administrative action packet:", type);
       socket.send(JSON.stringify({ type: type, target: target }));
       setTimeout(function() { searchUserAction(); openModLogs(); }, 500);
+    }
+
+    function banIP(targetUser) {
+      if (!userRoles.is_admin) return alert('Only admins can ban IPs.');
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', BACKEND_URL + '/api/admin/ban-ip', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            alert('IP ban successful for ' + targetUser);
+            searchUserAction();
+            openModLogs();
+          } else {
+            alert('IP ban failed: ' + xhr.responseText);
+          }
+        }
+      };
+      xhr.send(JSON.stringify({ username: targetUser }));
     }
 
     if (token && myUsername) { initApp(); }

@@ -186,7 +186,18 @@ app.get('/api/admin/find-user/:username', authenticateToken, async (req, res) =>
   log(`Admin User-Search: target=${req.params.username} by=${req.user.username}`);
   const r = await db.query('SELECT username, last_ip, timeout_until, is_banned, is_admin, is_moderator FROM users WHERE username = $1;', [req.params.username]);
   if (!r.rows[0]) return res.status(404).json({ error: 'User not found' });
-  res.json(r.rows[0]);
+  const userInfo = r.rows[0];
+  // Redact IP for moderators (non-admins)
+  if (!req.user.is_admin) {
+    userInfo.last_ip = "[redacted]";
+  }
+  // Find alts (other users with same IP)
+  let alts = [];
+  if (userInfo.last_ip && userInfo.last_ip !== "[redacted]") {
+    const altsRes = await db.query('SELECT username FROM users WHERE last_ip = $1 AND username <> $2;', [userInfo.last_ip, userInfo.username]);
+    alts = altsRes.rows.map(r => r.username);
+  }
+  res.json({ ...userInfo, alts });
 });
 
 app.post('/api/admin/set-role', authenticateToken, async (req, res) => {
@@ -311,7 +322,7 @@ wss.on('connection', (ws, req) => {
           broadcastSystemUpdate({ type: 'refresh_feed' });
         } else if (data.type === 'mod_restore' && canUndo) {
           log(`EXECUTING DATA RESTORE: targetId=${data.id} in ${targetTable} by=${authUser}`);
-          await db.query(`UPDATE ${targetTable} SET is_deleted = false, deleted_by = NULL WHERE id = $2;`, [data.id]);
+          await db.query(`UPDATE ${targetTable} SET is_deleted = false, deleted_by = NULL WHERE id = $1;`, [data.id]);
           broadcastSystemUpdate({ type: 'refresh_feed' });
         } else {
             log(`MOD ACTION REJECTED: Access level mismatch or ownership collision`);
