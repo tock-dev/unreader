@@ -246,10 +246,10 @@
     <table id="workspace-table">
       <tr>
         <td id="sidebar-cell">
-          <div class="panel-header">🌍 Core Spaces</div>
+          <div class="panel-header">Main Spaces</div>
           <div class="nav-item" onclick="window.location.href='chat.html'">💬 Go to Chat</div>
 
-          <div class="panel-header">🟢 Active Users</div>
+          <div class="panel-header"> Active Users</div>
           <div id="roster-list"></div>
           
           <div class="panel-header">System Operations</div>
@@ -453,7 +453,7 @@
       } else {
         var timeStr = formatTimeToken(data.timestamp);
         var effectiveUsername = data.username || data.sender || "UNKNOWN_NODE";
-        var nameDisplay = (data.is_admin ? '👑 ' : (data.is_moderator ? '🛡️ ' : '')) + effectiveUsername;
+        var nameDisplay = (data.is_admin ? 'ADMIN ' : (data.is_moderator ? 'MOD ' : '')) + effectiveUsername;
         box.innerHTML = '<div class="nb-header" style="cursor:pointer;">@' + nameDisplay + ' • ' + timeStr + '</div>' +
                         '<div class="nb-title"></div>' +
                         '<div class="message-text" style="font-size:13px; margin-bottom:10px;"></div>' +
@@ -477,7 +477,7 @@
               cDiv.innerHTML = '<em>[Comment Purged]</em>';
             } else {
               var cEffectiveUsername = c.username || c.sender || "UNKNOWN_NODE";
-              var cName = (c.is_admin ? '👑 ' : (c.is_moderator ? '🛡️ ' : '')) + cEffectiveUsername;
+              var cName = (c.is_admin ? 'ADMIN ' : (c.is_moderator ? 'MOD ' : '')) + cEffectiveUsername;
               cDiv.innerHTML = '<strong style="cursor:pointer;">@'+cName+'</strong>: <span class="c-txt"></span>';
               (function(u){ cDiv.querySelector('strong').onclick = function() { openProfileModal(u); }; })(cEffectiveUsername);
               cDiv.querySelector('.c-txt').innerHTML = parseMarkup(c.content);

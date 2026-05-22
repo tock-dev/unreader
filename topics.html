@@ -230,7 +230,7 @@
     <table id="workspace-table">
       <tr>
         <td id="sidebar-cell">
-          <div class="panel-header">🌍 Core Spaces</div>
+          <div class="panel-header">Main Spaces</div>
           <div class="nav-item" onclick="window.location.href='chat.html'">💬 Back to Chat</div>
 
           <div class="panel-header"> Topics</div>
@@ -240,7 +240,7 @@
           </div>
           <div id="topic-list"></div>
 
-          <div class="panel-header">🟢 Active Users</div>
+          <div class="panel-header"> Active Users</div>
           <div id="roster-list"></div>
           
           <div class="panel-header">System Operations</div>
@@ -492,7 +492,7 @@
       
       var timeStr = formatTimeToken(data.timestamp);
       var meta = document.createElement('div'); meta.className = 'message-meta'; meta.style.cursor = 'pointer';
-      var nameDisplay = (data.is_admin ? '👑 ' : (data.is_moderator ? '🛡️ ' : '')) + effectiveUsername;
+      var nameDisplay = (data.is_admin ? 'ADMIN ' : (data.is_moderator ? 'MOD ' : '')) + effectiveUsername;
       meta.textContent = nameDisplay + ' • ' + timeStr;
       (function(username) { meta.onclick = function() { openProfileModal(username); }; })(effectiveUsername);
 
