@@ -49,7 +49,7 @@ async function initDatabase() {
         is_deleted BOOLEAN DEFAULT false, deleted_by TEXT
       );
       CREATE TABLE IF NOT EXISTS dms (
-        id SERIAL PRIMARY KEY, sender TEXT NOT NULL, receiver TEXT NOT NULL, timestamp TEXT NOT NULL, content TEXT NOT NULL, 
+        id SERIAL PRIMARY KEY,username TEXT NOT NULL, sender TEXT NOT NULL, receiver TEXT NOT NULL, timestamp TEXT NOT NULL, content TEXT NOT NULL, 
         is_deleted BOOLEAN DEFAULT false, deleted_by TEXT
       );
       CREATE TABLE IF NOT EXISTS profiles (
@@ -83,6 +83,8 @@ async function initDatabase() {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='neighborhood_posts' AND column_name='sender') THEN ALTER TABLE neighborhood_posts ADD COLUMN sender TEXT; END IF;
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='neighborhood_comments' AND column_name='sender') THEN ALTER TABLE neighborhood_comments ADD COLUMN sender TEXT; END IF;
 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='dms' AND column_name='username') THEN ALTER TABLE dms ADD COLUMN username TEXT; END IF;
+
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='username') THEN
           UPDATE messages SET sender = username WHERE sender IS NULL;
         END IF;
@@ -95,9 +97,12 @@ async function initDatabase() {
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='neighborhood_comments' AND column_name='username') THEN
           UPDATE neighborhood_comments SET sender = username WHERE sender IS NULL;
         END IF;
+
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='dms' AND column_name='sender') THEN
+          UPDATE dms SET username = sender WHERE username IS NULL;
+        END IF;
       END $$;
     `);
-    await db.query(`UPDATE users SET is_admin = true WHERE username IN ('augustinejames', 'tockdev');`);
     log("Structural migration successful.");
   } catch (err) { log("DB MIGRATION FAILURE:", err); process.exit(1); }
 }
