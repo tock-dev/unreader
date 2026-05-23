@@ -4,8 +4,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import pkg from 'pg'
 import cors from 'cors'
-import fs from 'node:fs/promises'
-import fsync from 'node:fs'
+import fs from 'node:fs'
 
 const { Pool } = pkg
 const JWT_SECRET = process.env.JWT_SECRET || 'brutalist_secret_key_123'
@@ -104,16 +103,13 @@ app.use(async (req, res, next) => {
     || !req.url.endsWith('.html')
     || '..' in req.url) next()
   else {
-    if (!fsync.existsSync('.' + req.url)) {
+    if (!fs.existsSync('.' + req.url)) {
       console.log('Requested inexistant file')
-      res.writeHead(404, { 'content-type': 'text/html' })
-      res.end('<h1>File not found</h1>')
+      res.status(404).send('<h1>File not found</h1>')
       return
     }
     console.log('Requested ' + req.url)
-    const html = await fs.readFile('.' + req.url, 'utf8')
-    res.writeHead(200, { 'content-type': 'text/html' })
-    res.end(html)
+    res.status(200).sendFile('.' + req.url)
   }
 })
 app.use(cors());
