@@ -653,6 +653,8 @@
         if (response.ok) {
           localStorage.setItem('unreader-token', data.token || '');
           localStorage.setItem('unreader-username', data.username || userField);
+          localStorage.setItem('token', data.token || '');
+          localStorage.setItem('username', data.username || userField);
           localStorage.setItem('unreader-rank', 'user');
           
           banner.style.display = "none";
