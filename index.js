@@ -82,7 +82,7 @@ async function initDatabase() {
       ALTER TABLE neighborhood_posts ADD COLUMN IF NOT EXISTS sender TEXT;
       ALTER TABLE neighborhood_comments ADD COLUMN IF NOT EXISTS sender TEXT;
 
-      ALTER TABLE dms ADD COLUMN username TEXT;
+      ALTER TABLE dms ADD COLUMN IF NOT EXISTS username TEXT;
 
       UPDATE messages SET sender = username WHERE sender IS NULL;
       UPDATE topic_messages SET sender = username WHERE sender IS NULL;
