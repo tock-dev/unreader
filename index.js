@@ -212,15 +212,15 @@ app.get('/api/admin/find-user/:username', authenticateToken, async (req, res) =>
   const r = await db.query('SELECT username, last_ip, timeout_until, is_banned, is_admin, is_moderator FROM users WHERE username = $1;', [req.params.username]);
   if (!r.rows[0]) return res.status(404).json({ error: 'User not found' });
   const userInfo = r.rows[0];
+  // Find alts (other users with same IP)
+  let alts = [];
+  if (userInfo.last_ip) {
+    const altsRes = await db.query('SELECT username FROM users WHERE last_ip = $1 AND username <> $2;', [userInfo.last_ip, userInfo.username]);
+    alts = altsRes.rows.map(r => r.username);
+  }
   // Redact IP for moderators (non-admins)
   if (!req.user.is_admin) {
     userInfo.last_ip = "[redacted]";
-  }
-  // Find alts (other users with same IP)
-  let alts = [];
-  if (userInfo.last_ip && userInfo.last_ip !== "[redacted]") {
-    const altsRes = await db.query('SELECT username FROM users WHERE last_ip = $1 AND username <> $2;', [userInfo.last_ip, userInfo.username]);
-    alts = altsRes.rows.map(r => r.username);
   }
   res.json({ ...userInfo, alts });
 });

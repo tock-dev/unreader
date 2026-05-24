@@ -1,824 +1,1817 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://w3.org">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://w3.org">
 <html lang="en">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>un-reader BBS</title>
-  <link rel="stylesheet" media="screen" href="https://fontlibrary.org/face/symbola/css/symbola.css" type="text/css"/>
-  <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
-  <style type="text/css">
-    :root {
-      --bg-color: #ffffff;
-      --text-color: #000000;
-      --border: 2px solid #000000;
-      --shadow: 4px 4px 0px #000000;
-      --stripe-pattern: repeating-linear-gradient(0deg, transparent, transparent 2px, #000 3px, #000 4px);
-    }
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>un-reader BBS</title>
+    <link
+      rel="stylesheet"
+      media="screen"
+      href="https://fontlibrary.org/face/symbola/css/symbola.css"
+      type="text/css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
+    <style type="text/css">
+      :root {
+        --bg-color: #ffffff;
+        --text-color: #000000;
+        --border: 2px solid #000000;
+        --shadow: 4px 4px 0px #000000;
+        --stripe-pattern: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          #000 3px,
+          #000 4px
+        );
+      }
 
-    html, body {
-      margin: 0; padding: 0; overflow: hidden; height: 100%; width: 100%;
-      font-family: "Geneva", "Verdana", sans-serif, "SymbolaRegular"; background-color: #e5e5e5;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-    }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        height: 100%;
+        width: 100%;
+        font-family: 'Geneva', 'Verdana', sans-serif, 'SymbolaRegular';
+        background-color: #e5e5e5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
 
-    .window {
-      background: white; border: 2px solid black; box-shadow: var(--shadow);
-      display: flex; flex-direction: column; height: 95vh; width: 98vw; max-width: 950px; position: relative;
-    }
+      .window {
+        background: white;
+        border: 2px solid black;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        height: 95vh;
+        width: 98vw;
+        max-width: 950px;
+        position: relative;
+      }
 
-    .title-bar {
-      height: 35px; border-bottom: 2px solid black; display: flex; align-items: center; justify-content: center; background: white; padding: 0 10px; position: relative; flex-shrink: 0;
-    }
-    .title-stripes { position: absolute; top: 4px; bottom: 4px; left: 4px; right: 4px; background-image: var(--stripe-pattern); z-index: 0; }
-    .title-text { background: white; padding: 0 15px; font-weight: bold; z-index: 1; font-size: 14px; text-transform: uppercase; }
-    
-    #logout-btn { position: absolute; left: 10px; z-index: 2; cursor: pointer; font-family: monospace; font-size: 11px; background: white; border: 2px solid black; padding: 2px 6px; box-shadow: 2px 2px 0 black; font-weight: bold; }
-    #user-display { position: absolute; right: 10px; z-index: 2; font-size: 11px; font-weight: bold; background: white; padding: 2px 6px; border: 1px solid black; cursor: pointer; }
+      .title-bar {
+        height: 35px;
+        border-bottom: 2px solid black;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        padding: 0 10px;
+        position: relative;
+        flex-shrink: 0;
+      }
+      .title-stripes {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        left: 4px;
+        right: 4px;
+        background-image: var(--stripe-pattern);
+        z-index: 0;
+      }
+      .title-text {
+        background: white;
+        padding: 0 15px;
+        font-weight: bold;
+        z-index: 1;
+        font-size: 14px;
+        text-transform: uppercase;
+      }
 
-    #workspace-table { width: 100%; height: calc(100% - 37px); border-collapse: collapse; table-layout: fixed; }
-    #sidebar-cell { width: 230px; background: #fafafa; border-right: 2px solid black; vertical-align: top; padding: 0; overflow-y: auto; }
-    #chat-cell { vertical-align: top; padding: 0; position: relative; background-color: #ffffff; }
+      #logout-btn {
+        position: absolute;
+        left: 10px;
+        z-index: 2;
+        cursor: pointer;
+        font-family: monospace;
+        font-size: 11px;
+        background: white;
+        border: 2px solid black;
+        padding: 2px 6px;
+        box-shadow: 2px 2px 0 black;
+        font-weight: bold;
+      }
+      #user-display {
+        position: absolute;
+        right: 10px;
+        z-index: 2;
+        font-size: 11px;
+        font-weight: bold;
+        background: white;
+        padding: 2px 6px;
+        border: 1px solid black;
+        cursor: pointer;
+      }
 
-    .panel-header { font-weight: bold; padding: 6px 8px; text-transform: uppercase; border-bottom: 2px solid black; border-top: 2px solid black; background: #eee; font-size: 10px; letter-spacing: 1px; }
-    .panel-header:first-child { border-top: none; }
-    #roster-list, #topic-list, #dm-list { max-height: 110px; overflow-y: auto; background: white; }
-    
-    .roster-user { padding: 4px 8px; border-bottom: 1px solid #eee; font-size: 11px; }
-    .roster-name { font-weight: bold; cursor: pointer; text-decoration: underline; }
+      #workspace-table {
+        width: 100%;
+        height: calc(100% - 37px);
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      #sidebar-cell {
+        width: 230px;
+        background: #fafafa;
+        border-right: 2px solid black;
+        vertical-align: top;
+        padding: 0;
+        overflow-y: auto;
+      }
+      #chat-cell {
+        vertical-align: top;
+        padding: 0;
+        position: relative;
+        background-color: #ffffff;
+      }
 
-    .nav-item { padding: 6px 10px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 11px; background: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .nav-item:hover { background: #f0f0f0; }
-    .nav-item-active { background-color: #000000 !important; color: #ffffff !important; font-weight: bold; }
-    
-    .sidebar-input-container { display: flex; padding: 4px; background: white; border-bottom: 1px solid #eee; }
-    .sidebar-input { flex-grow: 1; padding: 3px; font-family: monospace; font-size: 11px; outline: none; border: 1px solid black; }
-    .sidebar-btn { font-family: monospace; font-size: 10px; font-weight: bold; background: white; border: 1px solid black; margin-left: 2px; cursor: pointer; }
+      .panel-header {
+        font-weight: bold;
+        padding: 6px 8px;
+        text-transform: uppercase;
+        border-bottom: 2px solid black;
+        border-top: 2px solid black;
+        background: #eee;
+        font-size: 10px;
+        letter-spacing: 1px;
+      }
+      .panel-header:first-child {
+        border-top: none;
+      }
+      #roster-list,
+      #topic-list,
+      #dm-list {
+        max-height: 110px;
+        overflow-y: auto;
+        background: white;
+      }
 
-    .mod-indicator-btn { background: #fff; border: 2px dashed red !important; color: red; width: 95%; font-weight: bold; font-family: monospace; font-size: 11px; cursor: pointer; padding: 4px 0; text-align: center; }
-    .mod-indicator-active { background: red !important; color: white !important; border-style: solid !important; }
+      .roster-user {
+        padding: 4px 8px;
+        border-bottom: 1px solid #eee;
+        font-size: 11px;
+      }
+      .roster-name {
+        font-weight: bold;
+        cursor: pointer;
+        text-decoration: underline;
+      }
 
-    #pagination-header-bar { padding: 6px; background: #eee; border-bottom: 2px solid #000000; text-align: center; height: 26px; }
-    .page-btn { background: #ffffff; border: 2px solid #000000; padding: 2px 8px; font-family: monospace; font-weight: bold; cursor: pointer; font-size: 11px; box-shadow: 1px 1px 0 black; }
-    #page-display-index { margin: 0 10px; font-weight: bold; font-size: 12px; }
+      .nav-item {
+        padding: 6px 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+        font-size: 11px;
+        background: white;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .nav-item:hover {
+        background: #f0f0f0;
+      }
+      .nav-item-active {
+        background-color: #000000 !important;
+        color: #ffffff !important;
+        font-weight: bold;
+      }
 
-    #chat-scroll-wrapper { position: absolute; top: 40px; bottom: 85px; left: 0; right: 0; overflow-y: auto; padding: 12px; }
-    
-    #input-bar-container { position: absolute; bottom: 0; left: 0; right: 0; min-height: 52px; background-color: #eee; padding: 8px; box-sizing: border-box; border-top: 2px solid black; z-index: 20; }
-    #nb-title-input { display: none; width: 98%; padding: 4px; margin-bottom: 4px; font-family: monospace; font-size: 12px; border: 2px solid black; outline: none; }
-    #content { float: left; width: 78%; padding: 6px; font-size: 13px; font-family: monospace; border: 2px solid black; outline: none; background: white; box-sizing: border-box; height: 32px; resize: none; overflow-y: hidden; }
-    #send { float: right; width: 18%; height: 32px; cursor: pointer; font-family: monospace; font-weight: bold; font-size: 12px; background: white; border: 2px solid black; box-shadow: 2px 2px 0 black; }
+      .sidebar-input-container {
+        display: flex;
+        padding: 4px;
+        background: white;
+        border-bottom: 1px solid #eee;
+      }
+      .sidebar-input {
+        flex-grow: 1;
+        padding: 3px;
+        font-family: monospace;
+        font-size: 11px;
+        outline: none;
+        border: 1px solid black;
+      }
+      .sidebar-btn {
+        font-family: monospace;
+        font-size: 10px;
+        font-weight: bold;
+        background: white;
+        border: 1px solid black;
+        margin-left: 2px;
+        cursor: pointer;
+      }
 
-    .message-container { width: 100%; margin-bottom: 10px; clear: both; display: block; position: relative; }
-    .message { border: 2px solid black; padding: 6px 10px; max-width: 75%; width: auto; position: relative; background: white; box-shadow: 2px 2px 0px black; }
-    .message-meta { font-size: 10px; font-weight: bold; color: #555; margin-bottom: 3px; text-transform: uppercase; }
-    .message-text { font-size: 13px; white-space: pre-wrap; line-height: 1.3; color: black; }
-    
-    .my-msg { border-style: dashed; }
-    .other-msg { border-style: solid; }
-    .purged-msg { border-style: dotted !important; background: #fafafa !important; opacity: 0.6; }
-    
-    .mod-msg { border: 3px solid #0000ff !important; box-shadow: 4px 4px 0px #0000ff !important; }
-    .admin-msg { background: black !important; color: white !important; border: 3px solid black !important; box-shadow: 4px 4px 0px #888 !important; }
-    .admin-msg .message-text, .admin-msg .message-meta { color: white !important; }
+      .mod-indicator-btn {
+        background: #fff;
+        border: 2px dashed red !important;
+        color: red;
+        width: 95%;
+        font-weight: bold;
+        font-family: monospace;
+        font-size: 11px;
+        cursor: pointer;
+        padding: 4px 0;
+        text-align: center;
+      }
+      .mod-indicator-active {
+        background: red !important;
+        color: white !important;
+        border-style: solid !important;
+      }
 
-    .user-delete-btn { position: absolute; top: 3px; right: 3px; border: 1px dashed black; background: white; font-size: 9px; cursor: pointer; padding: 0 4px; font-family: monospace; }
-    .mod-action-tray { display: block; background: #fff; border: 1px dashed red; padding: 4px; font-size: 11px; font-family: monospace; margin-top: 4px; max-width: 75%; box-sizing: border-box; }
-    .mod-tray-btn { background: white; border: 1px solid black; font-size: 10px; font-weight: bold; cursor: pointer; margin-right: 4px; padding: 1px 4px; font-family: monospace; }
+      #pagination-header-bar {
+        padding: 6px;
+        background: #eee;
+        border-bottom: 2px solid #000000;
+        text-align: center;
+        height: 26px;
+      }
+      .page-btn {
+        background: #ffffff;
+        border: 2px solid #000000;
+        padding: 2px 8px;
+        font-family: monospace;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 11px;
+        box-shadow: 1px 1px 0 black;
+      }
+      #page-display-index {
+        margin: 0 10px;
+        font-weight: bold;
+        font-size: 12px;
+      }
 
-    .nb-post-box { border: 2px solid black; padding: 12px; margin-bottom: 15px; background: white; box-shadow: 3px 3px 0px black; position: relative; }
-    .nb-header { font-size: 11px; color: #555; border-bottom: 1px solid black; padding-bottom: 4px; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; }
-    .nb-title { font-size: 16px; font-weight: bold; margin: 0 0 6px 0; text-transform: uppercase; color: #000; }
-    
-    .comment-toggle-btn { background: #eee; border: 1px solid black; font-family: monospace; font-size: 11px; padding: 2px 6px; cursor: pointer; margin-top: 4px; font-weight: bold; }
-    .comment-area { display: none; border-top: 1px dashed black; margin-top: 10px; padding-top: 8px; background: #fafafa; }
-    .comment-list { max-height: 200px; overflow-y: auto; margin-bottom: 6px; }
-    .comment-item { font-size: 11px; padding: 4px 6px; border-bottom: 1px dotted #ccc; background: white; margin-bottom: 2px; }
+      #chat-scroll-wrapper {
+        position: absolute;
+        top: 40px;
+        bottom: 85px;
+        left: 0;
+        right: 0;
+        overflow-y: auto;
+        padding: 12px;
+      }
 
-    #modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); display: none; z-index: 2000; }
-    .info-window { position: absolute; top: 10%; left: 50%; transform: translate(-50%, 0); width: 340px; background: white; border: 2px solid black; box-shadow: var(--shadow); }
-    .info-body { padding: 12px; font-size: 12px; max-height: 80vh; overflow-y: auto; }
+      #input-bar-container {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        min-height: 52px;
+        background-color: #eee;
+        padding: 8px;
+        box-sizing: border-box;
+        border-top: 2px solid black;
+        z-index: 20;
+      }
+      #nb-title-input {
+        display: none;
+        width: 98%;
+        padding: 4px;
+        margin-bottom: 4px;
+        font-family: monospace;
+        font-size: 12px;
+        border: 2px solid black;
+        outline: none;
+      }
+      #content {
+        float: left;
+        width: 78%;
+        padding: 6px;
+        font-size: 13px;
+        font-family: monospace;
+        border: 2px solid black;
+        outline: none;
+        background: white;
+        box-sizing: border-box;
+        height: 32px;
+        resize: none;
+        overflow-y: hidden;
+      }
+      #send {
+        float: right;
+        width: 18%;
+        height: 32px;
+        cursor: pointer;
+        font-family: monospace;
+        font-weight: bold;
+        font-size: 12px;
+        background: white;
+        border: 2px solid black;
+        box-shadow: 2px 2px 0 black;
+      }
 
-    #auth-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.3); display: block; z-index: 3000; text-align: center; padding-top: 100px; }
-    .auth-box { padding: 24px; width: 280px; margin: 0 auto; background: white; border: 2px solid black; box-shadow: var(--shadow); }
-    .auth-box input { width: 90%; padding: 6px; margin: 6px 0; font-family: monospace; border: 2px solid black; }
-    .auth-box button { width: 96%; padding: 8px; margin-top: 8px; cursor: pointer; font-family: monospace; font-weight: bold; background: white; border: 2px solid black; box-shadow: 2px 2px 0 black; }
-    
-    .mod-log-item { border-bottom: 1px dotted black; padding: 4px 0; font-family: monospace; font-size: 10px; }
-    .user-search-input { width: 90%; padding: 4px; font-family: monospace; border: 2px solid black; margin-bottom: 8px; }
-  </style>
-</head>
-<body>
+      .message-container {
+        width: 100%;
+        margin-bottom: 10px;
+        clear: both;
+        display: block;
+        position: relative;
+      }
+      .message {
+        border: 2px solid black;
+        padding: 6px 10px;
+        max-width: 75%;
+        width: auto;
+        position: relative;
+        background: white;
+        box-shadow: 2px 2px 0px black;
+      }
+      .message-meta {
+        font-size: 10px;
+        font-weight: bold;
+        color: #555;
+        margin-bottom: 3px;
+        text-transform: uppercase;
+      }
+      .message-text {
+        font-size: 13px;
+        white-space: pre-wrap;
+        line-height: 1.3;
+        color: black;
+      }
 
-  <div id="modal-overlay" onclick="closeInfoModal()">
-    <div class="info-window" onclick="event.stopPropagation()">
-      <div class="title-bar"><div class="title-stripes"></div><div class="title-text" id="modal-title">GET INFO</div></div>
-      <div class="info-body" id="modal-content">
-        <div id="profile-view">
-          <div style="font-size: 24px; text-align: center; margin-bottom: 8px;" id="info-avatar">👤</div>
-          <div style="font-weight: bold; margin-bottom: 4px;">User: <span id="info-username"></span></div>
-          <div style="margin-bottom: 4px;">Location: <span id="info-location"></span></div>
-          <div style="border: 1px solid black; padding: 6px; background: #fafafa; min-height: 40px; margin-bottom: 10px; white-space: pre-wrap;" id="info-bio"></div>
-          
-          <div id="info-edit-controls" style="display: none; border-top: 1px dashed black; padding-top: 8px; margin-bottom: 8px;">
-            <input type="text" id="edit-avatar" placeholder="Emoji" style="width: 40px; text-align: center; border:1px solid black; padding:3px; font-family:monospace;">
-            <input type="text" id="edit-location" placeholder="Location..." style="width: 180px; border:1px solid black; padding:3px; font-family:monospace;">
-            <textarea id="edit-bio" placeholder="Bio description..." style="width: 95%; margin-top: 4px; font-family: monospace; height: 40px; border:1px solid black; padding:3px; resize:none;"></textarea>
-            <button onclick="saveProfileChanges()" style="width: 100%; font-family: monospace; margin-top: 6px; font-weight: bold; padding:4px; cursor:pointer;">SAVE PROFILE</button>
-            
-            <div style="border-top: 1px dotted black; padding-top: 8px; margin-top: 8px;">
-              <span style="font-size: 10px; font-weight: bold; display: block; margin-bottom: 2px;">SECURITY PREFERENCE:</span>
-              <input type="password" id="change-pass-current" placeholder="Current Password" style="width: 93%; font-family: monospace; font-size: 11px; padding: 4px; border: 1px solid black; margin-bottom: 4px;">
-              <input type="password" id="change-pass-new" placeholder="New Password" style="width: 93%; font-family: monospace; font-size: 11px; padding: 4px; border: 1px solid black; margin-bottom: 4px;">
-              <button onclick="submitPasswordChange()" style="width: 100%; font-family: monospace; font-size: 11px; font-weight: bold; background: #eee; border:1px solid black; padding:3px; cursor:pointer;">UPDATE PASSWORD</button>
-            </div>
-          </div>
-          
-          <div id="admin-controls" style="display:none; border-top: 2px solid black; padding-top: 8px; margin-top: 8px;">
-            <span style="font-size: 10px; font-weight: bold; display: block; margin-bottom: 4px; color: red;">SYSTEM OPERATOR COMMANDS:</span>
-            <button id="admin-ban-btn" style="width: 48%; font-size: 10px; font-family: monospace;">BAN</button>
-            <button id="admin-pardon-btn" style="width: 48%; font-size: 10px; font-family: monospace;">PARDON</button>
-            <div style="margin-top:4px;">
-              <input type="number" id="admin-timeout-dur" value="60" style="width: 40px; font-size:10px;">
-              <button id="admin-timeout-btn" style="width: 70%; font-size: 10px; font-family: monospace;">TIMEOUT (MINS)</button>
-            </div>
-          </div>
+      .my-msg {
+        border-style: dashed;
+      }
+      .other-msg {
+        border-style: solid;
+      }
+      .purged-msg {
+        border-style: dotted !important;
+        background: #fafafa !important;
+        opacity: 0.6;
+      }
 
-          <button id="info-dm-btn" style="width: 100%; font-family: monospace; font-weight: bold; padding: 4px; cursor: pointer; margin-top: 8px;">SEND DIRECT MESSAGE</button>
+      .mod-msg {
+        border: 3px solid #0000ff !important;
+        box-shadow: 4px 4px 0px #0000ff !important;
+      }
+      .admin-msg {
+        background: black !important;
+        color: white !important;
+        border: 3px solid black !important;
+        box-shadow: 4px 4px 0px #888 !important;
+      }
+      .admin-msg .message-text,
+      .admin-msg .message-meta {
+        color: white !important;
+      }
+
+      .user-delete-btn {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        border: 1px dashed black;
+        background: white;
+        font-size: 9px;
+        cursor: pointer;
+        padding: 0 4px;
+        font-family: monospace;
+      }
+      .mod-action-tray {
+        display: block;
+        background: #fff;
+        border: 1px dashed red;
+        padding: 4px;
+        font-size: 11px;
+        font-family: monospace;
+        margin-top: 4px;
+        max-width: 75%;
+        box-sizing: border-box;
+      }
+      .mod-tray-btn {
+        background: white;
+        border: 1px solid black;
+        font-size: 10px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-right: 4px;
+        padding: 1px 4px;
+        font-family: monospace;
+      }
+
+      .nb-post-box {
+        border: 2px solid black;
+        padding: 12px;
+        margin-bottom: 15px;
+        background: white;
+        box-shadow: 3px 3px 0px black;
+        position: relative;
+      }
+      .nb-header {
+        font-size: 11px;
+        color: #555;
+        border-bottom: 1px solid black;
+        padding-bottom: 4px;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        font-weight: bold;
+      }
+      .nb-title {
+        font-size: 16px;
+        font-weight: bold;
+        margin: 0 0 6px 0;
+        text-transform: uppercase;
+        color: #000;
+      }
+
+      .comment-toggle-btn {
+        background: #eee;
+        border: 1px solid black;
+        font-family: monospace;
+        font-size: 11px;
+        padding: 2px 6px;
+        cursor: pointer;
+        margin-top: 4px;
+        font-weight: bold;
+      }
+      .comment-area {
+        display: none;
+        border-top: 1px dashed black;
+        margin-top: 10px;
+        padding-top: 8px;
+        background: #fafafa;
+      }
+      .comment-list {
+        max-height: 200px;
+        overflow-y: auto;
+        margin-bottom: 6px;
+      }
+      .comment-item {
+        font-size: 11px;
+        padding: 4px 6px;
+        border-bottom: 1px dotted #ccc;
+        background: white;
+        margin-bottom: 2px;
+      }
+
+      #modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.2);
+        display: none;
+        z-index: 2000;
+      }
+      .info-window {
+        position: absolute;
+        top: 10%;
+        left: 50%;
+        transform: translate(-50%, 0);
+        width: 340px;
+        background: white;
+        border: 2px solid black;
+        box-shadow: var(--shadow);
+      }
+      .info-body {
+        padding: 12px;
+        font-size: 12px;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      #auth-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.3);
+        display: block;
+        z-index: 3000;
+        text-align: center;
+        padding-top: 100px;
+      }
+      .auth-box {
+        padding: 24px;
+        width: 280px;
+        margin: 0 auto;
+        background: white;
+        border: 2px solid black;
+        box-shadow: var(--shadow);
+      }
+      .auth-box input {
+        width: 90%;
+        padding: 6px;
+        margin: 6px 0;
+        font-family: monospace;
+        border: 2px solid black;
+      }
+      .auth-box button {
+        width: 96%;
+        padding: 8px;
+        margin-top: 8px;
+        cursor: pointer;
+        font-family: monospace;
+        font-weight: bold;
+        background: white;
+        border: 2px solid black;
+        box-shadow: 2px 2px 0 black;
+      }
+
+      .mod-log-item {
+        border-bottom: 1px dotted black;
+        padding: 4px 0;
+        font-family: monospace;
+        font-size: 10px;
+      }
+      .user-search-input {
+        width: 90%;
+        padding: 4px;
+        font-family: monospace;
+        border: 2px solid black;
+        margin-bottom: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="modal-overlay" onclick="closeInfoModal()">
+      <div class="info-window" onclick="event.stopPropagation()">
+        <div class="title-bar">
+          <div class="title-stripes"></div>
+          <div class="title-text" id="modal-title">GET INFO</div>
         </div>
-        <div id="mod-log-view" style="display:none;">
-          <div id="mod-log-list"></div>
-          <button onclick="showProfileInModal()" style="width: 100%; font-family: monospace; margin-top: 10px; font-weight: bold;">BACK TO PROFILE</button>
-        </div>
-        <div id="user-search-view" style="display:none;">
-          <input type="text" id="user-search-input" class="user-search-input" placeholder="Search by username...">
-          <button onclick="searchUserAction()" style="width: 100%; font-family: monospace; font-weight: bold;">FIND USER</button>
-          <div id="user-search-results" style="margin-top: 12px; border-top: 1px dashed black; padding-top: 8px;"></div>
-          <button onclick="showProfileInModal()" style="width: 100%; font-family: monospace; margin-top: 10px; font-weight: bold;">BACK TO PROFILE</button>
+        <div class="info-body" id="modal-content">
+          <div id="profile-view">
+            <div
+              style="font-size: 24px; text-align: center; margin-bottom: 8px"
+              id="info-avatar"
+            >
+              👤
+            </div>
+            <div style="font-weight: bold; margin-bottom: 4px">
+              User: <span id="info-username"></span>
+            </div>
+            <div style="margin-bottom: 4px">
+              Location: <span id="info-location"></span>
+            </div>
+            <div
+              style="
+                border: 1px solid black;
+                padding: 6px;
+                background: #fafafa;
+                min-height: 40px;
+                margin-bottom: 10px;
+                white-space: pre-wrap;
+              "
+              id="info-bio"
+            ></div>
+
+            <div
+              id="info-edit-controls"
+              style="
+                display: none;
+                border-top: 1px dashed black;
+                padding-top: 8px;
+                margin-bottom: 8px;
+              "
+            >
+              <input
+                type="text"
+                id="edit-avatar"
+                placeholder="Emoji"
+                style="
+                  width: 40px;
+                  text-align: center;
+                  border: 1px solid black;
+                  padding: 3px;
+                  font-family: monospace;
+                "
+              />
+              <input
+                type="text"
+                id="edit-location"
+                placeholder="Location..."
+                style="
+                  width: 180px;
+                  border: 1px solid black;
+                  padding: 3px;
+                  font-family: monospace;
+                "
+              />
+              <textarea
+                id="edit-bio"
+                placeholder="Bio description..."
+                style="
+                  width: 95%;
+                  margin-top: 4px;
+                  font-family: monospace;
+                  height: 40px;
+                  border: 1px solid black;
+                  padding: 3px;
+                  resize: none;
+                "
+              ></textarea>
+              <button
+                onclick="saveProfileChanges()"
+                style="
+                  width: 100%;
+                  font-family: monospace;
+                  margin-top: 6px;
+                  font-weight: bold;
+                  padding: 4px;
+                  cursor: pointer;
+                "
+              >
+                SAVE PROFILE
+              </button>
+
+              <div
+                style="
+                  border-top: 1px dotted black;
+                  padding-top: 8px;
+                  margin-top: 8px;
+                "
+              >
+                <span
+                  style="
+                    font-size: 10px;
+                    font-weight: bold;
+                    display: block;
+                    margin-bottom: 2px;
+                  "
+                  >SECURITY PREFERENCE:</span
+                >
+                <input
+                  type="password"
+                  id="change-pass-current"
+                  placeholder="Current Password"
+                  style="
+                    width: 93%;
+                    font-family: monospace;
+                    font-size: 11px;
+                    padding: 4px;
+                    border: 1px solid black;
+                    margin-bottom: 4px;
+                  "
+                />
+                <input
+                  type="password"
+                  id="change-pass-new"
+                  placeholder="New Password"
+                  style="
+                    width: 93%;
+                    font-family: monospace;
+                    font-size: 11px;
+                    padding: 4px;
+                    border: 1px solid black;
+                    margin-bottom: 4px;
+                  "
+                />
+                <button
+                  onclick="submitPasswordChange()"
+                  style="
+                    width: 100%;
+                    font-family: monospace;
+                    font-size: 11px;
+                    font-weight: bold;
+                    background: #eee;
+                    border: 1px solid black;
+                    padding: 3px;
+                    cursor: pointer;
+                  "
+                >
+                  UPDATE PASSWORD
+                </button>
+              </div>
+            </div>
+
+            <div
+              id="admin-controls"
+              style="
+                display: none;
+                border-top: 2px solid black;
+                padding-top: 8px;
+                margin-top: 8px;
+              "
+            >
+              <span
+                style="
+                  font-size: 10px;
+                  font-weight: bold;
+                  display: block;
+                  margin-bottom: 4px;
+                  color: red;
+                "
+                >SYSTEM OPERATOR COMMANDS:</span
+              >
+              <button
+                id="admin-ban-btn"
+                style="width: 48%; font-size: 10px; font-family: monospace"
+              >
+                BAN
+              </button>
+              <button
+                id="admin-pardon-btn"
+                style="width: 48%; font-size: 10px; font-family: monospace"
+              >
+                PARDON
+              </button>
+              <div style="margin-top: 4px">
+                <input
+                  type="number"
+                  id="admin-timeout-dur"
+                  value="60"
+                  style="width: 40px; font-size: 10px"
+                />
+                <button
+                  id="admin-timeout-btn"
+                  style="width: 70%; font-size: 10px; font-family: monospace"
+                >
+                  TIMEOUT (MINS)
+                </button>
+              </div>
+            </div>
+
+            <button
+              id="info-dm-btn"
+              style="
+                width: 100%;
+                font-family: monospace;
+                font-weight: bold;
+                padding: 4px;
+                cursor: pointer;
+                margin-top: 8px;
+              "
+            >
+              SEND DIRECT MESSAGE
+            </button>
+          </div>
+          <div id="mod-log-view" style="display: none">
+            <div id="mod-log-list"></div>
+            <button
+              onclick="showProfileInModal()"
+              style="
+                width: 100%;
+                font-family: monospace;
+                margin-top: 10px;
+                font-weight: bold;
+              "
+            >
+              BACK TO PROFILE
+            </button>
+          </div>
+          <div id="user-search-view" style="display: none">
+            <input
+              type="text"
+              id="user-search-input"
+              class="user-search-input"
+              placeholder="Search by username..."
+            />
+            <button
+              onclick="searchUserAction()"
+              style="width: 100%; font-family: monospace; font-weight: bold"
+            >
+              FIND USER
+            </button>
+            <div
+              id="user-search-results"
+              style="
+                margin-top: 12px;
+                border-top: 1px dashed black;
+                padding-top: 8px;
+              "
+            ></div>
+            <button
+              onclick="showProfileInModal()"
+              style="
+                width: 100%;
+                font-family: monospace;
+                margin-top: 10px;
+                font-weight: bold;
+              "
+            >
+              BACK TO PROFILE
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div id="auth-screen">
-    <div class="auth-box">
-      <h2 id="auth-title" style="margin-top:0;">LOGIN</h2>
-      <input type="text" id="auth-user" placeholder="Username" autocomplete="off">
-      <input type="password" id="auth-pass" placeholder="Password">
-      <button id="auth-submit-btn">SUBMIT</button>
-      <div id="auth-toggle" style="font-size:11px; margin-top:12px; cursor:pointer; text-decoration:underline; color:blue; font-weight:bold;">Need an account? Register</div>
+    <div id="auth-screen">
+      <div class="auth-box">
+        <h2 id="auth-title" style="margin-top: 0">LOGIN</h2>
+        <input
+          type="text"
+          id="auth-user"
+          placeholder="Username"
+          autocomplete="off"
+        />
+        <input type="password" id="auth-pass" placeholder="Password" />
+        <button id="auth-submit-btn">SUBMIT</button>
+        <div
+          id="auth-toggle"
+          style="
+            font-size: 11px;
+            margin-top: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+            color: blue;
+            font-weight: bold;
+          "
+        >
+          Need an account? Register
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="window">
-    <div class="title-bar">
-      <div class="title-stripes"></div>
-      <button id="logout-btn">LOGOUT</button>
-      <div class="title-text">un-reader node</div>
-      <span id="user-display" onclick="openProfileModal(myUsername)"></span>
-    </div>
-    
-    <table id="workspace-table">
-      <tr>
-        <td id="sidebar-cell">
-          <div class="panel-header">🌍 Core Spaces</div>
-          <div class="nav-item nav-item-active" id="nav-public" onclick="switchChannel('public', '')"> All of Unreader Chat</div>
-          <div class="nav-item" id="nav-neighborhood" onclick="switchChannel('neighborhood', '')"> Neighborhood</div>
+    <div class="window">
+      <div class="title-bar">
+        <div class="title-stripes"></div>
+        <button id="logout-btn">LOGOUT</button>
+        <div class="title-text">un-reader node</div>
+        <span id="user-display" onclick="openProfileModal(myUsername)"></span>
+      </div>
 
-          <div class="panel-header"> Topics</div>
-          <div class="sidebar-input-container">
-            <input type="text" id="topic-target-input" class="sidebar-input" placeholder="New Topic...">
-            <button class="sidebar-btn" onclick="triggerCreateTopic()">ADD</button>
-          </div>
-          <div id="topic-list"></div>
-          
-          <div class="panel-header"> Direct Messages</div>
-          <div class="sidebar-input-container">
-            <input type="text" id="dm-target-input" class="sidebar-input" placeholder="Username...">
-            <button class="sidebar-btn" onclick="triggerAddDM()">CHAT</button>
-          </div>
-          <div id="dm-list"></div>
-
-          <div class="panel-header">🟢 Active Users</div>
-          <div id="roster-list"></div>
-          
-          <div class="panel-header">System Operations</div>
-          <div id="settings-box-container" style="padding: 6px;">
-            <div id="mod-toggle-container" style="display:none; margin-bottom: 4px;">
-              <button id="mod-mode-btn" class="mod-indicator-btn" onclick="toggleModMode()">MOD MODE: OFF</button>
-              <button id="find-user-btn" style="width: 95%; font-family: monospace; font-size: 10px; margin-top: 4px; cursor: pointer; border: 1px solid black; background: white;" onclick="openUserSearch()">FIND USER TOOL</button>
-              <button id="view-logs-btn" style="width: 95%; font-family: monospace; font-size: 10px; margin-top: 4px; cursor: pointer; border: 1px solid black; background: white;" onclick="openModLogs()">VIEW MOD LOGS</button>
+      <table id="workspace-table">
+        <tr>
+          <td id="sidebar-cell">
+            <div class="panel-header">🌍 Core Spaces</div>
+            <div
+              class="nav-item nav-item-active"
+              id="nav-public"
+              onclick="switchChannel('public', '')"
+            >
+              All of Unreader Chat
             </div>
-          </div>
-        </td>
-        <td id="chat-cell">
-          <div id="pagination-header-bar">
-            <button class="page-btn" onclick="jumpPage(-1)">&lt; NEWER</button>
-            <span id="page-display-index">PAGE: 0</span>
-            <button class="page-btn" onclick="jumpPage(1)">OLDER &gt;</button>
-          </div>
+            <div
+              class="nav-item"
+              id="nav-neighborhood"
+              onclick="switchChannel('neighborhood', '')"
+            >
+              Neighborhood
+            </div>
 
-          <div id="chat-scroll-wrapper"></div>
-          
-          <div id="input-bar-container">
-            <input type="text" id="nb-title-input" placeholder="Enter post heading title here...">
-            <textarea id="content" placeholder="Type message here..." autocomplete="off"></textarea>
-            <button id="send">SEND</button>
-          </div>
-        </td>
-      </tr>
-    </table>
-  </div>
+            <div class="panel-header">Topics</div>
+            <div class="sidebar-input-container">
+              <input
+                type="text"
+                id="topic-target-input"
+                class="sidebar-input"
+                placeholder="New Topic..."
+              />
+              <button class="sidebar-btn" onclick="triggerCreateTopic()">
+                ADD
+              </button>
+            </div>
+            <div id="topic-list"></div>
 
-  <script type="text/javascript">
-    const DEBUG = false;
-    const DO_LOGGING = true;
-    var BACKEND_URL = DEBUG ? "http://localhost:3000" : "https://unreader.onrender.com"; 
-    var WS_URL = DEBUG ? "ws://localhost:3000" : "wss://unreader.onrender.com";
+            <div class="panel-header">Direct Messages</div>
+            <div class="sidebar-input-container">
+              <input
+                type="text"
+                id="dm-target-input"
+                class="sidebar-input"
+                placeholder="Username..."
+              />
+              <button class="sidebar-btn" onclick="triggerAddDM()">CHAT</button>
+            </div>
+            <div id="dm-list"></div>
 
-    var token = localStorage.getItem('token');
-    var myUsername = localStorage.getItem('username');
-    var currentMode = 'public';
-    var currentTarget = '';
-    var socket = null;
-    var isRegisterMode = false;
-    var currentHistoryIndex = 0;
-    var modModeActive = false;
-    var userRoles = { is_admin: false, is_moderator: false };
+            <div class="panel-header">🟢 Active Users</div>
+            <div id="roster-list"></div>
 
-    function log(...args) { if (DO_LOGGING) console.log(`[CLIENT]`, ...args); }
+            <div class="panel-header">System Operations</div>
+            <div id="settings-box-container" style="padding: 6px">
+              <div
+                id="mod-toggle-container"
+                style="display: none; margin-bottom: 4px"
+              >
+                <button
+                  id="mod-mode-btn"
+                  class="mod-indicator-btn"
+                  onclick="toggleModMode()"
+                >
+                  MOD MODE: OFF
+                </button>
+                <button
+                  id="find-user-btn"
+                  style="
+                    width: 95%;
+                    font-family: monospace;
+                    font-size: 10px;
+                    margin-top: 4px;
+                    cursor: pointer;
+                    border: 1px solid black;
+                    background: white;
+                  "
+                  onclick="openUserSearch()"
+                >
+                  FIND USER TOOL
+                </button>
+                <button
+                  id="view-logs-btn"
+                  style="
+                    width: 95%;
+                    font-family: monospace;
+                    font-size: 10px;
+                    margin-top: 4px;
+                    cursor: pointer;
+                    border: 1px solid black;
+                    background: white;
+                  "
+                  onclick="openModLogs()"
+                >
+                  VIEW MOD LOGS
+                </button>
+              </div>
+            </div>
+          </td>
+          <td id="chat-cell">
+            <div id="pagination-header-bar">
+              <button class="page-btn" onclick="jumpPage(-1)">
+                &lt; NEWER
+              </button>
+              <span id="page-display-index">PAGE: 0</span>
+              <button class="page-btn" onclick="jumpPage(1)">OLDER &gt;</button>
+            </div>
 
-    function parseMarkup(text) {
-      if (!text) return "";
-      const escaped = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      return marked.parse(escaped).trim();
-    }
+            <div id="chat-scroll-wrapper"></div>
 
-    function formatTimeToken(unixTimestamp) {
-      if (!unixTimestamp) return "MOMENTS AGO";
-      var parsedNum = Number(unixTimestamp);
-      if (isNaN(parsedNum)) return "MOMENTS AGO";
-      var d = new Date(parsedNum);
-      return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
+            <div id="input-bar-container">
+              <input
+                type="text"
+                id="nb-title-input"
+                placeholder="Enter post heading title here..."
+              />
+              <textarea
+                id="content"
+                placeholder="Type message here..."
+                autocomplete="off"
+              ></textarea>
+              <button id="send">SEND</button>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
 
-    function toggleModMode() {
-      modModeActive = !modModeActive;
-      log("Mod mode toggle state:", modModeActive);
-      var btn = document.getElementById('mod-mode-btn');
-      btn.textContent = modModeActive ? "MOD MODE: ACTIVE" : "MOD MODE: OFF";
-      btn.className = modModeActive ? "mod-indicator-btn mod-indicator-active" : "mod-indicator-btn";
-      loadHistory();
-    }
+    <script type="text/javascript">
+      const DEBUG = false;
+      const DO_LOGGING = true;
+      var BACKEND_URL = DEBUG
+        ? 'http://localhost'
+        : 'https://unreader.onrender.com';
+      var WS_URL = DEBUG ? 'ws://localhost' : 'wss://unreader.onrender.com';
 
-    document.getElementById('auth-toggle').onclick = function() {
-      isRegisterMode = !isRegisterMode;
-      log("Auth mode toggled. isRegisterMode:", isRegisterMode);
-      document.getElementById('auth-title').textContent = isRegisterMode ? 'REGISTER' : 'LOGIN';
-      this.textContent = isRegisterMode ? 'Already have an account? Login' : 'Need an account? Register';
-    };
+      var token = localStorage.getItem('token');
+      var myUsername = localStorage.getItem('username');
+      var currentMode = 'public';
+      var currentTarget = '';
+      var socket = null;
+      var isRegisterMode = false;
+      var currentHistoryIndex = 0;
+      var modModeActive = false;
+      var userRoles = { is_admin: false, is_moderator: false };
 
-    document.getElementById('auth-submit-btn').onclick = function() {
-      var username = document.getElementById('auth-user').value.trim();
-      var password = document.getElementById('auth-pass').value;
-      if(!username || !password) return alert('Fill in all log credentials.');
-      var url = isRegisterMode ? '/api/register' : '/api/login';
-      log("Auth submit. endpoint:", url, "user:", username);
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', BACKEND_URL + url, true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          log("Auth XHR complete. status:", xhr.status);
-          if (xhr.status === 200) {
-            try {
-              var data = JSON.parse(xhr.responseText);
-              localStorage.setItem('token', data.token);
-              localStorage.setItem('username', data.username);
-              token = data.token; myUsername = data.username;
-              initApp();
-            } catch(e) { log("Auth JSON parse error:", e); alert("Server returned an invalid packet signature."); }
-          } else {
-            log("Auth failed. buffer:", xhr.responseText);
-            try {
-              var errData = JSON.parse(xhr.responseText);
-              alert("Server error: " + (errData.error || "Access Denied"));
-            } catch(e) { alert("Structural connection failure."); }
-          }
-        }
+      function log(...args) {
+        if (DO_LOGGING) console.log(`[CLIENT]`, ...args);
+      }
+
+      function parseMarkup(text) {
+        if (!text) return '';
+        const escaped = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return marked.parse(escaped).trim();
+      }
+
+      function formatTimeToken(unixTimestamp) {
+        if (!unixTimestamp) return 'MOMENTS AGO';
+        var parsedNum = Number(unixTimestamp);
+        if (isNaN(parsedNum)) return 'MOMENTS AGO';
+        var d = new Date(parsedNum);
+        return (
+          d.toLocaleDateString() +
+          ' ' +
+          d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        );
+      }
+
+      function toggleModMode() {
+        modModeActive = !modModeActive;
+        log('Mod mode toggle state:', modModeActive);
+        var btn = document.getElementById('mod-mode-btn');
+        btn.textContent = modModeActive ? 'MOD MODE: ACTIVE' : 'MOD MODE: OFF';
+        btn.className = modModeActive
+          ? 'mod-indicator-btn mod-indicator-active'
+          : 'mod-indicator-btn';
+        loadHistory();
+      }
+
+      document.getElementById('auth-toggle').onclick = function () {
+        isRegisterMode = !isRegisterMode;
+        log('Auth mode toggled. isRegisterMode:', isRegisterMode);
+        document.getElementById('auth-title').textContent = isRegisterMode
+          ? 'REGISTER'
+          : 'LOGIN';
+        this.textContent = isRegisterMode
+          ? 'Already have an account? Login'
+          : 'Need an account? Register';
       };
-      xhr.send(JSON.stringify({ username: username, password: password }));
-    };
 
-    document.getElementById('logout-btn').onclick = function() { 
-      log("Logging out user session.");
-      localStorage.clear(); window.location.reload(); 
-    };
-
-    function initApp() {
-      log("Booting application logic layers.");
-      document.getElementById('auth-screen').style.display = 'none';
-      document.getElementById('user-display').textContent = '@' + myUsername;
-      
-      if (socket) { try { socket.close(); } catch(e){} }
-      log("Opening WS link:", WS_URL);
-      socket = new WebSocket(WS_URL);
-      socket.onopen = function() { 
-        log("WS Link connected. Authenticating...");
-        socket.send(JSON.stringify({ type: 'auth', token: token })); 
-      };
-      socket.onmessage = function(event) {
-        var data = JSON.parse(event.data);
-        log("Incoming packet:", data.type);
-        if (data.type === 'terminated') {
-          alert(data.reason || 'Session expired.');
-          localStorage.clear(); window.location.reload(); return;
-        }
-        if (data.type === 'error_alert') { alert(data.message); return; }
-        if (data.type === 'refresh_feed') { log("Broadcast: refresh_feed received."); loadHistory(); return; }
-        if (data.type === 'roster_update') { renderUserRoster(data.users); return; }
-        if (data.type === 'topics_update') { 
-          renderTopicList(data.topics);
-          if (data.user_roles) {
-            userRoles = data.user_roles;
-            log("Roles updated:", userRoles);
-            if (userRoles.is_admin || userRoles.is_moderator) {
-              document.getElementById('mod-toggle-container').style.display = 'block';
-            }
-          }
-          return; 
-        }
-        if (currentHistoryIndex === 0) loadHistory();
-      };
-      loadDMContacts(); loadHistory();
-    }
-
-    function renderUserRoster(userList) {
-      var container = document.getElementById('roster-list'); container.innerHTML = '';
-      for (var i = 0; i < userList.length; i++) {
-        var u = userList[i];
-        var div = document.createElement('div'); div.className = 'roster-user';
-        var span = document.createElement('span'); span.className = 'roster-name';
-        span.textContent = u;
-        (function(username) { span.onclick = function() { openProfileModal(username); }; })(u);
-        div.appendChild(span);
-        container.appendChild(div);
-      }
-    }
-
-    function renderTopicList(topics) {
-      var container = document.getElementById('topic-list'); container.innerHTML = '';
-      for (var i = 0; i < topics.length; i++) {
-        var t = topics[i];
-        var div = document.createElement('div');
-        div.className = 'nav-item'; div.id = 'nav-topic-' + t.slug;
-        div.textContent = '# ' + t.title;
-        (function(slug) { div.onclick = function() { switchChannel('topic', slug); }; })(t.slug);
-        container.appendChild(div);
-      }
-    }
-
-    function loadDMContacts() {
-      log("Syncing DM contacts.");
-      var xhr = new XMLHttpRequest(); xhr.open('GET', BACKEND_URL + '/dm-contacts', true);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-          var contacts = JSON.parse(xhr.responseText);
-          for (var i = 0; i < contacts.length; i++) { ensureDMNavOption(contacts[i]); }
-        }
-      };
-      xhr.send();
-    }
-
-    function ensureDMNavOption(username) {
-      if (document.getElementById('nav-dm-' + username) || username === myUsername) return;
-      var item = document.createElement('div'); item.className = 'nav-item'; item.id = 'nav-dm-' + username;
-      item.textContent = '💬 ' + username; item.onclick = function() { switchChannel('dm', username); };
-      document.getElementById('dm-list').appendChild(item);
-    }
-
-    function triggerAddDM() {
-      var inp = document.getElementById('dm-target-input');
-      var target = inp.value.trim(); if(!target || target === myUsername) return;
-      ensureDMNavOption(target); switchChannel('dm', target); inp.value = '';
-    }
-
-    function triggerCreateTopic() {
-      var inp = document.getElementById('topic-target-input');
-      var title = inp.value.trim(); if(!title) return;
-      if(socket && socket.readyState === WebSocket.OPEN) {
-        log("Sending create_topic request.");
-        socket.send(JSON.stringify({ type: 'create_topic', title: title }));
-      }
-      inp.value = '';
-    }
-
-    function switchChannel(mode, target) {
-      log("Switching UI space. mode:", mode, "target:", target);
-      currentMode = mode; currentTarget = target || ''; currentHistoryIndex = 0;
-      var items = document.getElementsByClassName('nav-item');
-      for (var i=0; i<items.length; i++) items[i].className = 'nav-item';
-      if(mode === 'public') document.getElementById('nav-public').className = 'nav-item nav-item-active';
-      else if(mode === 'neighborhood') document.getElementById('nav-neighborhood').className = 'nav-item nav-item-active';
-      else if(mode === 'dm') { ensureDMNavOption(target); document.getElementById('nav-dm-' + target).className = 'nav-item nav-item-active'; }
-      else if(mode === 'topic') { var node = document.getElementById('nav-topic-' + target); if(node) node.className = 'nav-item nav-item-active'; }
-      var titleInput = document.getElementById('nb-title-input');
-      var contentInput = document.getElementById('content');
-      var inputContainer = document.getElementById('input-bar-container');
-      if(mode === 'neighborhood') {
-        titleInput.style.display = 'block';
-        inputContainer.style.minHeight = '85px';
-        document.getElementById('chat-scroll-wrapper').style.bottom = '95px';
-        contentInput.placeholder = "Write description here...";
-      } else {
-        titleInput.style.display = 'none';
-        inputContainer.style.minHeight = '52px';
-        document.getElementById('chat-scroll-wrapper').style.bottom = '60px';
-        contentInput.placeholder = "Type message here...";
-      }
-      loadHistory();
-    }
-
-    function appendMessage(data) {
-      log("APPEND_MESSAGE payload details:", JSON.stringify(data));
-      var chatWrapper = document.getElementById('chat-scroll-wrapper');
-      var containerDiv = document.createElement('div'); containerDiv.className = 'message-container';
-      var msgDiv = document.createElement('div'); msgDiv.id = 'msg-id-' + data.id;
-      var effectiveUsername = data.username || data.sender || "UNKNOWN_NODE";
-      var isMe = effectiveUsername === myUsername;
-      msgDiv.style.float = isMe ? 'right' : 'left';
-      
-      var styleClass = 'message ';
-      if (data.is_deleted) styleClass += 'purged-msg';
-      else {
-        if (data.is_admin) styleClass += 'admin-msg';
-        else if (data.is_moderator) styleClass += 'mod-msg';
-        else styleClass += isMe ? 'my-msg' : 'other-msg';
-      }
-      msgDiv.className = styleClass;
-      
-      var timeStr = formatTimeToken(data.timestamp);
-      var meta = document.createElement('div'); meta.className = 'message-meta'; meta.style.cursor = 'pointer';
-      var nameDisplay = (data.is_admin ? '👑 ' : (data.is_moderator ? '🛡️ ' : '')) + effectiveUsername;
-      meta.textContent = nameDisplay + ' • ' + timeStr;
-      (function(username) { meta.onclick = function() { openProfileModal(username); }; })(effectiveUsername);
-
-      var txtBody = document.createElement('div'); txtBody.className = 'message-text';
-      msgDiv.appendChild(meta); msgDiv.appendChild(txtBody);
-      
-      if (data.is_deleted) {
-        txtBody.innerHTML = '<em>[MESSAGE PURGED]</em>';
-      } else {
-        txtBody.innerHTML = parseMarkup(data.content);
-        if (isMe && data.id !== -1) {
-          var selfDelBtn = document.createElement('button'); selfDelBtn.className = 'user-delete-btn'; selfDelBtn.textContent = 'X';
-          selfDelBtn.onclick = function() { if(confirm('Delete message?')) sendModAction('mod_delete', data.id); };
-          msgDiv.appendChild(selfDelBtn);
-        }
-      }
-      containerDiv.appendChild(msgDiv);
-      injectModTray(containerDiv, data, isMe);
-      chatWrapper.appendChild(containerDiv);
-      chatWrapper.scrollTop = chatWrapper.scrollHeight;
-    }
-
-    function appendNeighborhoodPost(data) {
-      log("APPEND_POST entry details:", JSON.stringify(data));
-      var chatWrapper = document.getElementById('chat-scroll-wrapper');
-      var box = document.createElement('div'); box.className = 'nb-post-box';
-      box.id = 'nb-post-' + data.id;
-      if (data.is_deleted) {
-        box.innerHTML = '<em>[POST RECORD PURGED]</em>';
-      } else {
-        var timeStr = formatTimeToken(data.timestamp);
-        var effectiveUsername = data.username || data.sender || "UNKNOWN_NODE";
-        var nameDisplay = (data.is_admin ? '👑 ' : (data.is_moderator ? '🛡️ ' : '')) + effectiveUsername;
-        box.innerHTML = '<div class="nb-header" style="cursor:pointer;">@' + nameDisplay + ' • ' + timeStr + '</div>' +
-                        '<div class="nb-title"></div>' +
-                        '<div class="message-text" style="font-size:13px; margin-bottom:10px;"></div>' +
-                        '<button class="comment-toggle-btn" onclick="toggleCommentsSection('+data.id+')">[Comments]</button>' +
-                        '<div class="comment-area" id="comment-area-for-'+data.id+'">' +
-                          '<div class="comment-list"></div>' +
-                          '<div style="margin-top:6px; display:flex;">' +
-                            '<input type="text" placeholder="Write response..." id="input-comment-for-'+data.id+'" style="flex-grow:1; font-size:11px; border:1px solid black; padding:4px;"> ' +
-                            '<button onclick="submitComment('+data.id+')" style="font-family:monospace; font-size:11px; cursor:pointer;">REPLY</button>' +
-                          '</div>' +
-                        '</div>';
-        box.querySelector('.nb-header').onclick = function() { openProfileModal(effectiveUsername); };
-        box.querySelector('.nb-title').textContent = data.title;
-        box.querySelector('.message-text').innerHTML = parseMarkup(data.content);
-        var cList = box.querySelector('.comment-list');
-        if(data.comments && data.comments.length > 0) {
-          for(var i=0; i<data.comments.length; i++) {
-            var c = data.comments[i];
-            var cDiv = document.createElement('div'); cDiv.className = 'comment-item';
-            if (c.is_deleted) {
-              cDiv.innerHTML = '<em>[Comment Purged]</em>';
+      document.getElementById('auth-submit-btn').onclick = function () {
+        var username = document.getElementById('auth-user').value.trim();
+        var password = document.getElementById('auth-pass').value;
+        if (!username || !password)
+          return alert('Fill in all log credentials.');
+        var url = isRegisterMode ? '/api/register' : '/api/login';
+        log('Auth submit. endpoint:', url, 'user:', username);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', BACKEND_URL + url, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            log('Auth XHR complete. status:', xhr.status);
+            if (xhr.status === 200) {
+              try {
+                var data = JSON.parse(xhr.responseText);
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('username', data.username);
+                token = data.token;
+                myUsername = data.username;
+                initApp();
+              } catch (e) {
+                log('Auth JSON parse error:', e);
+                alert('Server returned an invalid packet signature.');
+              }
             } else {
-              var cEffectiveUsername = c.username || c.sender || "UNKNOWN_NODE";
-              var cName = (c.is_admin ? '👑 ' : (c.is_moderator ? '🛡️ ' : '')) + cEffectiveUsername;
-              cDiv.innerHTML = '<strong style="cursor:pointer;">@'+cName+'</strong>: <span class="c-txt"></span>';
-              (function(u){ cDiv.querySelector('strong').onclick = function() { openProfileModal(u); }; })(cEffectiveUsername);
-              cDiv.querySelector('.c-txt').innerHTML = parseMarkup(c.content);
-              
-              if(cEffectiveUsername === myUsername || userRoles.is_admin || userRoles.is_moderator) {
-                var cDel = document.createElement('button'); cDel.style = 'float:right; font-size:8px; font-family:monospace; cursor:pointer; background:white; border:1px solid black;'; cDel.textContent = 'X';
-                (function(cid) { cDel.onclick = function() { 
-                  var r = prompt("Reason?");
-                  if(r !== null) {
-                    log("Mod Action: Purge Comment id:", cid);
-                    socket.send(JSON.stringify({ type: 'mod_delete', id: cid, channel: 'neighborhood_comment', reason: r })); 
-                  }
-                }; })(c.id);
-                cDiv.appendChild(cDel);
+              log('Auth failed. buffer:', xhr.responseText);
+              try {
+                var errData = JSON.parse(xhr.responseText);
+                alert('Server error: ' + (errData.error || 'Access Denied'));
+              } catch (e) {
+                alert('Structural connection failure.');
               }
             }
-            cList.appendChild(cDiv);
           }
+        };
+        xhr.send(JSON.stringify({ username: username, password: password }));
+      };
+
+      document.getElementById('logout-btn').onclick = function () {
+        log('Logging out user session.');
+        localStorage.clear();
+        window.location.reload();
+      };
+
+      function initApp() {
+        log('Booting application logic layers.');
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('user-display').textContent = '@' + myUsername;
+
+        if (socket) {
+          try {
+            socket.close();
+          } catch (e) {}
+        }
+        log('Opening WS link:', WS_URL);
+        socket = new WebSocket(WS_URL);
+        socket.onopen = function () {
+          log('WS Link connected. Authenticating...');
+          socket.send(JSON.stringify({ type: 'auth', token: token }));
+        };
+        socket.onmessage = function (event) {
+          var data = JSON.parse(event.data);
+          log('Incoming packet:', data.type);
+          if (data.type === 'terminated') {
+            alert(data.reason || 'Session expired.');
+            localStorage.clear();
+            window.location.reload();
+            return;
+          }
+          if (data.type === 'error_alert') {
+            alert(data.message);
+            return;
+          }
+          if (data.type === 'refresh_feed') {
+            log('Broadcast: refresh_feed received.');
+            loadHistory();
+            return;
+          }
+          if (data.type === 'roster_update') {
+            renderUserRoster(data.users);
+            return;
+          }
+          if (data.type === 'topics_update') {
+            renderTopicList(data.topics);
+            if (data.user_roles) {
+              userRoles = data.user_roles;
+              log('Roles updated:', userRoles);
+              if (userRoles.is_admin || userRoles.is_moderator) {
+                document.getElementById('mod-toggle-container').style.display =
+                  'block';
+              }
+            }
+            return;
+          }
+          if (currentHistoryIndex === 0) loadHistory();
+        };
+        loadDMContacts();
+        loadHistory();
+      }
+
+      function renderUserRoster(userList) {
+        var container = document.getElementById('roster-list');
+        container.innerHTML = '';
+        for (var i = 0; i < userList.length; i++) {
+          var u = userList[i];
+          var div = document.createElement('div');
+          div.className = 'roster-user';
+          var span = document.createElement('span');
+          span.className = 'roster-name';
+          span.textContent = u;
+          (function (username) {
+            span.onclick = function () {
+              openProfileModal(username);
+            };
+          })(u);
+          div.appendChild(span);
+          container.appendChild(div);
         }
       }
-      injectModTray(box, data, false);
-      chatWrapper.appendChild(box);
-    }
 
-    function toggleCommentsSection(postId) {
-      var target = document.getElementById('comment-area-for-' + postId);
-      target.style.display = (target.style.display === 'block') ? 'none' : 'block';
-    }
-
-    function submitComment(postId) {
-      var inp = document.getElementById('input-comment-for-' + postId);
-      var text = inp.value.trim(); if(!text) return;
-      if(socket && socket.readyState === WebSocket.OPEN) {
-        log("Broadcasting neighborhood comment packet.");
-        socket.send(JSON.stringify({ type: 'neighborhood_comment', post_id: postId, content: text }));
+      function renderTopicList(topics) {
+        var container = document.getElementById('topic-list');
+        container.innerHTML = '';
+        for (var i = 0; i < topics.length; i++) {
+          var t = topics[i];
+          var div = document.createElement('div');
+          div.className = 'nav-item';
+          div.id = 'nav-topic-' + t.slug;
+          div.textContent = '# ' + t.title;
+          (function (slug) {
+            div.onclick = function () {
+              switchChannel('topic', slug);
+            };
+          })(t.slug);
+          container.appendChild(div);
+        }
       }
-      inp.value = '';
-    }
 
-    function injectModTray(targetNode, data, isMe) {
-      if ((!userRoles.is_admin && !userRoles.is_moderator) || !modModeActive || data.id === -1) return;
-      var trayDiv = document.createElement('div'); trayDiv.className = 'mod-action-tray';
-      trayDiv.style.float = isMe ? 'right' : 'left'; trayDiv.style.clear = 'both';
-      
-      if (!data.is_deleted) {
-        var dBtn = document.createElement('button'); dBtn.className = 'mod-tray-btn'; dBtn.textContent = 'PURGE';
-        dBtn.onclick = function() {
-          var r = prompt("Reason for purge?");
-          if (r !== null) sendModAction('mod_delete', data.id, r);
+      function loadDMContacts() {
+        log('Syncing DM contacts.');
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', BACKEND_URL + '/dm-contacts', true);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            var contacts = JSON.parse(xhr.responseText);
+            for (var i = 0; i < contacts.length; i++) {
+              ensureDMNavOption(contacts[i]);
+            }
+          }
         };
-        trayDiv.appendChild(dBtn);
-      } else {
-        if (userRoles.is_admin || (userRoles.is_moderator && data.deleted_by === myUsername)) {
-          var rBtn = document.createElement('button'); rBtn.className = 'mod-tray-btn'; rBtn.textContent = 'RESTORE';
-          rBtn.onclick = function() { 
-            log("Sending restore packet for id:", data.id);
-            sendModAction('mod_restore', data.id); 
+        xhr.send();
+      }
+
+      function ensureDMNavOption(username) {
+        if (
+          document.getElementById('nav-dm-' + username) ||
+          username === myUsername
+        )
+          return;
+        var item = document.createElement('div');
+        item.className = 'nav-item';
+        item.id = 'nav-dm-' + username;
+        item.textContent = '💬 ' + username;
+        item.onclick = function () {
+          switchChannel('dm', username);
+        };
+        document.getElementById('dm-list').appendChild(item);
+      }
+
+      function triggerAddDM() {
+        var inp = document.getElementById('dm-target-input');
+        var target = inp.value.trim();
+        if (!target || target === myUsername) return;
+        ensureDMNavOption(target);
+        switchChannel('dm', target);
+        inp.value = '';
+      }
+
+      function triggerCreateTopic() {
+        var inp = document.getElementById('topic-target-input');
+        var title = inp.value.trim();
+        if (!title) return;
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          log('Sending create_topic request.');
+          socket.send(JSON.stringify({ type: 'create_topic', title: title }));
+        }
+        inp.value = '';
+      }
+
+      function switchChannel(mode, target) {
+        log('Switching UI space. mode:', mode, 'target:', target);
+        currentMode = mode;
+        currentTarget = target || '';
+        currentHistoryIndex = 0;
+        var items = document.getElementsByClassName('nav-item');
+        for (var i = 0; i < items.length; i++) items[i].className = 'nav-item';
+        if (mode === 'public')
+          document.getElementById('nav-public').className =
+            'nav-item nav-item-active';
+        else if (mode === 'neighborhood')
+          document.getElementById('nav-neighborhood').className =
+            'nav-item nav-item-active';
+        else if (mode === 'dm') {
+          ensureDMNavOption(target);
+          document.getElementById('nav-dm-' + target).className =
+            'nav-item nav-item-active';
+        } else if (mode === 'topic') {
+          var node = document.getElementById('nav-topic-' + target);
+          if (node) node.className = 'nav-item nav-item-active';
+        }
+        var titleInput = document.getElementById('nb-title-input');
+        var contentInput = document.getElementById('content');
+        var inputContainer = document.getElementById('input-bar-container');
+        if (mode === 'neighborhood') {
+          titleInput.style.display = 'block';
+          inputContainer.style.minHeight = '85px';
+          document.getElementById('chat-scroll-wrapper').style.bottom = '95px';
+          contentInput.placeholder = 'Write description here...';
+        } else {
+          titleInput.style.display = 'none';
+          inputContainer.style.minHeight = '52px';
+          document.getElementById('chat-scroll-wrapper').style.bottom = '60px';
+          contentInput.placeholder = 'Type message here...';
+        }
+        loadHistory();
+      }
+
+      function appendMessage(data) {
+        log('APPEND_MESSAGE payload details:', JSON.stringify(data));
+        var chatWrapper = document.getElementById('chat-scroll-wrapper');
+        var containerDiv = document.createElement('div');
+        containerDiv.className = 'message-container';
+        var msgDiv = document.createElement('div');
+        msgDiv.id = 'msg-id-' + data.id;
+        var effectiveUsername = data.username || data.sender || 'UNKNOWN_NODE';
+        var isMe = effectiveUsername === myUsername;
+        msgDiv.style.float = isMe ? 'right' : 'left';
+
+        var styleClass = 'message ';
+        if (data.is_deleted) styleClass += 'purged-msg';
+        else {
+          if (data.is_admin) styleClass += 'admin-msg';
+          else if (data.is_moderator) styleClass += 'mod-msg';
+          else styleClass += isMe ? 'my-msg' : 'other-msg';
+        }
+        msgDiv.className = styleClass;
+
+        var timeStr = formatTimeToken(data.timestamp);
+        var meta = document.createElement('div');
+        meta.className = 'message-meta';
+        meta.style.cursor = 'pointer';
+        var nameDisplay =
+          (data.is_admin ? '👑 ' : data.is_moderator ? '🛡️ ' : '') +
+          effectiveUsername;
+        meta.textContent = nameDisplay + ' • ' + timeStr;
+        (function (username) {
+          meta.onclick = function () {
+            openProfileModal(username);
           };
-          trayDiv.appendChild(rBtn);
-        }
-      }
-      targetNode.appendChild(trayDiv);
-    }
+        })(effectiveUsername);
 
-    function sendModAction(type, id, reason) {
-      log("Dispatching moderator action packet:", type);
-      socket.send(JSON.stringify({ type: type, id: id, channel: currentMode, reason: reason }));
-    }
+        var txtBody = document.createElement('div');
+        txtBody.className = 'message-text';
+        msgDiv.appendChild(meta);
+        msgDiv.appendChild(txtBody);
 
-    function jumpPage(val) {
-      currentHistoryIndex = Math.max(0, currentHistoryIndex + val);
-      loadHistory();
-    }
-
-    function loadHistory() {
-      log("Refreshing data view. space:", currentMode, "index:", currentHistoryIndex);
-      var wrapper = document.getElementById('chat-scroll-wrapper'); wrapper.innerHTML = '';
-      var xhr = new XMLHttpRequest();
-      var endpoint = '/history?index=';
-      if(currentMode === 'dm') endpoint = '/dm-history?target=' + currentTarget + '&index=';
-      else if(currentMode === 'topic') endpoint = '/topic-history?slug=' + currentTarget + '&index=';
-      else if(currentMode === 'neighborhood') endpoint = '/neighborhood-history?index=';
-      xhr.open('GET', BACKEND_URL + endpoint + currentHistoryIndex, true);
-      if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-          log("History stream synced.");
-          var data = JSON.parse(xhr.responseText);
-          document.getElementById('page-display-index').textContent = "PAGE: " + currentHistoryIndex;
-          for (var i = 0; i < data.length; i++) {
-            if (currentMode === 'neighborhood') appendNeighborhoodPost(data[i]);
-            else appendMessage(data[i]);
+        if (data.is_deleted) {
+          txtBody.innerHTML = '<em>[MESSAGE PURGED]</em>';
+        } else {
+          txtBody.innerHTML = parseMarkup(data.content);
+          if (isMe && data.id !== -1) {
+            var selfDelBtn = document.createElement('button');
+            selfDelBtn.className = 'user-delete-btn';
+            selfDelBtn.textContent = 'X';
+            selfDelBtn.onclick = function () {
+              if (confirm('Delete message?'))
+                sendModAction('mod_delete', data.id);
+            };
+            msgDiv.appendChild(selfDelBtn);
           }
         }
-      };
-      xhr.send();
-    }
-
-    function sendMessage() {
-      var input = document.getElementById('content'); var text = input.value.trim();
-      if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
-      if (currentMode === 'neighborhood') {
-        var tInput = document.getElementById('nb-title-input');
-        var titleText = tInput.value.trim();
-        if(!titleText) return alert('Enter a post heading title.');
-        socket.send(JSON.stringify({ type: 'neighborhood_post', title: titleText, content: text }));
-        tInput.value = '';
-      } else {
-        log("Dispatching message packet stream.");
-        socket.send(JSON.stringify({ type: currentMode === 'public' ? 'message' : (currentMode === 'topic' ? 'topic_message' : 'dm'), content: text, target: currentTarget }));
+        containerDiv.appendChild(msgDiv);
+        injectModTray(containerDiv, data, isMe);
+        chatWrapper.appendChild(containerDiv);
+        chatWrapper.scrollTop = chatWrapper.scrollHeight;
       }
-      input.value = '';
-      input.style.height = '32px';
-    }
 
-    document.getElementById('send').onclick = sendMessage;
-    document.getElementById('content').onkeydown = function(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
+      function appendNeighborhoodPost(data) {
+        log('APPEND_POST entry details:', JSON.stringify(data));
+        var chatWrapper = document.getElementById('chat-scroll-wrapper');
+        var box = document.createElement('div');
+        box.className = 'nb-post-box';
+        box.id = 'nb-post-' + data.id;
+        if (data.is_deleted) {
+          box.innerHTML = '<em>[POST RECORD PURGED]</em>';
+        } else {
+          var timeStr = formatTimeToken(data.timestamp);
+          var effectiveUsername =
+            data.username || data.sender || 'UNKNOWN_NODE';
+          var nameDisplay =
+            (data.is_admin ? '👑 ' : data.is_moderator ? '🛡️ ' : '') +
+            effectiveUsername;
+          box.innerHTML =
+            '<div class="nb-header" style="cursor:pointer;">@' +
+            nameDisplay +
+            ' • ' +
+            timeStr +
+            '</div>' +
+            '<div class="nb-title"></div>' +
+            '<div class="message-text" style="font-size:13px; margin-bottom:10px;"></div>' +
+            '<button class="comment-toggle-btn" onclick="toggleCommentsSection(' +
+            data.id +
+            ')">[Comments]</button>' +
+            '<div class="comment-area" id="comment-area-for-' +
+            data.id +
+            '">' +
+            '<div class="comment-list"></div>' +
+            '<div style="margin-top:6px; display:flex;">' +
+            '<input type="text" placeholder="Write response..." id="input-comment-for-' +
+            data.id +
+            '" style="flex-grow:1; font-size:11px; border:1px solid black; padding:4px;"> ' +
+            '<button onclick="submitComment(' +
+            data.id +
+            ')" style="font-family:monospace; font-size:11px; cursor:pointer;">REPLY</button>' +
+            '</div>' +
+            '</div>';
+          box.querySelector('.nb-header').onclick = function () {
+            openProfileModal(effectiveUsername);
+          };
+          box.querySelector('.nb-title').textContent = data.title;
+          box.querySelector('.message-text').innerHTML = parseMarkup(
+            data.content,
+          );
+          var cList = box.querySelector('.comment-list');
+          if (data.comments && data.comments.length > 0) {
+            for (var i = 0; i < data.comments.length; i++) {
+              var c = data.comments[i];
+              var cDiv = document.createElement('div');
+              cDiv.className = 'comment-item';
+              if (c.is_deleted) {
+                cDiv.innerHTML = '<em>[Comment Purged]</em>';
+              } else {
+                var cEffectiveUsername =
+                  c.username || c.sender || 'UNKNOWN_NODE';
+                var cName =
+                  (c.is_admin ? '👑 ' : c.is_moderator ? '🛡️ ' : '') +
+                  cEffectiveUsername;
+                cDiv.innerHTML =
+                  '<strong style="cursor:pointer;">@' +
+                  cName +
+                  '</strong>: <span class="c-txt"></span>';
+                (function (u) {
+                  cDiv.querySelector('strong').onclick = function () {
+                    openProfileModal(u);
+                  };
+                })(cEffectiveUsername);
+                cDiv.querySelector('.c-txt').innerHTML = parseMarkup(c.content);
+
+                if (
+                  cEffectiveUsername === myUsername ||
+                  userRoles.is_admin ||
+                  userRoles.is_moderator
+                ) {
+                  var cDel = document.createElement('button');
+                  cDel.style =
+                    'float:right; font-size:8px; font-family:monospace; cursor:pointer; background:white; border:1px solid black;';
+                  cDel.textContent = 'X';
+                  (function (cid) {
+                    cDel.onclick = function () {
+                      var r = prompt('Reason?');
+                      if (r !== null) {
+                        log('Mod Action: Purge Comment id:', cid);
+                        socket.send(
+                          JSON.stringify({
+                            type: 'mod_delete',
+                            id: cid,
+                            channel: 'neighborhood_comment',
+                            reason: r,
+                          }),
+                        );
+                      }
+                    };
+                  })(c.id);
+                  cDiv.appendChild(cDel);
+                }
+              }
+              cList.appendChild(cDiv);
+            }
+          }
+        }
+        injectModTray(box, data, false);
+        chatWrapper.appendChild(box);
       }
-    };
-    document.getElementById('content').oninput = function() {
-      this.style.height = 'auto';
-      this.style.height = (this.scrollHeight) + 'px';
-    };
 
-    function openProfileModal(targetUser) {
-      log("Pulling profile metadata for:", targetUser);
-      var xhr = new XMLHttpRequest(); xhr.open('GET', BACKEND_URL + '/api/profile/' + targetUser, true);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-          var p = JSON.parse(xhr.responseText);
-          showProfileInModal(p);
+      function toggleCommentsSection(postId) {
+        var target = document.getElementById('comment-area-for-' + postId);
+        target.style.display =
+          target.style.display === 'block' ? 'none' : 'block';
+      }
+
+      function submitComment(postId) {
+        var inp = document.getElementById('input-comment-for-' + postId);
+        var text = inp.value.trim();
+        if (!text) return;
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          log('Broadcasting neighborhood comment packet.');
+          socket.send(
+            JSON.stringify({
+              type: 'neighborhood_comment',
+              post_id: postId,
+              content: text,
+            }),
+          );
+        }
+        inp.value = '';
+      }
+
+      function injectModTray(targetNode, data, isMe) {
+        if (
+          (!userRoles.is_admin && !userRoles.is_moderator) ||
+          !modModeActive ||
+          data.id === -1
+        )
+          return;
+        var trayDiv = document.createElement('div');
+        trayDiv.className = 'mod-action-tray';
+        trayDiv.style.float = isMe ? 'right' : 'left';
+        trayDiv.style.clear = 'both';
+
+        if (!data.is_deleted) {
+          var dBtn = document.createElement('button');
+          dBtn.className = 'mod-tray-btn';
+          dBtn.textContent = 'PURGE';
+          dBtn.onclick = function () {
+            var r = prompt('Reason for purge?');
+            if (r !== null) sendModAction('mod_delete', data.id, r);
+          };
+          trayDiv.appendChild(dBtn);
+        } else {
+          if (
+            userRoles.is_admin ||
+            (userRoles.is_moderator && data.deleted_by === myUsername)
+          ) {
+            var rBtn = document.createElement('button');
+            rBtn.className = 'mod-tray-btn';
+            rBtn.textContent = 'RESTORE';
+            rBtn.onclick = function () {
+              log('Sending restore packet for id:', data.id);
+              sendModAction('mod_restore', data.id);
+            };
+            trayDiv.appendChild(rBtn);
+          }
+        }
+        targetNode.appendChild(trayDiv);
+      }
+
+      function sendModAction(type, id, reason) {
+        log('Dispatching moderator action packet:', type);
+        socket.send(
+          JSON.stringify({
+            type: type,
+            id: id,
+            channel: currentMode,
+            reason: reason,
+          }),
+        );
+      }
+
+      function jumpPage(val) {
+        currentHistoryIndex = Math.max(0, currentHistoryIndex + val);
+        loadHistory();
+      }
+
+      function loadHistory() {
+        log(
+          'Refreshing data view. space:',
+          currentMode,
+          'index:',
+          currentHistoryIndex,
+        );
+        var wrapper = document.getElementById('chat-scroll-wrapper');
+        wrapper.innerHTML = '';
+        var xhr = new XMLHttpRequest();
+        var endpoint = '/history?index=';
+        if (currentMode === 'dm')
+          endpoint = '/dm-history?target=' + currentTarget + '&index=';
+        else if (currentMode === 'topic')
+          endpoint = '/topic-history?slug=' + currentTarget + '&index=';
+        else if (currentMode === 'neighborhood')
+          endpoint = '/neighborhood-history?index=';
+        xhr.open('GET', BACKEND_URL + endpoint + currentHistoryIndex, true);
+        if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            log('History stream synced.');
+            var data = JSON.parse(xhr.responseText);
+            document.getElementById('page-display-index').textContent =
+              'PAGE: ' + currentHistoryIndex;
+            for (var i = 0; i < data.length; i++) {
+              if (currentMode === 'neighborhood')
+                appendNeighborhoodPost(data[i]);
+              else appendMessage(data[i]);
+            }
+          }
+        };
+        xhr.send();
+      }
+
+      function sendMessage() {
+        var input = document.getElementById('content');
+        var text = input.value.trim();
+        if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+        if (currentMode === 'neighborhood') {
+          var tInput = document.getElementById('nb-title-input');
+          var titleText = tInput.value.trim();
+          if (!titleText) return alert('Enter a post heading title.');
+          socket.send(
+            JSON.stringify({
+              type: 'neighborhood_post',
+              title: titleText,
+              content: text,
+            }),
+          );
+          tInput.value = '';
+        } else {
+          log('Dispatching message packet stream.');
+          socket.send(
+            JSON.stringify({
+              type:
+                currentMode === 'public'
+                  ? 'message'
+                  : currentMode === 'topic'
+                    ? 'topic_message'
+                    : 'dm',
+              content: text,
+              target: currentTarget,
+            }),
+          );
+        }
+        input.value = '';
+        input.style.height = '32px';
+      }
+
+      document.getElementById('send').onclick = sendMessage;
+      document.getElementById('content').onkeydown = function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
         }
       };
-      xhr.send();
-    }
+      document.getElementById('content').oninput = function () {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
+      };
 
-    function showProfileInModal(p) {
-      log("Profile modal view active.");
-      document.getElementById('profile-view').style.display = 'block';
-      document.getElementById('mod-log-view').style.display = 'none';
-      document.getElementById('user-search-view').style.display = 'none';
-
-      if (!p) { document.getElementById('modal-overlay').style.display = 'block'; return; }
-      
-      document.getElementById('info-username').textContent = p.username;
-      document.getElementById('info-location').textContent = p.location;
-      document.getElementById('info-bio').textContent = p.bio;
-      document.getElementById('info-avatar').textContent = p.avatar_emoji;
-      
-      var isSelf = p.username === myUsername;
-      document.getElementById('info-edit-controls').style.display = isSelf ? 'block' : 'none';
-      document.getElementById('info-dm-btn').style.display = isSelf ? 'none' : 'block';
-      document.getElementById('info-dm-btn').onclick = function() { closeInfoModal(); switchChannel('dm', p.username); };
-      
-      if(isSelf) {
-        document.getElementById('edit-avatar').value = p.avatar_emoji;
-        document.getElementById('edit-location').value = p.location;
-        document.getElementById('edit-bio').value = p.bio;
-        document.getElementById('change-pass-current').value = '';
-        document.getElementById('change-pass-new').value = '';
+      function openProfileModal(targetUser) {
+        log('Pulling profile metadata for:', targetUser);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', BACKEND_URL + '/api/profile/' + targetUser, true);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            var p = JSON.parse(xhr.responseText);
+            showProfileInModal(p);
+          }
+        };
+        xhr.send();
       }
 
-      if (userRoles.is_admin) {
-        document.getElementById('admin-controls').style.display = 'block';
-        document.getElementById('admin-ban-btn').style.display = 'inline-block';
-        document.getElementById('admin-pardon-btn').style.display = 'inline-block';
-        document.getElementById('admin-ban-btn').onclick = function() { if(confirm('Ban '+p.username+'?')) socket.send(JSON.stringify({ type: 'mod_ban', target: p.username })); };
-        document.getElementById('admin-pardon-btn').onclick = function() { socket.send(JSON.stringify({ type: 'mod_pardon', target: p.username })); };
-        document.getElementById('admin-timeout-btn').onclick = function() {
-          var dur = document.getElementById('admin-timeout-dur').value;
-          socket.send(JSON.stringify({ type: 'mod_timeout', target: p.username, duration: dur }));
-        };
-      } else if (userRoles.is_moderator && !isSelf) {
-        document.getElementById('admin-controls').style.display = 'block';
-        document.getElementById('admin-ban-btn').style.display = 'none';
-        document.getElementById('admin-pardon-btn').style.display = 'none';
-        document.getElementById('admin-timeout-btn').onclick = function() {
-          var dur = document.getElementById('admin-timeout-dur').value;
-          var r = prompt("Reason for timeout?");
-          if (r) socket.send(JSON.stringify({ type: 'mod_timeout', target: p.username, duration: dur, reason: r }));
-        };
-      } else {
-        document.getElementById('admin-controls').style.display = 'none';
-      }
-      document.getElementById('modal-overlay').style.display = 'block';
-    }
+      function showProfileInModal(p) {
+        log('Profile modal view active.');
+        document.getElementById('profile-view').style.display = 'block';
+        document.getElementById('mod-log-view').style.display = 'none';
+        document.getElementById('user-search-view').style.display = 'none';
 
-    function openModLogs() {
-      log("Accessing system audit logs.");
-      var xhr = new XMLHttpRequest(); xhr.open('GET', BACKEND_URL + '/api/mod-logs', true);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-          var logs = JSON.parse(xhr.responseText);
-          var list = document.getElementById('mod-log-list'); list.innerHTML = '<strong>MODERATOR ACTION LOG:</strong><br><br>';
-          logs.forEach(function(l) {
-            var div = document.createElement('div'); div.className = 'mod-log-item';
-            div.textContent = `[${formatTimeToken(l.timestamp)}] ${l.mod_username}: ${l.action_type.toUpperCase()} on ${l.target_username || 'ID '+l.target_id} | Reason: ${l.reason}`;
-            list.appendChild(div);
-          });
-          document.getElementById('profile-view').style.display = 'none';
-          document.getElementById('mod-log-view').style.display = 'block';
+        if (!p) {
           document.getElementById('modal-overlay').style.display = 'block';
+          return;
         }
-      };
-      xhr.send();
-    }
 
-    function openUserSearch() {
-      log("Accessing administrative search panel.");
-      document.getElementById('profile-view').style.display = 'none';
-      document.getElementById('mod-log-view').style.display = 'none';
-      document.getElementById('user-search-view').style.display = 'block';
-      document.getElementById('user-search-results').innerHTML = '';
-      document.getElementById('modal-overlay').style.display = 'block';
-    }
+        document.getElementById('info-username').textContent = p.username;
+        document.getElementById('info-location').textContent = p.location;
+        document.getElementById('info-bio').textContent = p.bio;
+        document.getElementById('info-avatar').textContent = p.avatar_emoji;
 
-    function searchUserAction() {
-      var target = document.getElementById('user-search-input').value.trim();
-      if (!target) return;
-      log("Dispatching user query target:", target);
-      var xhr = new XMLHttpRequest(); xhr.open('GET', BACKEND_URL + '/api/admin/find-user/' + target, true);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          log("User query response code:", xhr.status);
-          var res = document.getElementById('user-search-results');
-          if (xhr.status === 200) {
-            var u = JSON.parse(xhr.responseText);
-            var status = u.is_banned ? 'BANNED' : (BigInt(u.timeout_until) > BigInt(Date.now()) ? 'TIMED OUT' : 'ACTIVE');
-            var html = `<div style="font-family:monospace; font-size:11px;">
+        var isSelf = p.username === myUsername;
+        document.getElementById('info-edit-controls').style.display = isSelf
+          ? 'block'
+          : 'none';
+        document.getElementById('info-dm-btn').style.display = isSelf
+          ? 'none'
+          : 'block';
+        document.getElementById('info-dm-btn').onclick = function () {
+          closeInfoModal();
+          switchChannel('dm', p.username);
+        };
+
+        if (isSelf) {
+          document.getElementById('edit-avatar').value = p.avatar_emoji;
+          document.getElementById('edit-location').value = p.location;
+          document.getElementById('edit-bio').value = p.bio;
+          document.getElementById('change-pass-current').value = '';
+          document.getElementById('change-pass-new').value = '';
+        }
+
+        if (userRoles.is_admin) {
+          document.getElementById('admin-controls').style.display = 'block';
+          document.getElementById('admin-ban-btn').style.display =
+            'inline-block';
+          document.getElementById('admin-pardon-btn').style.display =
+            'inline-block';
+          document.getElementById('admin-ban-btn').onclick = function () {
+            if (confirm('Ban ' + p.username + '?'))
+              socket.send(
+                JSON.stringify({ type: 'mod_ban', target: p.username }),
+              );
+          };
+          document.getElementById('admin-pardon-btn').onclick = function () {
+            socket.send(
+              JSON.stringify({ type: 'mod_pardon', target: p.username }),
+            );
+          };
+          document.getElementById('admin-timeout-btn').onclick = function () {
+            var dur = document.getElementById('admin-timeout-dur').value;
+            socket.send(
+              JSON.stringify({
+                type: 'mod_timeout',
+                target: p.username,
+                duration: dur,
+              }),
+            );
+          };
+        } else if (userRoles.is_moderator && !isSelf) {
+          document.getElementById('admin-controls').style.display = 'block';
+          document.getElementById('admin-ban-btn').style.display = 'none';
+          document.getElementById('admin-pardon-btn').style.display = 'none';
+          document.getElementById('admin-timeout-btn').onclick = function () {
+            var dur = document.getElementById('admin-timeout-dur').value;
+            var r = prompt('Reason for timeout?');
+            if (r)
+              socket.send(
+                JSON.stringify({
+                  type: 'mod_timeout',
+                  target: p.username,
+                  duration: dur,
+                  reason: r,
+                }),
+              );
+          };
+        } else {
+          document.getElementById('admin-controls').style.display = 'none';
+        }
+        document.getElementById('modal-overlay').style.display = 'block';
+      }
+
+      function openModLogs() {
+        log('Accessing system audit logs.');
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', BACKEND_URL + '/api/mod-logs', true);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            var logs = JSON.parse(xhr.responseText);
+            var list = document.getElementById('mod-log-list');
+            list.innerHTML = '<strong>MODERATOR ACTION LOG:</strong><br><br>';
+            logs.forEach(function (l) {
+              var div = document.createElement('div');
+              div.className = 'mod-log-item';
+              div.textContent = `[${formatTimeToken(l.timestamp)}] ${l.mod_username}: ${l.action_type.toUpperCase()} on ${l.target_username || 'ID ' + l.target_id} | Reason: ${l.reason}`;
+              list.appendChild(div);
+            });
+            document.getElementById('profile-view').style.display = 'none';
+            document.getElementById('mod-log-view').style.display = 'block';
+            document.getElementById('modal-overlay').style.display = 'block';
+          }
+        };
+        xhr.send();
+      }
+
+      function openUserSearch() {
+        log('Accessing administrative search panel.');
+        document.getElementById('profile-view').style.display = 'none';
+        document.getElementById('mod-log-view').style.display = 'none';
+        document.getElementById('user-search-view').style.display = 'block';
+        document.getElementById('user-search-results').innerHTML = '';
+        document.getElementById('modal-overlay').style.display = 'block';
+      }
+
+      function searchUserAction() {
+        var target = document.getElementById('user-search-input').value.trim();
+        if (!target) return;
+        log('Dispatching user query target:', target);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', BACKEND_URL + '/api/admin/find-user/' + target, true);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            log('User query response code:', xhr.status);
+            var res = document.getElementById('user-search-results');
+            if (xhr.status === 200) {
+              var u = JSON.parse(xhr.responseText);
+              var status = u.is_banned
+                ? 'BANNED'
+                : BigInt(u.timeout_until) > BigInt(Date.now())
+                  ? 'TIMED OUT'
+                  : 'ACTIVE';
+              var html = `<div style="font-family:monospace; font-size:11px;">
               <strong>User:</strong> ${u.username}<br>
               <strong>Last IP:</strong> ${u.last_ip || 'Unknown'}<br>
               <strong>Status:</strong> ${status}<br>
               <strong>Roles:</strong> Admin: ${u.is_admin}, Mod: ${u.is_moderator}<br><br>`;
-            
-            if (userRoles.is_admin) {
-              html += `<button onclick="setModeratorAction('${u.username}', ${!u.is_moderator})" style="font-size:10px;">${u.is_moderator ? 'REMOVE MOD' : 'MAKE MOD'}</button> `;
-              html += `<button onclick="adminAction('mod_ban', '${u.username}')" style="font-size:10px;">BAN</button> `;
-              html += `<button onclick="adminAction('mod_pardon', '${u.username}')" style="font-size:10px;">PARDON</button>`;
+
+              if (userRoles.is_admin) {
+                html += `<button onclick="setModeratorAction('${u.username}', ${!u.is_moderator})" style="font-size:10px;">${u.is_moderator ? 'REMOVE MOD' : 'MAKE MOD'}</button> `;
+                html += `<button onclick="adminAction('mod_ban', '${u.username}')" style="font-size:10px;">BAN</button> `;
+                html += `<button onclick="adminAction('mod_pardon', '${u.username}')" style="font-size:10px;">PARDON</button>`;
+              }
+              html += `</div>`;
+              res.innerHTML = html;
+            } else {
+              res.innerHTML = 'User identity not found.';
             }
-            html += `</div>`;
-            res.innerHTML = html;
-          } else { res.innerHTML = 'User identity not found.'; }
-        }
-      };
-      xhr.send();
-    }
+          }
+        };
+        xhr.send();
+      }
 
-    function setModeratorAction(target, isMod) {
-      log("Sending role update packet.");
-      var xhr = new XMLHttpRequest(); xhr.open('POST', BACKEND_URL + '/api/admin/set-role', true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function() { if (xhr.readyState === 4) searchUserAction(); };
-      xhr.send(JSON.stringify({ target: target, is_moderator: isMod }));
-    }
+      function setModeratorAction(target, isMod) {
+        log('Sending role update packet.');
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', BACKEND_URL + '/api/admin/set-role', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) searchUserAction();
+        };
+        xhr.send(JSON.stringify({ target: target, is_moderator: isMod }));
+      }
 
-    function adminAction(type, target) {
-      log("Sending administrative action packet.");
-      socket.send(JSON.stringify({ type: type, target: target }));
-      setTimeout(searchUserAction, 500);
-    }
+      function adminAction(type, target) {
+        log('Sending administrative action packet.');
+        socket.send(JSON.stringify({ type: type, target: target }));
+        setTimeout(searchUserAction, 500);
+      }
 
-    function closeInfoModal() { document.getElementById('modal-overlay').style.display = 'none'; }
-    
-    function saveProfileChanges() {
-      var av = document.getElementById('edit-avatar').value.trim();
-      var loc = document.getElementById('edit-location').value.trim();
-      var bio = document.getElementById('edit-bio').value.trim();
-      log("Sending profile update packet.");
-      var xhr = new XMLHttpRequest(); xhr.open('POST', BACKEND_URL + '/api/profile', true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function() { if (xhr.readyState === 4 && xhr.status === 200) { closeInfoModal(); openProfileModal(myUsername); } };
-      xhr.send(JSON.stringify({ bio: bio, location: loc, avatar_emoji: av }));
-    }
+      function closeInfoModal() {
+        document.getElementById('modal-overlay').style.display = 'none';
+      }
 
-    function submitPasswordChange() {
-      var currentPass = document.getElementById('change-pass-current').value;
-      var newPass = document.getElementById('change-pass-new').value;
-      if (!currentPass || !newPass) return alert('Please fill out both password fields.');
-      log("Sending security parameter update packet.");
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', BACKEND_URL + '/api/change-password', true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          var res = JSON.parse(xhr.responseText);
-          if (xhr.status === 200 && res.success) { alert('Password updated!'); closeInfoModal(); }
-          else alert(res.error || 'Failed to update password.');
-        }
-      };
-      xhr.send(JSON.stringify({ currentPassword: currentPass, newPassword: newPass }));
-    }
+      function saveProfileChanges() {
+        var av = document.getElementById('edit-avatar').value.trim();
+        var loc = document.getElementById('edit-location').value.trim();
+        var bio = document.getElementById('edit-bio').value.trim();
+        log('Sending profile update packet.');
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', BACKEND_URL + '/api/profile', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            closeInfoModal();
+            openProfileModal(myUsername);
+          }
+        };
+        xhr.send(JSON.stringify({ bio: bio, location: loc, avatar_emoji: av }));
+      }
 
-    if (token && myUsername) { initApp(); }
-  </script>
-</body>
+      function submitPasswordChange() {
+        var currentPass = document.getElementById('change-pass-current').value;
+        var newPass = document.getElementById('change-pass-new').value;
+        if (!currentPass || !newPass)
+          return alert('Please fill out both password fields.');
+        log('Sending security parameter update packet.');
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', BACKEND_URL + '/api/change-password', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            var res = JSON.parse(xhr.responseText);
+            if (xhr.status === 200 && res.success) {
+              alert('Password updated!');
+              closeInfoModal();
+            } else alert(res.error || 'Failed to update password.');
+          }
+        };
+        xhr.send(
+          JSON.stringify({
+            currentPassword: currentPass,
+            newPassword: newPass,
+          }),
+        );
+      }
+
+      if (token && myUsername) {
+        initApp();
+      }
+    </script>
+  </body>
 </html>
