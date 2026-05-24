@@ -1113,10 +1113,8 @@
         box.querySelector('.nb-header').onclick = function () {
           openProfileModal(effectiveUsername);
         };
-        box.querySelector('.nb-title').textContent = data.title;
-        box.querySelector('.message-text').innerHTML = parseMarkup(
-          data.content,
-        );
+        box.querySelector('.nb-title').textContent = parseMarkup(data.title);
+        box.querySelector('.message-text').innerHTML = parseMarkup(data.content);
         var cList = box.querySelector('.comment-list');
         if (data.comments && data.comments.length > 0) {
           for (var i = 0; i < data.comments.length; i++) {
