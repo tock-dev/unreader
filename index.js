@@ -18,8 +18,8 @@ function log(...args) {
 function sanitize(str, options = {}) {
   if (typeof str !== 'string') return str;
   return sanitizeHtml(str.trim(), {
-    allowedTags: options.allowTags ? [ 'b', 'i', 'em', 'strong', 'a', 'p', 'br' ] : [],
-    allowedAttributes: options.allowTags ? { 'a': [ 'href' ] } : {},
+    allowedTags: options.allowTags ? ['b', 'i', 'em', 'strong', 'a', 'p', 'br'] : [],
+    allowedAttributes: options.allowTags ? { 'a': ['href'] } : {},
     ...options
   });
 }
@@ -234,7 +234,7 @@ app.post('/api/profile', authenticateToken, async (req, res) => {
   bio = sanitize(bio);
   location = sanitize(location);
   avatar_emoji = sanitize(avatar_emoji);
-  
+
   await db.query('INSERT INTO profiles (username, bio, location, avatar_emoji) VALUES ($4, $1, $2, $3) ON CONFLICT (username) DO UPDATE SET bio=$1, location=$2, avatar_emoji=$3;', [bio, location, avatar_emoji, req.user.username]);
   res.json({ success: true });
 });
@@ -358,11 +358,11 @@ wss.on('connection', (ws, req) => {
 
       if (['message', 'topic_message', 'dm', 'neighborhood_post', 'neighborhood_comment', 'create_topic'].includes(data.type)) {
         const tStr = String(Date.now());
-        const mode = data.type === 'topic_message' ? 'topic' : 
-                     data.type === 'dm' ? 'dm' :
-                     data.type === 'neighborhood_post' || data.type === 'neighborhood_comment' ? 'neighborhood' : 'public';
+        const mode = data.type === 'topic_message' ? 'topic' :
+          data.type === 'dm' ? 'dm' :
+            data.type === 'neighborhood_post' || data.type === 'neighborhood_comment' ? 'neighborhood' : 'public';
         const target = data.target || data.slug || '';
-        
+
         if (data.type === 'message') {
           const content = sanitize(data.content);
           await db.query('INSERT INTO messages (username, timestamp, content, sender) VALUES ($1, $2, $3, $4);', [authUser, tStr, content, authUser]);
@@ -392,7 +392,7 @@ wss.on('connection', (ws, req) => {
           const slug = title.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 50);
           await db.query('INSERT INTO topics (slug, title, username, timestamp) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;', [slug, title, authUser, tStr]);
         }
-        
+
         broadcastSystemUpdate({ type: 'refresh_feed' }, (c) => c.mode === mode && c.target === target);
       }
 
@@ -466,6 +466,6 @@ wss.on('connection', (ws, req) => {
       }
     } catch (err) { log("WS Infrastructure Logic Failure:", err.message); }
   });
-  ws.on('close', () => { if (authUser) { log(`WS Terminal closed: ${authUser}`); activeClients.delete(authUser); broadcastSystemUpdate({ type: 'roster_update', users: Array.from(activeClients.keys()) }); } });
+  ws.on('close', () => { if (authUser) { log(`WS Terminal closed: ${authUser}`); activeClients.delete(authUser); broadcastSystemUpdate(getRosterPayload()); } });
 });
 
