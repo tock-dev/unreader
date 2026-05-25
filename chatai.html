@@ -200,7 +200,7 @@
 
             // HERE IS THE FIXED INSTRUCTION FOR THE AI MODEL:
             const systemPrompt = "You are an AI made specifically for Kindles. You were programmed by KodiGamingYT. Your job is to strip away internet fluff and format the provided text into clear headers, minimalist bullet points, and neat spacing. Keep your answers short, direct, and highly readable for high-contrast e-ink screens.";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${API_KEY}`;
 
             try {
                 const response = await fetch(apiUrl, {
