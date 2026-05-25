@@ -863,6 +863,7 @@
     }
 
     function renderUserRoster(userList) {
+      log('Showing users:', userList);
       var container = document.getElementById('roster-list');
       container.innerHTML = '';
       for (var i = 0; i < userList.length; i++) {
@@ -1035,7 +1036,7 @@
         };
         trayDiv.appendChild(dBtn);
       }
- else {
+      else {
         if (
           userRoles.is_admin ||
           (userRoles.is_moderator && data.deleted_by === myUsername)

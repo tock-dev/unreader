@@ -1,4 +1,4 @@
-const DEBUG = false;
+const DEBUG = true;
 const DO_LOGGING = true;
 var BACKEND_URL = DEBUG
   ? 'http://localhost'
@@ -135,7 +135,7 @@ function unAlert(message) {
         </div>
       </div>
     `;
-    container.querySelector('#modal-ok').onclick = function() {
+    container.querySelector('#modal-ok').onclick = function () {
       document.body.removeChild(container);
       resolve();
     };
@@ -154,11 +154,11 @@ function unConfirm(message) {
         </div>
       </div>
     `;
-    container.querySelector('#modal-ok').onclick = function() {
+    container.querySelector('#modal-ok').onclick = function () {
       document.body.removeChild(container);
       resolve(true);
     };
-    container.querySelector('#modal-cancel').onclick = function() {
+    container.querySelector('#modal-cancel').onclick = function () {
       document.body.removeChild(container);
       resolve(false);
     };
@@ -180,15 +180,15 @@ function unPrompt(message, defaultValue = '') {
     `;
     const input = container.querySelector('#modal-input');
     input.focus();
-    input.onkeydown = function(e) {
+    input.onkeydown = function (e) {
       if (e.key === 'Enter') container.querySelector('#modal-ok').click();
     };
-    container.querySelector('#modal-ok').onclick = function() {
+    container.querySelector('#modal-ok').onclick = function () {
       const value = input.value;
       document.body.removeChild(container);
       resolve(value);
     };
-    container.querySelector('#modal-cancel').onclick = function() {
+    container.querySelector('#modal-cancel').onclick = function () {
       document.body.removeChild(container);
       resolve(null);
     };

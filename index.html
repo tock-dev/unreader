@@ -577,7 +577,7 @@
       const currentRank = localStorage.getItem('unreader-rank') || 'user';
 
       APP_DATABASE.forEach((app) => {
-        console.log('building app: ', app.name);
+        log('building app: ', app.name);
         if (app.id === 'modmenu' && currentRank !== 'mod') {
           return;
         }

@@ -171,8 +171,8 @@ function getRosterPayload() {
   activeClients.forEach((c, username) => {
     users.push({
       username: username,
-      mode: c.mode,
-      target: c.target
+      mode: c.mode || 'public',
+      target: c.target || ''
     });
   });
   return { type: 'roster_update', users };

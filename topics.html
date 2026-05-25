@@ -894,6 +894,7 @@
     }
 
     function renderUserRoster(userList) {
+      log('Showing users:', userList);
       var container = document.getElementById('roster-list');
       container.innerHTML = '';
       for (var i = 0; i < userList.length; i++) {
@@ -902,7 +903,8 @@
         div.className = 'roster-user';
         var span = document.createElement('span');
         span.className = 'roster-name';
-        span.textContent = u;
+        var context = u.mode === 'public' ? ' (Global)' : u.mode === 'dm' ? ' (DM @' + u.target + ')' : ' (' + u.target + ')';
+        span.textContent = u.username + context;
         (function (username) {
           span.onclick = function () {
             openProfileModal(username);
@@ -950,11 +952,11 @@
       currentMode = 'topic';
       currentTarget = target || '';
       currentHistoryIndex = 0;
-      
+
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: 'switch_context', mode: 'topic', target: target }));
       }
-      
+
       var items = document.getElementsByClassName('nav-item');
       for (var i = 0; i < items.length; i++) items[i].className = 'nav-item';
       var node = document.getElementById('nav-topic-' + target);
@@ -1046,7 +1048,7 @@
         trayDiv.appendChild(dBtn);
       }
 
- else {
+      else {
         if (
           userRoles.is_admin ||
           (userRoles.is_moderator && data.deleted_by === myUsername)
@@ -1196,7 +1198,7 @@
           'inline-block';
         document.getElementById('admin-pardon-btn').style.display =
           'inline-block';
-        document.getElementById('admin-ban-btn').onclick = function () {
+        document.getElementById('admin-ban-btn').onclick = async function () {
           if (await unConfirm('Ban ' + p.username + '?'))
             socket.send(
               JSON.stringify({ type: 'mod_ban', target: p.username }),
@@ -1221,7 +1223,7 @@
         document.getElementById('admin-controls').style.display = 'block';
         document.getElementById('admin-ban-btn').style.display = 'none';
         document.getElementById('admin-pardon-btn').style.display = 'none';
-        document.getElementById('admin-timeout-btn').onclick = function () {
+        document.getElementById('admin-timeout-btn').onclick = async function () {
           var dur = document.getElementById('admin-timeout-dur').value;
           var r = await unPrompt('Reason for timeout?');
           if (r)
@@ -1262,7 +1264,7 @@
       xhr.send(JSON.stringify({ bio: bio, location: loc, avatar_emoji: av }));
     }
 
-    function submitPasswordChange() {
+    async function submitPasswordChange() {
       var currentPass = document.getElementById('change-pass-current').value;
       var newPass = document.getElementById('change-pass-new').value;
       if (!currentPass || !newPass)
@@ -1272,7 +1274,7 @@
       xhr.open('POST', BACKEND_URL + '/api/change-password', true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function () {
+      xhr.onreadystatechange = async function () {
         if (xhr.readyState === 4) {
           var res = JSON.parse(xhr.responseText);
           if (xhr.status === 200 && res.success) {
