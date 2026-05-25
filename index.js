@@ -250,7 +250,7 @@ app.get('/api/mod-logs', authenticateToken, async (req, res) => {
     row.target_username = sanitize(row.target_username);
     if (row.action_type === 'delete') {
       const dbResult = await db.query('SELECT content FROM messages WHERE id = $1;', [row.target_id]);
-      row.content = dbResult.rows[0].content;
+      row.content = dbResult.rows.length ? dbResult.rows[0].content : 'Content not found or already deleted.';
     }
     rows.push(row);
   }
