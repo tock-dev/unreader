@@ -558,7 +558,7 @@
               token = data.token;
               myUsername = data.username;
               applySavedPreferences();
-              initApp();
+              initApp(false);
             } catch (e) {
               log('Auth JSON parse error:', e);
               await unAlert('Server returned an invalid packet signature.');
@@ -577,7 +577,7 @@
       xhr.send(JSON.stringify({ username: username, password: password }));
     };
 
-    function initApp() {
+    function initApp(secondTry) {
       log('Booting application logic layers.');
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('user-display').textContent = '@' + myUsername;
@@ -631,6 +631,18 @@
         }
         if (currentHistoryIndex === 0) loadHistory();
       };
+      let exit = false;
+      socket.onclose = function () {
+        log('WS Link disconnected');
+        if (!secondTry || secondTry === false)
+          setTimeout(initApp, 5000, true);
+        else
+          exit = true;
+      }
+      if (exit) {
+        localStorage.clear();
+        window.location.reload();
+      }
       loadDMContacts();
       loadHistory();
     }
@@ -1044,7 +1056,7 @@
     }
 
     if (token && myUsername) {
-      initApp();
+      initApp(false);
     }
   </script>
 </body>
