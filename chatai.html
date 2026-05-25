@@ -32,9 +32,51 @@
         .credits {
             font-size: 11px;
             color: #555555;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             text-transform: none;
             font-style: italic;
+        }
+
+        /* API Settings Panel */
+        .settings-panel {
+            border: 2px solid #000000;
+            padding: 15px;
+            margin-bottom: 30px;
+            background-color: #ffffff;
+        }
+
+        .settings-panel h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .settings-panel input, .settings-panel textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #000000;
+            font-family: monospace;
+            box-sizing: border-box;
+            font-size: 13px;
+            background-color: #ffffff;
+            color: #000000;
+        }
+
+        .settings-panel textarea {
+            height: 70px;
+            resize: vertical;
         }
 
         /* Chat Logs */
@@ -65,7 +107,7 @@
         }
 
         /* Input Form */
-        textarea {
+        #user-input {
             width: 100%;
             height: 100px;
             background-color: #ffffff;
@@ -78,7 +120,7 @@
             font-size: 14px;
         }
 
-        textarea:focus {
+        #user-input:focus {
             outline: none;
             background-color: #fafafa;
         }
@@ -133,6 +175,27 @@
     <div class="subtitle">clean formatting & chat for e-ink reading</div>
     <div class="credits">Programmed by KodiGamingYT</div>
 
+    <div class="settings-panel">
+        <h3>⚙️ Connection & AI Settings</h3>
+        
+        <div class="input-group">
+            <label for="api-url-input">API Operator Endpoint URL:</label>
+            <input type="text" id="api-url-input" placeholder="https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent" onchange="saveSettings()">
+        </div>
+        
+        <div class="input-group">
+            <label for="api-key-input">Gemini API Key:</label>
+            <input type="password" id="api-key-input" placeholder="Enter your secret API key..." onchange="saveSettings()">
+        </div>
+
+        <div class="input-group">
+            <label for="api-prompt-input">Custom AI System Instructions:</label>
+            <textarea id="api-prompt-input" placeholder="You are an AI made specifically for Kindles. You were programmed by KodiGamingYT..." onchange="saveSettings()"></textarea>
+        </div>
+
+        <span style="color:#666; font-size:10px; display:block; margin-top:5px;">All configurations and instructions are saved safely in your browser memory.</span>
+    </div>
+
     <div id="chat-log"></div>
 
     <div id="input-area">
@@ -144,17 +207,29 @@
     </div>
 
     <script>
-        // --- SAFE DECONSTRUCTED KEY STRUCTURE ---
-        const chunkA = "AIzaSyDzmE436";
-        const chunkB = "9b0LSrrxlD2zmC";
-        const chunkC = "17XbWiMqja-Y";
-        
-        const API_KEY = chunkA + chunkB + chunkC;
-
+        // Initialize Setup from Browser Storage
         let chatHistory = JSON.parse(localStorage.getItem('kindle_chat_history')) || [];
+        
+        // Default system prompt if the user has never written one
+        const defaultPrompt = "You are an AI made specifically for Kindles. You were programmed by KodiGamingYT. Your job is to strip away internet fluff and format the provided text into clear headers, minimalist bullet points, and neat spacing. Keep your answers short, direct, and highly readable for high-contrast e-ink screens.";
+
+        // Auto-populate input boxes from localStorage
+        document.getElementById('api-url-input').value = localStorage.getItem('kindle_api_url') || '';
+        document.getElementById('api-key-input').value = localStorage.getItem('kindle_api_key') || '';
+        document.getElementById('api-prompt-input').value = localStorage.getItem('kindle_system_prompt') || defaultPrompt;
 
         const chatLogDiv = document.getElementById('chat-log');
         renderHistory();
+
+        function saveSettings() {
+            const urlValue = document.getElementById('api-url-input').value.trim();
+            const keyValue = document.getElementById('api-key-input').value.trim();
+            const promptValue = document.getElementById('api-prompt-input').value.trim();
+            
+            localStorage.setItem('kindle_api_url', urlValue);
+            localStorage.setItem('kindle_api_key', keyValue);
+            localStorage.setItem('kindle_system_prompt', promptValue);
+        }
 
         function renderHistory() {
             chatLogDiv.innerHTML = '';
@@ -183,6 +258,15 @@
         }
 
         async function sendToGemini() {
+            const storedUrl = localStorage.getItem('kindle_api_url');
+            const storedKey = localStorage.getItem('kindle_api_key');
+            const storedPrompt = localStorage.getItem('kindle_system_prompt') || defaultPrompt;
+
+            if (!storedUrl || !storedKey) {
+                alert("Please fill in both the API Endpoint URL and your API Key in the settings panel first!");
+                return;
+            }
+
             const inputField = document.getElementById('user-input');
             const userText = inputField.value.trim();
             if (!userText) return;
@@ -198,17 +282,19 @@
             loadingDiv.innerText = 'Formatting for e-ink...';
             chatLogDiv.appendChild(loadingDiv);
 
-            // HERE IS THE FIXED INSTRUCTION FOR THE AI MODEL:
-            const systemPrompt = "You are an AI made specifically for Kindles. You were programmed by KodiGamingYT. NEVER USE EMOJIS";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${API_KEY}`;
+            // Appends key token to URL automatically if not explicit
+            let targetUrl = storedUrl;
+            if (!targetUrl.includes('key=')) {
+                targetUrl += (targetUrl.includes('?') ? '&' : '?') + `key=${storedKey}`;
+            }
 
             try {
-                const response = await fetch(apiUrl, {
+                const response = await fetch(targetUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         contents: [{
-                            parts: [{ text: `${systemPrompt}\n\nUser request:\n${userText}` }]
+                            parts: [{ text: `${storedPrompt}\n\nUser request:\n${userText}` }]
                         }]
                     })
                 });
@@ -226,7 +312,7 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('loading-placeholder').innerText = "Connection error. Ensure your key details are fully active.";
+                document.getElementById('loading-placeholder').innerText = `Error: ${error.message || "Failed execution. Check layout options."}`;
             }
         }
 
