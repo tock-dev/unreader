@@ -297,7 +297,7 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
     LEFT JOIN users cu ON c.username = cu.username
     GROUP BY p.id, u.id ORDER BY p.id DESC LIMIT 10 OFFSET $1;`;
   const posts = await db.query(query, [off]);
-  res.json(posts.rows.reverse());
+  res.json(posts.rows);
 });
 
 const server = app.listen(process.env.PORT || 10000, '0.0.0.0', () => log(`Node strictly bound to port: ${process.env.PORT || 10000}`));
