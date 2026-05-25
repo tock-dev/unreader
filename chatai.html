@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>unreader // kindle ai</title>
+    <style>
+        /* Stark Minimalist E-Ink Aesthetic */
+        body {
+            background-color: #ffffff;
+            color: #000000;
+            font-family: 'Courier New', Courier, monospace;
+            max-width: 650px;
+            margin: 40px auto;
+            padding: 0 20px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            border-bottom: 2px solid #000000;
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            margin-bottom: 30px;
+            text-transform: lowercase;
+        }
+
+        /* Chat Logs */
+        #chat-log {
+            margin-bottom: 30px;
+        }
+
+        .msg {
+            margin-bottom: 20px;
+            padding: 15px;
+        }
+
+        .user {
+            background-color: #f2f2f2;
+            border-left: 4px solid #000000;
+        }
+
+        .ai {
+            background-color: #ffffff;
+            border: 1px dashed #000000;
+        }
+
+        .msg-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        /* Input Form */
+        textarea {
+            width: 100%;
+            height: 100px;
+            background-color: #ffffff;
+            border: 2px solid #000000;
+            color: #000000;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: vertical;
+            font-size: 14px;
+        }
+
+        textarea:focus {
+            outline: none;
+            background-color: #fafafa;
+        }
+
+        .btn-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        button {
+            background-color: #000000;
+            color: #ffffff;
+            border: 2px solid #000000;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #ffffff;
+            color: #000000;
+        }
+
+        button.secondary {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #888888;
+        }
+        
+        button.secondary:hover {
+            background-color: #f2f2f2;
+        }
+
+        .loading {
+            font-style: italic;
+            color: #666666;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📖 unreader // kindle ai</h1>
+    <div class="subtitle">clean formatting & chat for e-ink reading</div>
+
+    <div id="chat-log"></div>
+
+    <div id="input-area">
+        <textarea id="user-input" placeholder="Paste text or ask a question to format for Kindle..."></textarea>
+        <div class="btn-container">
+            <button class="secondary" onclick="clearHistory()">Clear History</button>
+            <button onclick="sendToGemini()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Your Gemini API Configuration
+        const API_KEY = "AIzaSyAc5zZYi2SG2y3Da2-m7xNkbCWeh_qkID8";
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${API_KEY}`;
+
+        // Initialize Chat History from Browser Storage
+        let chatHistory = JSON.parse(localStorage.getItem('kindle_chat_history')) || [];
+
+        // Render existing history on page load
+        const chatLogDiv = document.getElementById('chat-log');
+        renderHistory();
+
+        function renderHistory() {
+            chatLogDiv.innerHTML = '';
+            if (chatHistory.length === 0) {
+                chatLogDiv.innerHTML = '<p style="color:#666; font-style:italic;">History is clean. Ready for reading.</p>';
+                return;
+            }
+
+            chatHistory.forEach(msg => {
+                const msgDiv = document.createElement('div');
+                msgDiv.classList.add('msg', msg.role);
+                
+                const header = document.createElement('div');
+                header.classList.add('msg-header');
+                header.innerText = msg.role === 'user' ? '● You' : '○ Gemini';
+
+                const body = document.createElement('div');
+                // Simple formatting fix: preserve line breaks
+                body.style.whiteSpace = "pre-wrap"; 
+                body.innerText = msg.text;
+
+                msgDiv.appendChild(header);
+                msgDiv.appendChild(body);
+                chatLogDiv.appendChild(msgDiv);
+            });
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        async function sendToGemini() {
+            const inputField = document.getElementById('user-input');
+            const userText = inputField.value.trim();
+            if (!userText) return;
+
+            // 1. Add user message to history & update UI
+            chatHistory.push({ role: 'user', text: userText });
+            saveHistory();
+            renderHistory();
+            inputField.value = '';
+
+            // 2. Add temporary loading message
+            const loadingDiv = document.createElement('div');
+            loadingDiv.classList.add('msg', 'ai', 'loading');
+            loadingDiv.id = 'loading-placeholder';
+            loadingDiv.innerText = 'Formatting for e-ink...';
+            chatLogDiv.appendChild(loadingDiv);
+
+            // System prompt instructions to force clean Kindle layouts
+            const systemPrompt = "You are a Kindle e-reader formatting assistant. Strip away internet fluff. Format the provided text into clear headers, minimalist bullet points, and neat spacing. Keep it highly readable.";
+
+            // 3. Hit the live API directly from browser
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{ text: `${systemPrompt}\n\nUser request:\n${userText}` }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                const aiText = data.candidates[0].content.parts[0].text;
+
+                // Remove loading placeholder, add AI response to history
+                document.getElementById('loading-placeholder').remove();
+                chatHistory.push({ role: 'ai', text: aiText });
+                saveHistory();
+                renderHistory();
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loading-placeholder').innerText = "Error pulling from AI. Check API Key.";
+            }
+        }
+
+        function saveHistory() {
+            localStorage.setItem('kindle_chat_history', JSON.stringify(chatHistory));
+        }
+
+        function clearHistory() {
+            localStorage.removeItem('kindle_chat_history');
+            chatHistory = [];
+            renderHistory();
+        }
+
+        // Allow sending with Ctrl+Enter or Cmd+Enter
+        document.getElementById('user-input').addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                sendToGemini();
+            }
+        });
+    </script>
+</body>
+</html>
