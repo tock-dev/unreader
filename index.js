@@ -242,7 +242,18 @@ app.post('/api/profile', authenticateToken, async (req, res) => {
 app.get('/api/mod-logs', authenticateToken, async (req, res) => {
   if (!req.user.is_admin && !req.user.is_moderator) return res.status(403).json({ error: 'Unauthorized' });
   const r = await db.query('SELECT * FROM mod_logs ORDER BY id DESC LIMIT 50;');
-  res.json(r.rows);
+  const tr = r.rows;
+  const rows = [];
+  for (const row of tr) {
+    row.reason = sanitize(row.reason);
+    row.mod_username = sanitize(row.mod_username);
+    row.target_username = sanitize(row.target_username);
+    if (row.action_type === 'delete') {
+      row.content = await db.query('SELECT content FROM messages WHERE id = ?;', [row.target_id]).rows[0].content;
+    }
+    rows.push(row);
+  }
+  res.json(rows);
 });
 
 app.get('/api/admin/find-user/:username', authenticateToken, async (req, res) => {

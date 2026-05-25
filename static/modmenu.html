@@ -374,7 +374,7 @@
             logs.forEach(function (l) {
               var div = document.createElement('div');
               div.className = 'mod-log-item';
-              var safeText = DOMPurify.sanitize(`[${formatTimeToken(l.timestamp)}] ${l.mod_username}: ${l.action_type.toUpperCase()} on ${l.target_username || 'ID ' + l.target_id} | Reason: ${l.reason}`);
+              var safeText = DOMPurify.sanitize(`[${formatTimeToken(l.timestamp)}] ${l.mod_username}: ${l.action_type.toUpperCase()} on ${l.target_username || 'ID ' + l.target_id} | Reason: ${l.reason} ${l.action_type === 'delete' ? '| Content: ' + l.content : ''}`);
               div.innerHTML = safeText;
               list.appendChild(div);
             });
