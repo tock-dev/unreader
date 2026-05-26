@@ -24,8 +24,6 @@ or alternative url on GitHub pages: https://tock-dev.guthub.io/unreader
 - [chat.html](chat.html) - Messaging space (Public & DMs)
 - [topics.html](topics.html) - Custom room directories
 - [neighbourhood.html](neighbourhood.html) - Forum board & commentary
-- [modmenu.html](modmenu.html) - Staff dashboard & user action controls
-- [singlepage.html](singlepage.html) - Legacy all-in-one monolith application (Preserved)
 - [index.js](index.js) - Express & WebSocket PostgreSQL backend
 
 ---
@@ -36,11 +34,12 @@ Brought to life by the core engineering and design team:
 
 * **[tock-dev](https://github.com/tock-dev)**
 * **[HackerAUG](https://github.com/HackerAUG)**
+* **[KodiGamingYT](https://github.com/KodiGamingYT)** - recently joined our developer team
 
 ---
 
 ## Credits
 
 Special thanks and appreciation to:
-
 * **[KodiGamingYT](https://github.com/KodiGamingYT)** — Designed and developed the updated homepage dashboard (`index.html`), introducing unified styling, preferences, and modular portal cards.
+
