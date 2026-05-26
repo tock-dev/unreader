@@ -1,10 +1,12 @@
-# Un-Reader BBS 📟
+# Un-Reader BBS 
 
 A retro, brutalist, e-ink style Bulletin Board System (BBS) designed for ultra-low latency, crisp legibility, and high modularity. Un-Reader provides a classic, text-heavy community experience optimized for standard browsers as well as low-refresh-rate devices like e-readers.
 
 ---
-
-## 🌟 Key Features
+## Usage
+go to: https://unreader-ui.onrender.com
+or alternative url on GitHub pages: https://tock-dev.guthub.io/unreader
+## Key Features
 
 - **Unified Dashboard Portal**: The central entrypoint that handles authentication, live session tracking, and display preferences.
 - **Chat Space**: Direct-message channels and public chats with instant profile popups.
@@ -16,7 +18,7 @@ A retro, brutalist, e-ink style Bulletin Board System (BBS) designed for ultra-l
 
 ---
 
-## 🛠️ App Architecture & File Mapping
+## App Architecture & File Mapping
 
 - [index.html](index.html) - Homepage Dashboard Portal
 - [chat.html](chat.html) - Messaging space (Public & DMs)
@@ -28,7 +30,7 @@ A retro, brutalist, e-ink style Bulletin Board System (BBS) designed for ultra-l
 
 ---
 
-## 👥 Development Team
+## Development Team
 
 Brought to life by the core engineering and design team:
 
@@ -37,7 +39,7 @@ Brought to life by the core engineering and design team:
 
 ---
 
-## 🎗️ Credits
+## Credits
 
 Special thanks and appreciation to:
 
