@@ -3,6 +3,7 @@
   height: calc(100% - 37px);
   border-collapse: collapse;
   display: flex;
+  align-items: stretch;
 }
 
 #sidebar-cell {

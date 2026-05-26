@@ -12,21 +12,11 @@
   <link rel="stylesheet" href="bbs.css" />
   <script src="common.js"></script>
   <style type="text/css">
-    #sidebar-cell {
-      width: 230px;
-      background: #fafafa;
-      border-right: var(--border);
-      vertical-align: top;
-      padding: 0;
-      overflow-y: auto;
-    }
-
     #console-cell {
-      vertical-align: top;
       padding: 15px;
-      position: relative;
       background-color: #ffffff;
-      overflow-y: auto;
+      height: 100%;
+      box-sizing: border-box;
     }
 
     .panel-header {
@@ -62,27 +52,24 @@
     /* Dual pane design */
     .dual-pane {
       display: flex;
+      flex-direction: column;
+      align-items: stretch;
       gap: 15px;
       height: 100%;
-      min-height: 480px;
+      width: 100%;
     }
 
-    .pane-left {
-      flex: 1;
+    .lookup-pane,
+    .logs-pane {
+      flex: 1 0 40%;
+      box-sizing: border-box;
       border: var(--border);
       padding: 12px;
       display: flex;
       flex-direction: column;
+      align-items: stretch;
       background: white;
-    }
-
-    .pane-right {
-      flex: 1.2;
-      border: var(--border);
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      background: white;
+      min-height: 40%;
     }
 
     .pane-title {
@@ -106,7 +93,8 @@
     }
 
     .retro-input {
-      width: 95%;
+      box-sizing: border-box;
+      width: 100%;
       padding: 6px;
       font-family: monospace;
       border: var(--border);
@@ -136,14 +124,15 @@
     }
 
     #user-search-results {
+      flex-grow: 1;
       margin-top: 10px;
       padding: 8px;
       border: 1px dashed black;
       background: #fafafa;
       font-size: 11px;
       font-family: monospace;
-      flex-grow: 1;
       overflow-y: auto;
+      min-height: 0px;
     }
 
     #mod-log-list {
@@ -154,7 +143,7 @@
       padding: 8px;
       font-size: 10px;
       font-family: monospace;
-      max-height: 400px;
+      min-height: 0px;
     }
 
     .mod-log-item {
@@ -183,8 +172,8 @@
     body.dark-mode #back-btn,
     body.dark-mode #user-display,
     body.dark-mode .nav-item,
-    body.dark-mode .pane-left,
-    body.dark-mode .pane-right,
+    body.dark-mode .lookup-pane,
+    body.dark-mode .logs-pane,
     body.dark-mode .retro-input,
     body.dark-mode .retro-btn,
     body.dark-mode #user-search-results,
@@ -242,293 +231,290 @@
       <span id="user-display"></span>
     </div>
 
-    <table id="workspace-table">
-      <tr>
-        <td id="sidebar-cell">
-          <div class="panel-header">Quick Links</div>
-          <div class="nav-item" onclick="window.location.href = 'chat.html'">
-            💬 Go to Chat
-          </div>
-          <div class="nav-item" onclick="window.location.href = 'topics.html'">
-            # Topic Rooms
-          </div>
-          <div class="nav-item" onclick="window.location.href = 'neighbourhood.html'">
-            🏡 Neighbourhood
-          </div>
+    <div id="workspace-table">
+      <div id="sidebar-cell">
+        <div class="panel-header">Quick Links</div>
+        <div class="nav-item" onclick="window.location.href = 'chat.html'">
+          💬 Go to Chat
+        </div>
+        <div class="nav-item" onclick="window.location.href = 'topics.html'">
+          # Topic Rooms
+        </div>
+        <div class="nav-item" onclick="window.location.href = 'neighbourhood.html'">
+          🏡 Neighbourhood
+        </div>
 
-          <div class="panel-header">Status</div>
-          <div style="
+        <div class="panel-header">Status</div>
+        <div style="
                 padding: 10px;
                 font-size: 11px;
                 font-weight: bold;
                 font-family: monospace;
               ">
-            Role:
-            <span id="mod-role-text" style="color: blue">MODERATOR</span>
-          </div>
-        </td>
-        <td id="console-cell">
-          <div class="dual-pane">
-            <div class="pane-left">
-              <div class="pane-title">🔍 User Management</div>
-              <div class="form-group">
-                <label for="user-search-input">LOOKUP BY USERNAME:</label>
-                <input type="text" id="user-search-input" class="retro-input" placeholder="Search..." />
-              </div>
-              <button class="retro-btn" onclick="searchUserAction()">
-                FIND USER
-              </button>
-
-              <div id="user-search-results">
-                Search a user to access timing out, banning, and promoting
-                action streams.
-              </div>
+          Role:
+          <span id="mod-role-text" style="color: blue">MODERATOR</span>
+        </div>
+      </div>
+      <div id="console-cell">
+        <div class="dual-pane">
+          <div class="lookup-pane">
+            <div class="pane-title">🔍 User Management</div>
+            <div class="form-group">
+              <label for="user-search-input">LOOKUP BY USERNAME:</label>
+              <input type="text" id="user-search-input" class="retro-input" placeholder="Search..." />
             </div>
+            <button class="retro-btn" onclick="searchUserAction()">
+              FIND USER
+            </button>
 
-            <div class="pane-right">
-              <div class="pane-title">🛡️ System Audit Logs</div>
-              <button class="retro-btn" onclick="openModLogs()" style="margin-bottom: 10px">
-                REFRESH AUDIT LOGS
-              </button>
-              <div id="mod-log-list">Logs loading...</div>
+            <div id="user-search-results">
+              Search a user to access timing out, banning, and promoting
+              action streams.
             </div>
           </div>
-        </td>
-      </tr>
-    </table>
-  </div>
 
-  <script type="text/javascript">
-    var token = localStorage.getItem('token');
-    var myUsername = localStorage.getItem('username');
-    var socket = null;
-    var userRoles = { is_admin: false, is_moderator: false };
+          <div class="logs-pane">
+            <div class="pane-title">🛡️ System Audit Logs</div>
+            <button class="retro-btn" onclick="openModLogs()" style="margin-bottom: 10px">
+              REFRESH AUDIT LOGS
+            </button>
+            <div id="mod-log-list">Logs loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    function initApp() {
-      log('Booting moderation layers.');
-      document.getElementById('user-display').textContent = '@' + myUsername;
+    <script type="text/javascript">
+      var token = localStorage.getItem('token');
+      var myUsername = localStorage.getItem('username');
+      var socket = null;
+      var userRoles = { is_admin: false, is_moderator: false };
 
-      if (socket) {
-        try {
-          socket.close();
-        } catch (e) { }
+      function initApp() {
+        log('Booting moderation layers.');
+        document.getElementById('user-display').textContent = '@' + myUsername;
+
+        if (socket) {
+          try {
+            socket.close();
+          } catch (e) { }
+        }
+        log('Opening WS link:', WS_URL);
+        socket = new WebSocket(WS_URL);
+        socket.onopen = function () {
+          log('WS Link connected. Authenticating...');
+          socket.send(JSON.stringify({ type: 'auth', token: token }));
+        };
+        socket.onmessage = async function (event) {
+          var data = JSON.parse(event.data);
+          if (data.type === 'terminated') {
+            await unAlert('Session terminated.');
+            window.location.href = 'index.html';
+            return;
+          }
+          if (data.type === 'error_alert') {
+            await unAlert(data.message);
+            return;
+          }
+          if (data.type === 'topics_update') {
+            if (data.user_roles) {
+              userRoles = data.user_roles;
+              log('Mod console roles synced:', userRoles);
+
+              // Security verification
+              if (!userRoles.is_admin && !userRoles.is_moderator) {
+                await unAlert(
+                  'Access Denied: You do not possess structural operator credentials.',
+                );
+                window.location.href = 'index.html';
+                return;
+              }
+
+              document.getElementById('mod-role-text').textContent =
+                userRoles.is_admin ? 'ADMINISTRATOR' : 'MODERATOR';
+              document.getElementById('mod-role-text').style.color =
+                userRoles.is_admin ? 'red' : 'blue';
+            }
+            return;
+          }
+        };
+        openModLogs();
       }
-      log('Opening WS link:', WS_URL);
-      socket = new WebSocket(WS_URL);
-      socket.onopen = function () {
-        log('WS Link connected. Authenticating...');
-        socket.send(JSON.stringify({ type: 'auth', token: token }));
-      };
-      socket.onmessage = async function (event) {
-        var data = JSON.parse(event.data);
-        if (data.type === 'terminated') {
-          await unAlert('Session terminated.');
-          window.location.href = 'index.html';
-          return;
-        }
-        if (data.type === 'error_alert') {
-          await unAlert(data.message);
-          return;
-        }
-        if (data.type === 'topics_update') {
-          if (data.user_roles) {
-            userRoles = data.user_roles;
-            log('Mod console roles synced:', userRoles);
 
-            // Security verification
-            if (!userRoles.is_admin && !userRoles.is_moderator) {
-              await unAlert(
-                'Access Denied: You do not possess structural operator credentials.',
-              );
-              window.location.href = 'index.html';
-              return;
+      function openModLogs() {
+        log('Syncing audit log stream.');
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', BACKEND_URL + '/api/mod-logs', true);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+              var logs = JSON.parse(xhr.responseText);
+              var list = document.getElementById('mod-log-list');
+              list.innerHTML = '';
+              if (logs.length === 0) {
+                list.innerHTML =
+                  '<div style="padding:10px; text-align:center;">No moderator actions logged.</div>';
+                return;
+              }
+              logs.forEach(function (l) {
+                var div = document.createElement('div');
+                div.className = 'mod-log-item';
+                var safeText = DOMPurify.sanitize(`[${formatTimeToken(l.timestamp)}] ${l.mod_username}: ${l.action_type.toUpperCase()} on ${l.target_username || 'ID ' + l.target_id} | Reason: ${l.reason} ${l.action_type === 'delete' ? '| Content: ' + l.content : ''}`);
+                div.innerHTML = safeText;
+                list.appendChild(div);
+              });
+            } else {
+              document.getElementById('mod-log-list').innerHTML =
+                'Access Denied or Connection Failure.';
             }
-
-            document.getElementById('mod-role-text').textContent =
-              userRoles.is_admin ? 'ADMINISTRATOR' : 'MODERATOR';
-            document.getElementById('mod-role-text').style.color =
-              userRoles.is_admin ? 'red' : 'blue';
           }
-          return;
-        }
-      };
-      openModLogs();
-    }
+        };
+        xhr.send();
+      }
 
-    function openModLogs() {
-      log('Syncing audit log stream.');
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', BACKEND_URL + '/api/mod-logs', true);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
-            var logs = JSON.parse(xhr.responseText);
-            var list = document.getElementById('mod-log-list');
-            list.innerHTML = '';
-            if (logs.length === 0) {
-              list.innerHTML =
-                '<div style="padding:10px; text-align:center;">No moderator actions logged.</div>';
-              return;
-            }
-            logs.forEach(function (l) {
-              var div = document.createElement('div');
-              div.className = 'mod-log-item';
-              var safeText = DOMPurify.sanitize(`[${formatTimeToken(l.timestamp)}] ${l.mod_username}: ${l.action_type.toUpperCase()} on ${l.target_username || 'ID ' + l.target_id} | Reason: ${l.reason} ${l.action_type === 'delete' ? '| Content: ' + l.content : ''}`);
-              div.innerHTML = safeText;
-              list.appendChild(div);
-            });
-          } else {
-            document.getElementById('mod-log-list').innerHTML =
-              'Access Denied or Connection Failure.';
-          }
-        }
-      };
-      xhr.send();
-    }
+      function searchUserAction() {
+        var target = document.getElementById('user-search-input').value.trim();
+        if (!target) return;
+        log('Dispatching user query target:', target);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', BACKEND_URL + '/api/admin/find-user/' + target, true);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            log('User query response code:', xhr.status);
+            var res = document.getElementById('user-search-results');
+            if (xhr.status === 200) {
+              var u = JSON.parse(xhr.responseText);
+              var status = u.is_banned
+                ? 'BANNED'
+                : BigInt(u.timeout_until) > BigInt(Date.now())
+                  ? 'TIMED OUT'
+                  : 'ACTIVE';
 
-    function searchUserAction() {
-      var target = document.getElementById('user-search-input').value.trim();
-      if (!target) return;
-      log('Dispatching user query target:', target);
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', BACKEND_URL + '/api/admin/find-user/' + target, true);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          log('User query response code:', xhr.status);
-          var res = document.getElementById('user-search-results');
-          if (xhr.status === 200) {
-            var u = JSON.parse(xhr.responseText);
-            var status = u.is_banned
-              ? 'BANNED'
-              : BigInt(u.timeout_until) > BigInt(Date.now())
-                ? 'TIMED OUT'
-                : 'ACTIVE';
+              var safeUsername = DOMPurify.sanitize(u.username);
+              var safeIP = DOMPurify.sanitize(u.last_ip || 'Unknown');
+              var safeStatus = DOMPurify.sanitize(status);
+              var safeAlts = u.alts ? DOMPurify.sanitize(u.alts.join(', ')) : '';
 
-            var safeUsername = DOMPurify.sanitize(u.username);
-            var safeIP = DOMPurify.sanitize(u.last_ip || 'Unknown');
-            var safeStatus = DOMPurify.sanitize(status);
-            var safeAlts = u.alts ? DOMPurify.sanitize(u.alts.join(', ')) : '';
-
-            var html = `<div style="line-height: 1.5;">
+              var html = `<div style="line-height: 1.5;">
               <strong>Username:</strong> ${safeUsername}<br>
               <strong>Last IP:</strong> ${safeIP}<br>
               <strong>Status:</strong> ${safeStatus}<br>
               <strong>Roles:</strong> Admin: ${u.is_admin}, Mod: ${u.is_moderator}<br>`;
-            // Show alts if any
-            if (u.alts && u.alts.length > 0) {
-              html += `<strong>Alt Accounts:</strong> ${safeAlts}<br>`;
-            }
-            html += `<br>
+              // Show alts if any
+              if (u.alts && u.alts.length > 0) {
+                html += `<strong>Alt Accounts:</strong> ${safeAlts}<br>`;
+              }
+              html += `<br>
               <div style="border-top: 1px dotted black; padding-top:8px; margin-top:8px;">
                 <strong>Operator Timeout:</strong><br>
                 Duration (mins): <input type="number" id="admin-timeout-dur" value="60" style="width: 40px; font-family:monospace; padding:2px; border:1px solid black; background:white;">
                 <button class="retro-btn" onclick="submitTimeout('${safeUsername}')">TIMEOUT</button>
               </div>`;
-            if (userRoles.is_admin) {
-              html += `<div style="border-top: 1px dotted black; padding-top:8px; margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+              if (userRoles.is_admin) {
+                html += `<div style="border-top: 1px dotted black; padding-top:8px; margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
                 <button class="retro-btn" onclick="setModeratorAction('${safeUsername}', ${!u.is_moderator})">${u.is_moderator ? 'REMOVE MOD ROLE' : 'PROMOTE TO MOD'}</button>
                 <button class="retro-btn danger-btn" onclick="adminAction('mod_ban', '${safeUsername}')">BAN USER</button>
                 <button class="retro-btn" onclick="adminAction('mod_pardon', '${safeUsername}')">PARDON USER</button>
                 <button class="retro-btn danger-btn" onclick="banIP('${safeUsername}')">BAN IP</button>
               </div>`;
+              }
+              html += `</div>`;
+              res.innerHTML = html;
+              // Apply dark mode styles to dynamic inputs
+              if (localStorage.getItem('unreader-darkmode') === 'enabled') {
+                res.querySelectorAll('input').forEach((e) => {
+                  e.style.backgroundColor = '#121212';
+                  e.style.color = '#ffffff';
+                  e.style.borderColor = '#ffffff';
+                });
+              }
+            } else {
+              res.innerHTML = 'User identity not found.';
             }
-            html += `</div>`;
-            res.innerHTML = html;
-            // Apply dark mode styles to dynamic inputs
-            if (localStorage.getItem('unreader-darkmode') === 'enabled') {
-              res.querySelectorAll('input').forEach((e) => {
-                e.style.backgroundColor = '#121212';
-                e.style.color = '#ffffff';
-                e.style.borderColor = '#ffffff';
-              });
-            }
-          } else {
-            res.innerHTML = 'User identity not found.';
           }
-        }
-      };
-      xhr.send();
-    }
-
-    async function submitTimeout(targetUser) {
-      var dur = document.getElementById('admin-timeout-dur').value;
-      if (!socket || socket.readyState !== WebSocket.OPEN)
-        return await unAlert('Socket offline.');
-      // Admins do not need to provide a reason for timeout
-      var reason = userRoles.is_admin ? '' : await unPrompt('Reason for timeout?');
-      if (!userRoles.is_admin && !reason) return;
-      var payload = {
-        type: 'mod_timeout',
-        target: targetUser,
-        duration: dur,
-      };
-      if (reason) payload.reason = reason;
-      log('Sending mod_timeout packet for:', targetUser, payload);
-      socket.send(JSON.stringify(payload));
-      setTimeout(function () {
-        searchUserAction();
-        openModLogs();
-      }, 500);
-    }
-
-    function setModeratorAction(target, isMod) {
-      log('Sending role update packet.');
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', BACKEND_URL + '/api/admin/set-role', true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) searchUserAction();
-      };
-      xhr.send(JSON.stringify({ target: target, is_moderator: isMod }));
-    }
-
-    async function adminAction(type, target) {
-      if (
-        type === 'mod_ban' &&
-        !(await unConfirm('Are you absolutely sure you want to BAN ' + target + '?'))
-      )
-        return;
-      log('Sending administrative action packet:', type);
-      socket.send(JSON.stringify({ type: type, target: target }));
-      setTimeout(function () {
-        searchUserAction();
-        openModLogs();
-      }, 500);
-    }
-
-    async function banIP(targetUser) {
-      if (!userRoles.is_admin) return await unAlert('Only admins can ban IPs.');
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', BACKEND_URL + '/api/admin/ban-ip', true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = async function () {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
-            await unAlert('IP ban successful for ' + targetUser);
-            searchUserAction();
-            openModLogs();
-          } else {
-            await unAlert('IP ban failed: ' + xhr.responseText);
-          }
-        }
-      };
-      xhr.send(JSON.stringify({ username: targetUser }));
-    }
-
-    (async function () {
-      applySavedPreferences();
-      if (token && myUsername) {
-        initApp();
-      } else {
-        await unAlert('Please log in on the homepage first.');
-        window.location.href = 'index.html';
+        };
+        xhr.send();
       }
-    })();
-  </script>
+
+      async function submitTimeout(targetUser) {
+        var dur = document.getElementById('admin-timeout-dur').value;
+        if (!socket || socket.readyState !== WebSocket.OPEN)
+          return await unAlert('Socket offline.');
+        // Admins do not need to provide a reason for timeout
+        var reason = userRoles.is_admin ? '' : await unPrompt('Reason for timeout?');
+        if (!userRoles.is_admin && !reason) return;
+        var payload = {
+          type: 'mod_timeout',
+          target: targetUser,
+          duration: dur,
+        };
+        if (reason) payload.reason = reason;
+        log('Sending mod_timeout packet for:', targetUser, payload);
+        socket.send(JSON.stringify(payload));
+        setTimeout(function () {
+          searchUserAction();
+          openModLogs();
+        }, 500);
+      }
+
+      function setModeratorAction(target, isMod) {
+        log('Sending role update packet.');
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', BACKEND_URL + '/api/admin/set-role', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) searchUserAction();
+        };
+        xhr.send(JSON.stringify({ target: target, is_moderator: isMod }));
+      }
+
+      async function adminAction(type, target) {
+        if (
+          type === 'mod_ban' &&
+          !(await unConfirm('Are you absolutely sure you want to BAN ' + target + '?'))
+        )
+          return;
+        log('Sending administrative action packet:', type);
+        socket.send(JSON.stringify({ type: type, target: target }));
+        setTimeout(function () {
+          searchUserAction();
+          openModLogs();
+        }, 500);
+      }
+
+      async function banIP(targetUser) {
+        if (!userRoles.is_admin) return await unAlert('Only admins can ban IPs.');
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', BACKEND_URL + '/api/admin/ban-ip', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        xhr.onreadystatechange = async function () {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+              await unAlert('IP ban successful for ' + targetUser);
+              searchUserAction();
+              openModLogs();
+            } else {
+              await unAlert('IP ban failed: ' + xhr.responseText);
+            }
+          }
+        };
+        xhr.send(JSON.stringify({ username: targetUser }));
+      }
+
+      (async function () {
+        applySavedPreferences();
+        if (token && myUsername) {
+          initApp();
+        } else {
+          await unAlert('Please log in on the homepage first.');
+          window.location.href = 'index.html';
+        }
+      })();
+    </script>
 </body>
 
 </html>
