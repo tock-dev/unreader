@@ -301,7 +301,6 @@
       font-size: 14px;
       text-align: center;
       text-align-last: center;
-      /* Forces centered text in dropdown boxes */
     }
 
     .setting-control select,
@@ -474,6 +473,19 @@
         </div>
       </div>
 
+      <div class="setting-section-title">Community</div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <h4>Discord Guild Connection</h4>
+          <p>Join our online discussion and community channels</p>
+        </div>
+        <div class="setting-control">
+          <a class="modal-btn" href="https://discord.gg/AqvFPzV8" target="_blank" style="display: inline-block; text-decoration: none;">
+            Join Discord
+          </a>
+        </div>
+      </div>
+
       <div class="setting-section-title">About</div>
       <div class="setting-row" style="border-bottom: none">
         <div class="setting-info">
@@ -528,10 +540,8 @@
   </div>
 
   <script>
-    // Synchronize keys on start
     applySavedPreferences();
 
-    // --- Clock Logic ---
     function updateClock() {
       const now = new Date();
       let hours = now.getHours();
@@ -546,7 +556,7 @@
     document.getElementById('year-holder').textContent =
       new Date().getFullYear();
 
-    // --- Curated Dashboard Apps Database ---
+    // Removed Discord item entry from app launcher database array list
     const APP_DATABASE = [
       { id: 'chat', name: 'Chat', url: 'chat.html' },
       { id: 'topics', name: 'Topics', url: 'topics.html' },
@@ -556,11 +566,6 @@
         url: 'neighbourhood.html',
       },
       { id: 'chat', name: 'AI Assistant', url: 'chatai.html' },
-      {
-        id: 'discord-link',
-        name: 'Join our Discord server',
-        url: 'https://discord.gg/AqvFPzV8',
-      },
       {
         id: 'rekindle',
         name: 'reKindle',
@@ -598,7 +603,6 @@
       });
     }
 
-    // --- Authentication Engine Architecture ---
     let isRegisterMode = false;
 
     async function checkUserRankAndRefresh(username) {
@@ -737,7 +741,6 @@
       }
     }
 
-    // --- Overlay Control ---
     function openView(id) {
       document.getElementById(id).style.display = 'block';
     }
@@ -748,7 +751,6 @@
       .getElementById('settings-trigger')
       .addEventListener('click', () => openView('settings-view'));
 
-    // --- Display & Preferences Modifications Engine ---
     const toggleDark = document.getElementById('toggle-darkmode');
     const contrastSelect = document.getElementById('contrast-select');
     const fontSelect = document.getElementById('font-select');
@@ -816,7 +818,6 @@
       closeView('settings-view');
     });
 
-    // --- Initialization Lifecycle ---
     document.addEventListener('DOMContentLoaded', () => {
       applySavedPreferences();
       if (localStorage.getItem('unreader-darkmode') === 'enabled')
