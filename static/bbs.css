@@ -215,7 +215,24 @@
 
 .message {
   max-width: 60%;
-  margin-top: 10px;
+  margin-top: 0.3em;
+}
+
+.mod-msg,
+.admin-msg {
+  margin-top: 0.5em;
+}
+
+.mod-msg {
+  border: 3px solid #0000ff !important;
+  box-shadow: 4px 4px 0px #0000ff50 !important;
+}
+
+.admin-msg {
+  background: black !important;
+  color: white !important;
+  border: 3px solid black !important;
+  box-shadow: 4px 4px 0px #0000004a !important;
 }
 
 .purged-msg {
