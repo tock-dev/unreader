@@ -165,6 +165,23 @@
       line-height: 1.4;
     }
 
+    /* Functional Helpers Style Blocks */
+    .action-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    
+    .filter-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-grow: 1;
+      max-width: 200px;
+    }
+
     /* Theme Engine Adaptability overrides */
     body.dark-mode {
       --bg-color: #121212;
@@ -265,9 +282,16 @@
 
           <div class="logs-pane">
             <div class="pane-title">🛡️ System Audit Logs</div>
-            <button class="retro-btn" onclick="openModLogs()" style="margin-bottom: 14px">
-              REFRESH AUDIT LOGS
-            </button>
+            
+            <div class="action-header-row">
+              <button class="retro-btn" onclick="openModLogs()">
+                REFRESH
+              </button>
+              <div class="filter-wrapper">
+                <input type="text" id="log-filter-input" class="retro-input" oninput="filterLogsLocally()" placeholder="Filter logs..." style="padding: 6px 10px; font-size: 12px;" />
+              </div>
+            </div>
+
             <div id="mod-log-list">Logs loading...</div>
           </div>
         </div>
@@ -353,6 +377,8 @@
                 div.innerHTML = safeText;
                 list.appendChild(div);
               });
+              // Clear input value on a hard reset query
+              document.getElementById('log-filter-input').value = '';
             } else {
               document.getElementById('mod-log-list').innerHTML =
                 'Access Denied or Connection Failure.';
@@ -360,6 +386,19 @@
           }
         };
         xhr.send();
+      }
+
+      // Local Client Filter Function Addition
+      function filterLogsLocally() {
+        var query = document.getElementById('log-filter-input').value.toLowerCase();
+        var items = document.querySelectorAll('.mod-log-item');
+        items.forEach(function (item) {
+          if (item.textContent.toLowerCase().indexOf(query) > -1) {
+            item.style.display = '';
+          } else {
+            item.style.display = 'none';
+          }
+        });
       }
 
       function searchUserAction() {
