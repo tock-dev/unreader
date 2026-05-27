@@ -24,9 +24,9 @@
     #console-cell {
       padding: 20px;
       background-color: var(--bg-color);
+      width: 100%;
       height: 100%;
       box-sizing: border-box;
-      overflow-y: auto;
     }
 
     .panel-header {
@@ -62,24 +62,19 @@
       color: var(--bg-color);
     }
 
-    /* Professional Responsive Dual Pane */
+    /* Dual pane design */
     .dual-pane {
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      gap: 20px;
+      gap: 10px;
       width: 100%;
-    }
-
-    @media (min-width: 768px) {
-      .dual-pane {
-        flex-direction: row;
-      }
+      height: 100%;
     }
 
     .lookup-pane,
     .logs-pane {
-      flex: 1;
+      flex: 1 0 40%;
       box-sizing: border-box;
       border: var(--border-width) solid var(--border-color);
       padding: 16px;
@@ -87,6 +82,12 @@
       flex-direction: column;
       align-items: stretch;
       background: var(--bg-color);
+      min-height: 40%;
+      overflow-wrap: anywhere;
+    }
+
+    .lookup-pane {
+      overflow-y: auto;
     }
 
     .pane-title {
@@ -154,7 +155,6 @@
       border: 1px dashed var(--border-color);
       background: var(--bg-color);
       font-size: 13px;
-      overflow-y: auto;
     }
 
     #mod-log-list {
@@ -164,7 +164,6 @@
       background: var(--bg-color);
       padding: 12px;
       font-size: 12px;
-      min-height: 250px;
     }
 
     .mod-log-item {
@@ -177,17 +176,14 @@
     .action-header-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: stretch;
       gap: 10px;
       margin-bottom: 14px;
     }
-    
-    .filter-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-grow: 1;
-      max-width: 200px;
+
+    .action-header-row input {
+      flex: 1;
+      min-width: 0;
     }
 
     /* Theme Engine Adaptability overrides */
@@ -292,12 +288,11 @@
             <div class="pane-title">🛡️ System Audit Logs</div>
             
             <div class="action-header-row">
+              <input type="text" id="log-filter-input" class="retro-input" oninput="filterLogsLocally()" placeholder="Filter logs..." style="padding: 6px 10px; font-size: 12px;" />
+
               <button class="retro-btn" onclick="openModLogs()">
                 REFRESH
               </button>
-              <div class="filter-wrapper">
-                <input type="text" id="log-filter-input" class="retro-input" oninput="filterLogsLocally()" placeholder="Filter logs..." style="padding: 6px 10px; font-size: 12px;" />
-              </div>
             </div>
 
             <div id="mod-log-list">Logs loading...</div>

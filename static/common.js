@@ -1,14 +1,22 @@
-const DEBUG = false;
+const DEBUG = true;
 const DO_LOGGING = true;
 var BACKEND_URL = DEBUG
-  ? 'http://localhost'
+  ? 'http://192.168.100.64:80'
   : 'https://unreader-v4yf.onrender.com';
 var WS_URL = DEBUG
-  ? 'ws://localhost'
+  ? 'ws://192.168.100.64:80'
   : 'wss://unreader-v4yf.onrender.com';
 
 function log(...args) {
   if (DO_LOGGING) console.log(`[CLIENT]`, ...args);
+}
+
+function hide(element) {
+  element.classList.add('hide');
+}
+
+function show(element) {
+  element.classList.remove('hide');
 }
 
 function applySavedPreferences() {
