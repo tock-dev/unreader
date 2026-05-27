@@ -12,6 +12,14 @@
   <link rel="stylesheet" href="bbs.css" />
   <script src="common.js"></script>
   <style type="text/css">
+    /* --- Base Variables Framework --- */
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --border-color: #000000;
+      --border-width: 2px;
+    }
+
     /* --- Layout & Architecture Overrides --- */
     #console-cell {
       padding: 20px;
@@ -377,7 +385,6 @@
                 div.innerHTML = safeText;
                 list.appendChild(div);
               });
-              // Clear input value on a hard reset query
               document.getElementById('log-filter-input').value = '';
             } else {
               document.getElementById('mod-log-list').innerHTML =
@@ -388,7 +395,6 @@
         xhr.send();
       }
 
-      // Local Client Filter Function Addition
       function filterLogsLocally() {
         var query = document.getElementById('log-filter-input').value.toLowerCase();
         var items = document.querySelectorAll('.mod-log-item');
