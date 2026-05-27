@@ -644,7 +644,7 @@
         if (!tokenVal) return;
         try {
           const response = await fetch(
-            `${SERVER_API_URL}/api/profile/${username}`,
+            `${BACKEND_URL}/api/profile/${username}`,
             {
               headers: { Authorization: `Bearer ${tokenVal}` },
             },
@@ -737,8 +737,8 @@
         banner.textContent = 'Connecting to server...';
 
         const targetEndpoint = isRegisterMode
-          ? `${SERVER_API_URL}/api/register`
-          : `${SERVER_API_URL}/api/login`;
+          ? `${BACKEND_URL}/api/register`
+          : `${BACKEND_URL}/api/login`;
 
         try {
           const response = await fetch(targetEndpoint, {

@@ -210,7 +210,7 @@
   white-space: pre-wrap;
   line-height: 1.3;
   color: black;
-  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .message {

@@ -34,7 +34,7 @@ body {
   flex-direction: column;
   height: 95vh;
   width: 98vw;
-  position: relative;
+  /* min-width: fit-content; */
 }
 
 .title-bar {
