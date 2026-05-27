@@ -1181,14 +1181,20 @@
         );
       }
 
-      function kickUser(username) {
-        log('Dispatching kick packet for user:', username);
-        socket.send(
-          JSON.stringify({
-            type: 'mod_kick',
-            target: username,
-          }),
-        );
+      async function kickUser(username) {
+        if (!socket || socket.readyState !== WebSocket.OPEN)
+          return await unAlert('Socket offline.');
+        var reason = userRoles.is_admin
+          ? "Admin doesn't need any reasons"
+          : await unPrompt('Reason for kick?');
+        if (!userRoles.is_admin && !reason) return;
+        var payload = {
+          type: 'mod_kick',
+          target: username,
+          reason: reason,
+        };
+        log('Sending mod_kick packet for:', username, payload);
+        socket.send(JSON.stringify(payload));
       }
 
       function kickAllUsers() {

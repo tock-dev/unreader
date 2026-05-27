@@ -448,12 +448,22 @@ wss.on('connection', (ws, req) => {
           log(
             `WS Auth Session Established: ${authUser} (Admin: ${userRoles.is_admin}, Mod: ${userRoles.is_moderator})`,
           );
-          if (
-            userRoles.is_banned ||
-            BigInt(userRoles.timeout_until) > BigInt(Date.now())
-          ) {
+          if (userRoles.is_banned) {
             log(`WS Termination Triggered: Banned or Timed out user session`);
-            ws.send(JSON.stringify({ type: 'terminated' }));
+            ws.send(
+              JSON.stringify({ type: 'terminated', reason: 'You are banned' }),
+            );
+            ws.close();
+            return;
+          }
+          if (BigInt(userRoles.timeout_until) > BigInt(Date.now())) {
+            log(`WS Termination Triggered: Banned or Timed out user session`);
+            ws.send(
+              JSON.stringify({
+                type: 'terminated',
+                reason: `You are timed out until ${new Date(BigInt(userRoles.timeout_until)).toLocaleString()}`,
+              }),
+            );
             ws.close();
             return;
           }

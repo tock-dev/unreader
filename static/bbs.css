@@ -215,6 +215,7 @@
 
 .message {
   max-width: 60%;
+  margin-top: 10px;
 }
 
 .purged-msg {
