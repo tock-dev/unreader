@@ -550,7 +550,7 @@
         var container = document.getElementById("roster-list");
         container.innerHTML = "";
 
-        // ---- ADDED: System AI is always displayed online ----
+        // System is visually locked to the top roster list as always online
         var sysDiv = document.createElement("div");
         sysDiv.className = "roster-user";
         sysDiv.style.display = "flex";
@@ -561,11 +561,10 @@
         sysSpan.onclick = function() { openProfileModal("system"); };
         sysDiv.appendChild(sysSpan);
         container.appendChild(sysDiv);
-        // ------------------------------------------------------
 
         for (var i = 0; i < userList.length; i++) {
           var u = userList[i];
-          if (u.username === "system") continue; // Prevent any structural overlaps
+          if (u.username === "system") continue; // Prevent duplication if alt is logged in
           var div = document.createElement("div");
           div.className = "roster-user";
           div.style.display = "flex";
@@ -830,6 +829,28 @@
             for (var i = 0; i < data.length; i++) {
               appendMessage(data[i]);
             }
+
+            // ---- SERVER-SIDE PERSISTENCE DETECTOR FOR ALT BOT ACCOUNT ----
+            if (data.length > 0 && myUsername === "system" && currentHistoryIndex === 0) {
+              // Locate the newest absolute message via maximum message ID
+              var latestMsg = data.reduce((max, msg) => (msg.id > max.id ? msg : max), data[0]);
+              var lastRespondedId = localStorage.getItem("sys_last_id");
+              
+              // Prevent answering historic records immediately upon refreshing or booting up
+              if (lastRespondedId === null) {
+                localStorage.setItem("sys_last_id", latestMsg.id);
+                return;
+              }
+
+              if (latestMsg && String(latestMsg.id) !== String(lastRespondedId) && latestMsg.username !== "system") {
+                if (latestMsg.content.trim().startsWith("@system")) {
+                  localStorage.setItem("sys_last_id", latestMsg.id);
+                  var query = latestMsg.content.trim().substring(7).trim();
+                  simulateSystemAI(query, latestMsg.username);
+                }
+              }
+            }
+            // -------------------------------------------------------------
           }
         };
         xhr.send();
@@ -848,46 +869,68 @@
           }),
         );
         input.value = "";
+      }
 
-        // ---- ADDED: Check and wake up @system ----
-        if (text.startsWith("@system")) {
-          var query = text.substring(7).trim();
-          simulateSystemAI(query);
+      // ---- LIVE AI DISPATCHER FOR MAINFRAME COGNITIVE PROCESSING ----
+      async function simulateSystemAI(query, senderUsername) {
+        // --- CONFIGURATION MATRIX ---
+        // For standard cloud access, use your endpoint and drop your bearer key below.
+        // If running an offline LLM locally (Ollama/LM Studio), flip the URL to "http://localhost:11434/v1/chat/completions" (or port 1234)
+        const AI_API_URL = "https://api.openai.com/v1/chat/completions"; 
+        const AI_API_KEY = "YOUR_REAL_API_KEY_HERE"; 
+        const AI_MODEL = "gpt-4o-mini"; 
+
+        if (!query) {
+          dispatchSystemResponse("Mainframe connection confirmed. Send a prompt query terminal input following `@system`.", senderUsername);
+          return;
         }
-        // ------------------------------------------
+
+        try {
+          var response = await fetch(AI_API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + AI_API_KEY
+            },
+            body: JSON.stringify({
+              model: AI_MODEL,
+              messages: [
+                { 
+                  role: "system", 
+                  content: "You are the system operator automation core inside an old-school text-based BBS chat space called 'un-reader BBS'. Keep responses sharp, tech-literate, helpful, and highly scannable. Format with bold markdown text or clean lists when appropriate." 
+                },
+                { 
+                  role: "user", 
+                  content: "Message from @" + senderUsername + ": " + query 
+                }
+              ]
+            })
+          });
+
+          if (!response.ok) throw new Error("Terminal network code rejected request status: " + response.status);
+
+          var payload = JSON.parse(await response.text());
+          var aiText = payload.choices[0].message.content.trim();
+          dispatchSystemResponse(aiText, senderUsername);
+
+        } catch (err) {
+          log("AI Processing Stream Fault:", err);
+          dispatchSystemResponse("⚠️ **CRITICAL FAULT:** Failed to query matrix engine. Check automation endpoint console logs.", senderUsername);
+        }
       }
 
-      // ---- ADDED: AI Logic handler for system interactions ----
-      function simulateSystemAI(query) {
-        setTimeout(function() {
-          var response = "";
-          var q = query.toLowerCase();
-
-          if (!query) {
-            response = "Hello! I am awake. Please provide a prompt or a question. Example: `@system give me 10 first digits of pi`";
-          } else if (q.includes("pi")) {
-            response = "The first 10 digits of pi are **3.1415926535**.";
-          } else if (q.includes("hello") || q.includes("hi")) {
-            response = "Greetings user. Mainframe operational. How can I assist you in this terminal space?";
-          } else if (q.includes("help")) {
-            response = "I am the local BBS system automation logic layer. You can ask me parsing logic queries, math configurations, or standard network status checks.";
-          } else {
-            response = "Query sequence checked: '" + query + "'. Processing matrix evaluated successfully. Let me know if you need any arithmetic parameters completed.";
-          }
-
-          var mockPacket = {
-            id: -1,
-            username: "system",
-            content: response,
-            timestamp: Date.now(),
-            is_deleted: false,
-            is_admin: false,
-            is_moderator: true
-          };
-          appendMessage(mockPacket);
-        }, 1200);
+      function dispatchSystemResponse(outputText, senderUsername) {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(
+            JSON.stringify({
+              type: currentMode === "public" ? "message" : "dm",
+              content: outputText,
+              target: currentMode === "public" ? "" : senderUsername,
+            }),
+          );
+        }
       }
-      // ---------------------------------------------------------
+      // -----------------------------------------------------------------
 
       document.getElementById("send").onclick = sendMessage;
       document.getElementById("content").onkeydown = function (e) {
@@ -902,18 +945,6 @@
       };
 
       function openProfileModal(targetUser) {
-        // ---- ADDED: Local mock profile layer for system ----
-        if (targetUser === "system") {
-          showProfileInModal({
-            username: "system",
-            location: "Local Mainframe Core",
-            bio: "Automated Artificial Intelligence. Mention me with @system followed by your question inside any text stream to request processing sequences.",
-            avatar_emoji: "🤖"
-          });
-          return;
-        }
-        // -----------------------------------------------------
-
         log("Pulling profile metadata for:", targetUser);
         var xhr = new XMLHttpRequest();
         xhr.open("GET", BACKEND_URL + "/api/profile/" + targetUser, true);
