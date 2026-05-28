@@ -1,11 +1,21 @@
 .paper-btn {
   font-family: monospace;
-  font-size: 10px;
-  font-weight: bold;
+  font-size: 14px;
+  /* font-weight: bold; */
   background: white;
   border: 1px solid black;
-  margin-left: 2px;
   cursor: pointer;
+  padding: 5px;
+}
+
+.paper-input {
+  font-size: 14px;
+  background: white;
+  border: 1px solid black;
+  cursor: text;
+  outline: none;
+  box-sizing: border-box;
+  padding: 5px;
 }
 
 #workspace-table {

@@ -38,7 +38,7 @@ body {
 }
 
 .title-bar {
-  height: 35px;
+  height: 40px;
   border-bottom: var(--border);
   display: flex;
   align-items: center;
@@ -51,8 +51,8 @@ body {
 
 .title-stripes {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
+  top: 3px;
+  bottom: 2px;
   left: 4px;
   right: 4px;
   background-image: var(--stripe-pattern);
