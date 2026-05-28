@@ -183,8 +183,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 60vw;
-      height: 40vh;
+      width: 90vw;
+      height: 60vh;
       background: rgba(255, 255, 255);
       border: var(--border);
       box-shadow: var(--shadow);
@@ -264,9 +264,9 @@
                   ">SECURITY PREFERENCE:</span>
               <div style="display: flex; align-items: stretch; margin-top: 6px;">
                 <input type="password" id="change-pass-current" placeholder="Current Password"
-                  class='paper-input' style="flex-grow: 1; margin-right: 6px;" />
+                  class='paper-input' style="flex-grow: 1; margin-right: 6px; min-width: 0;" />
                 <input type="password" id="change-pass-new" placeholder="New Password"
-                  class='paper-input' style="flex-grow: 1; margin-right: 6px;" />
+                  class='paper-input' style="flex-grow: 1; margin-right: 6px; min-width: 0;" />
                 <button onclick="submitPasswordChange()" class='paper-btn'>
                   UPDATE PASSWORD
                 </button>
@@ -295,7 +295,7 @@
               </button>
             </div>
             <div style="margin: 6px; display: flex;">
-              <input type="number" id="admin-timeout-dur" value="60" class='paper-input' style="width: min-content; margin-right: 6px" />
+              <input type="number" id="admin-timeout-dur" value="60" class='paper-input' style="width: min-content; margin-right: 6px; min-width: 0;" />
               <button id="admin-timeout-btn" class='paper-btn' style="flex-grow: 1;">
                 TIMEOUT (MINS)
               </button>
