@@ -114,6 +114,7 @@ function censor(text) {
     'ass',
     'pussy',
     'dildo',
+    'dick',
     'penis',
     'vagina',
     'tit',
@@ -123,12 +124,14 @@ function censor(text) {
     'sex',
     'porn',
     'boob',
-    'boobs',
     'pedo',
     'pedophile',
     'rape',
     'molest',
     'orgy',
+    'nigger',
+    'hitler',
+    'nazis',
   ];
   for (let i = 0; i < curses.length; i++) {
     text = text.replace(
