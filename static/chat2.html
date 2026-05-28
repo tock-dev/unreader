@@ -868,15 +868,33 @@
         input.value = "";
       }
 
-      // ---- LIVE WEB SEARCH DISPATCHER FOR REAL-TIME BBS INDEXING ----
+      // ---- UPDATED LIVE WEB SEARCH DISPATCHER (CLEAN TEXT MATCH MATRIX) ----
       async function simulateSystemSearch(query, senderUsername) {
-        if (!query) {
-          dispatchSystemResponse("Mainframe search terminal active. Use `@system <query>` to parse the web.", senderUsername);
+        if (!query) return;
+
+        // 1. LOCAL DICTIONARY: Fast overrides for precise match requirements
+        const localMap = {
+          "pi": "3.1415926535897932384626433832795028841971693993751",
+          "kodigamingyt": "KodiGamingYT is a YouTube content creator channel."
+        };
+
+        // Standardize input string to isolate key terms
+        let cleanQuery = query
+          .replace(/^(who is|what is|what are|tell me about|give me|search for|look up|show me)\s+/i, "")
+          .replace(/^(the|first|digits of)\s+/i, "")
+          .trim();
+
+        const normalized = cleanQuery.toLowerCase();
+        
+        // Match against local definitions first
+        if (localMap[normalized]) {
+          dispatchSystemResponse(localMap[normalized], senderUsername);
           return;
         }
 
+        // 2. WEB SEARCH: Clean fallback operation layer
         try {
-          var searchUrl = "https://api.duckduckgo.com/?q=" + encodeURIComponent(query) + "&format=json&no_html=1";
+          var searchUrl = "https://api.duckduckgo.com/?q=" + encodeURIComponent(cleanQuery) + "&format=json&no_html=1";
           var response = await fetch(searchUrl);
           
           if (!response.ok) throw new Error("Network rejected index request status: " + response.status);
@@ -886,22 +904,24 @@
 
           if (data.AbstractText) {
             searchResult = data.AbstractText;
+          } else if (data.Definition) {
+            searchResult = data.Definition;
           } else if (data.RelatedTopics && data.RelatedTopics.length > 0 && data.RelatedTopics[0].Text) {
             searchResult = data.RelatedTopics[0].Text;
           } else {
-            searchResult = "No direct database match found for: '" + query + "'. Try adjusting your keywords.";
+            searchResult = "No direct database match found for: '" + cleanQuery + "'. Try adjusting your keywords.";
           }
 
           var wordArray = searchResult.split(/\s+/);
           if (wordArray.length > 200) {
-            searchResult = wordArray.slice(0, 200).join(" ") + "... [Result truncated to 200 words]";
+            searchResult = wordArray.slice(0, 200).join(" ") + "...";
           }
 
-          dispatchSystemResponse("🌐 **Search Index Result:**\n" + searchResult, senderUsername);
+          dispatchSystemResponse(searchResult, senderUsername);
 
         } catch (err) {
           log("Search Engine Matrix Fault:", err);
-          dispatchSystemResponse("⚠️ **CRITICAL FAULT:** Unable to reach search gateway routing tables.", senderUsername);
+          dispatchSystemResponse("Error: Unable to reach database.", senderUsername);
         }
       }
 
