@@ -896,7 +896,7 @@
               ? ' (Global)'
               : u.mode === 'dm'
                 ? ' (DM @' + u.target + ')'
-                : ' (' + u.target + ')';
+                : ' (Neighborhood)';
           span.textContent = u.username + context;
           (function (user) {
             span.onclick = function () {
@@ -911,7 +911,7 @@
                 ? ' (Global)'
                 : u.mode === 'dm'
                   ? ' (DM @' + u.target + ')'
-                  : ' (' + u.target + ')') +
+                  : ' (Neighborhood)') +
               ' who ' +
               ((userRoles.is_admin || userRoles.is_moderator) &&
               u.username !== myUsername

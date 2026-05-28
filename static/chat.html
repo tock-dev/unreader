@@ -505,7 +505,7 @@
           div.style.alignItems = "center";
           var span = document.createElement("span");
           span.className = "roster-name";
-          var context = u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (" + u.target + ")";
+          var context = u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (Neighborhood)";
           span.textContent = u.username + context;
           (function (user) {
             span.onclick = function () {
@@ -514,7 +514,7 @@
           })(u);
           div.appendChild(span);
           log("Showing online user: " + u.username +
-            (u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (" + u.target + ")") +
+            (u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (Neighborhood)") +
             " who " + ((userRoles.is_admin || userRoles.is_moderator)
               && u.username !== myUsername ? "can" : "cannot") + " be kicked.");
           if (u.username !== myUsername

@@ -109,13 +109,11 @@
       }
 
       .comment-list {
-        max-height: 200px;
-        overflow-y: auto;
         margin-bottom: 6px;
       }
 
       .comment-item {
-        font-size: 11px;
+        font-size: 12px;
         padding: 4px 6px;
         border-bottom: 1px dotted #ccc;
         background: white;
@@ -918,7 +916,7 @@
               ? ' (Global)'
               : u.mode === 'dm'
                 ? ' (DM @' + u.target + ')'
-                : ' (' + u.target + ')';
+                : ' (Neighborhood)';
           span.textContent = u.username + context;
           (function (user) {
             span.onclick = function () {
@@ -933,7 +931,7 @@
                 ? ' (Global)'
                 : u.mode === 'dm'
                   ? ' (DM @' + u.target + ')'
-                  : ' (' + u.target + ')') +
+                  : ' (Neighborhood)') +
               ' who ' +
               ((userRoles.is_admin || userRoles.is_moderator) &&
               u.username !== myUsername
@@ -1013,6 +1011,7 @@
           if (data.comments && data.comments.length > 0) {
             for (var i = 0; i < data.comments.length; i++) {
               var c = data.comments[i];
+              // log('Appending comment ' + JSON.stringify(c) + '...');
               var cDiv = document.createElement('div');
               cDiv.className = 'comment-item';
               if (c.is_deleted) {
@@ -1035,7 +1034,7 @@
                   };
                 })(cEffectiveUsername);
                 cDiv.querySelector('.c-txt').innerHTML = censor(
-                  parseMarkup(data.content),
+                  parseMarkup(c.content),
                 );
 
                 if (
