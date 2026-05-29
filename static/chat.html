@@ -867,7 +867,7 @@
           If the user talking to you is one of the admins you can do these actions:
           - If an admin is asking to kick someone you should answer with exactly this: {"action": "kick", "username": "<username>", "reason": "<reason>"} where username should be the username of the user who admins wants to kick (without an @)
           - If an admin is asking to timeout someone you should answer with exactly this: {"action": "timeout", "username": "<username>", "duration": <seconds>, "reason": "<reason>"} where username should be the username of the user who admins wants to timeout (without an @), the duration is in seconds and should be a number, for example 60 for 1 minute, 300 for 5 minutes, etc. You can also add a reason for the timeout.
-          - If any user, even without admin privileges, is asking to send a direct message (DM) to someone you should answer with exactly this: {"action": "dm", "username": "<username>", "message": "<message>"} where username should be the username of the user the user who asked wants to send the direct message to (without an @) and the message should be the message that the user wants to send to the other user.
+          - If any user, even without admin privileges, is asking to send a direct message (DM) to someone you should answer with exactly this: {"action": "dm", "username": "<username>", "message": "<message>", "system": <true|false>} where username should be the username of the user the user who asked wants to send the direct message to (without an @) and the message should be the message that the user wants to send to the other user and system should be true if the message should be sent from the bot "system" and false if it should be sent as from the user who asked. Don't send DMs unless specifically asked.
           - If any user, even without admin privileges, is asking to erase your memory you should answer with exactly this: {"action": "erase_memory"}.
           - If you want to save something into your local memory you should answer with exactly this: {"action": "memory", "entry": "<entry>"} where entry is the text that you want to save to your memory.
           - If you want to remove something from your local memory you should answer with exactly this: {"action": "remove_memory", "entry": "<entry>"} where entry is the text that you want to remove from your memory.
@@ -1013,7 +1013,7 @@
               socket.send(
                 JSON.stringify({
                   type: "dm",
-                  content: a.message,
+                  content: a.system ? "\u200B[SYSTEM_BOT]\u200B" + a.message : a.message,
                   target: a.username,
                 }),
               );
@@ -1115,7 +1115,7 @@
               socket.send(
                 JSON.stringify({
                   type: "dm",
-                  content: a.message,
+                  content: a.system ? "\u200B[SYSTEM_BOT]\u200B" + a.message : a.message,
                   target: a.username,
                 }),
               );
