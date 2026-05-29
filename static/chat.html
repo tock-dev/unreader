@@ -806,7 +806,7 @@
         if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
 
         // GLOBAL CHAT INTERCEPT: Checks for the @system keyword in both public and DMs
-        if (text.includes("@system")) {
+        if (text.includes("system")) {
           log("Global decentralized AI intercept sequence triggered.");
 
           // 1. Instantly send out your query block so the rest of the BBS sees your prompt
@@ -863,7 +863,7 @@
                 }
               ],
               "model": "llama-3.1-8b-instant",
-              "max_completion_tokens": 4096,
+              "max_completion_tokens": 9999,
               "temperature": 1,
               "top_p": 1,
               "stream": false,
