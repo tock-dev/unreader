@@ -855,7 +855,14 @@
               "messages": [
                 {
                   "role": "system",
-                  "content": "You are a helpful AI assistant made by KodiGamingYT and tock-dev that is running on a Kindle-friendly social network called un-reader. NEVER SEND EMOJIES. "
+                  "content": `You are a helpful AI assistant named "system" created by KodiGamingYT and then enhanced by tock-dev, that is running on a Kindle-friendly social network called un-reader.
+                  The user talking to you is "${senderUsername}".
+                  The admins of un-reader are:
+                  - tock-dev (username: tockdev) - the owner of the website and the coder of most stuff
+                  - HackerAUG (username: augustinejames) - co-owner and vibecoder of some minor parts
+                  - KodiGamingYT (username: kodigaming) - admin and developer of other stuff such as homepage and AI chatbot
+                  You are using a Kindle's web browser, so you should not use emojis,
+                  but you should try to make your responses look like a Kindle is trying to display them.`
                 },
                 {
                   "role": "user",
@@ -863,7 +870,7 @@
                 }
               ],
               "model": "llama-3.1-8b-instant",
-              "max_completion_tokens": 1024, // Fixed parameter key name and set a safe token limit
+              "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
               "temperature": 1,
               "top_p": 1,
               "stream": false,
@@ -917,7 +924,14 @@
               "messages": [
                 {
                   "role": "system",
-                  "content": "You are a helpful AI assistant created by KodiGamingYT and then enhanced by tock-dev, that is running on a Kindle-friendly social network called un-reader."
+                  "content": `You are a helpful AI assistant named "system" created by KodiGamingYT and then enhanced by tock-dev, that is running on a Kindle-friendly social network called un-reader.
+                  The user talking to you is "${senderUsername}".
+                  The admins of un-reader are:
+                  - tock-dev (username: tockdev) - the owner of the website and the coder of most stuff
+                  - HackerAUG (username: augustinejames) - co-owner and vibecoder of some minor parts
+                  - KodiGamingYT (username: kodigaming) - admin and developer of other stuff such as homepage and AI chatbot
+                  You are using a Kindle's web browser, so you should not use emojis,
+                  but you should try to make your responses look like a Kindle is trying to display them.`
                 },
                 {
                   "role": "user",
@@ -925,7 +939,7 @@
                 }
               ],
               "model": "llama-3.1-8b-instant",
-              "max_completion_tokens": 1024, // Fixed parameter key name and set a safe token limit
+              "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
               "temperature": 1,
               "top_p": 1,
               "stream": false,
