@@ -724,11 +724,13 @@
         );
       }
 
-      async function kickUser(username) {
+      async function kickUser(username, reason = null) {
         if (!socket || socket.readyState !== WebSocket.OPEN)
           return await unAlert('Socket offline.');
-        var reason = userRoles.is_admin ? 'Admin doesn\'t need any reasons' : await unPrompt('Reason for kick?');
-        if (!userRoles.is_admin && !reason) return;
+        if (reason === null) {
+          reason = userRoles.is_admin ? 'Admin doesn\'t need any reasons' : await unPrompt('Reason for kick?');
+          if (!userRoles.is_admin && !reason) return;
+        }
         var payload = {
           type: 'mod_kick',
           target: username,
@@ -859,7 +861,7 @@
           You can swear because it's allowed on un-reader.
           
           If the user talking to you is one of the admins you can do these actions:
-          - If an admin is asking to kick someone you should answer with exactly this: {"action": "kick", "username": "<username>"} where username should be the username of the user who admins wants to kick (without an @)
+          - If an admin is asking to kick someone you should answer with exactly this: {"action": "kick", "username": "<username>", "reason": "<reason>"} where username should be the username of the user who admins wants to kick (without an @)
           - If an admin is asking to timeout someone you should answer with exactly this: {"action": "timeout", "username": "<username>", "duration": <seconds>, "reason": "<reason>"} where username should be the username of the user who admins wants to timeout (without an @), the duration is in seconds and should be a number, for example 60 for 1 minute, 300 for 5 minutes, etc. You can also add a reason for the timeout.
           If you're gonna run any actions, only send the JSON action and nothing else.
           When returning the actions, if you need to run multiple actions, answer like this:
@@ -965,7 +967,7 @@
           if (aiActions.action) aiActions = [aiActions]
           for (var a of aiActions) {
             if (a.action === "kick") {
-              kickUser(a.username);
+              kickUser(a.username, a.reason);
             } else if (a.action === "timeout"){
               socket.send(
                 JSON.stringify({
