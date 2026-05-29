@@ -861,7 +861,10 @@
           [
             {"action": ...},
             ...
-          ]`
+          ]
+          If you're just answering/chatting, don't output any JSON.
+          If you need to run an action AND want to provide a text answer, use action {"action": "text", "message": "<text>"} as one of the actions in the array.
+          `
         return prompt;
       }
 
@@ -967,6 +970,16 @@
                   reason: a.reason,
                 }),
               );
+            } else if (a.action === "text") {
+              if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(
+                  JSON.stringify({
+                    type: mode === "public" ? "message" : "dm",
+                    content: "\u200B[SYSTEM_BOT]\u200B" + a.message,
+                    target: target,
+                  }),
+                );
+              }
             }
           }
         } catch (err) {
@@ -1048,6 +1061,8 @@
                   reason: a.reason,
                 }),
               );
+            } else if (a.action === "text") {
+              dispatchSystemResponse(a.message, senderUsername);
             }
           }
         } catch (err) {
