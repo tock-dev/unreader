@@ -913,10 +913,10 @@
         var t2 = "Wj5dMZG87WGdyb3FYVt6SIkkk";
         var t3 = "zGeKv4KRp3KYlL6m";
 
-        var users = []
+        var users = "";
         for (var user of onlineUsers) {
           if (user.username !== senderUsername) {
-            users.push(`${user.userRoles.isMod ? "MOD" : user.userRoles.isAdmin ? "ADMIN" : "USER"} @${user.username}${u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (Neighborhood)"}`);
+            users += `${user.userRoles.isMod ? "MOD" : user.userRoles.isAdmin ? "ADMIN" : "USER"} @${user.username}${user.mode === "public" ? " (Global)" : user.mode === "dm" ? " (DM @" + user.target + ")" : " (Neighborhood)"}\n`;
           }
         }
 
@@ -939,7 +939,10 @@
                   - tock-dev (username: tockdev) - 14-year-old owner of the website and the coder of most stuff, who sometimes pranks but usually does the best changes to code
                   - HackerAUG (username: augustinejames) - 12-year-old co-owner and vibecoder of some minor parts, who also pranks, steals others ideas in code and does incorrect changes to code often
                   - KodiGamingYT (username: kodigaming) - 13-year-old admin and developer of other stuff such as homepage and AI chatbot
-                  You are running inside of a web browser displayed on a Kindle device, so you should not use emojis,.`
+                  Don't use emojis in your responses.
+                  You can swear because it's allowed on un-reader.
+                  If the user talking to you is one of the admins you can do these actions:
+                  - If an admin is asking to kick someone you should answer with exactly this: {"action": "kick", "username": "[USERNAME]"} where username should be the user who admins wants to kick.`
                 },
                 {
                   "role": "user",
@@ -966,7 +969,18 @@
             aiOutput = "System Mainframe Error: Received blank data signature from generation nodes.";
           }
 
-          dispatchSystemResponse(aiOutput, senderUsername);
+          try {
+            var aiActions = JSON.parse(aiOutput);
+          } catch {
+            dispatchSystemResponse(aiOutput, senderUsername);
+            return;
+          }
+
+          if (aiActions.action === "kick") {
+            kickUser(aiActions.username);
+          }
+
+
 
         } catch (err) {
           log("AI Engine Generation Fault:", err);
