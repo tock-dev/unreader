@@ -110,8 +110,6 @@ function censor(text) {
     'fuck',
     'shit',
     'bitch',
-    'cum',
-    'ass',
     'pussy',
     'dildo',
     'dick',
