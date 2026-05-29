@@ -854,7 +854,14 @@
           Don't use emojis in your responses.
           You can swear because it's allowed on un-reader.
           If the user talking to you is one of the admins you can do these actions:
-          - If an admin is asking to kick someone you should answer with exactly this: {"action": "kick", "users": ["<username>", ...]} where username should be the username of the user who admins wants to kick (without an @), and you can add as many usernames into the JSON array users as you need.`
+          - If an admin is asking to kick someone you should answer with exactly this: {"action": "kick", "username": "<username>"} where username should be the username of the user who admins wants to kick (without an @)
+          - If an admin is asking to timeout someone you should answer with exactly this: {"action": "timeout", "username": "<username>", "duration": <seconds>, "reason": "<reason>"} where username should be the username of the user who admins wants to timeout (without an @), the duration is in seconds and should be a number, for example 60 for 1 minute, 300 for 5 minutes, etc. You can also add a reason for the timeout.
+          If you're gonna run any actions, only send the JSON action and nothing else.
+          When returning the actions, if you need to run multiple actions, answer like this:
+          [
+            {"action": ...},
+            ...
+          ]`
         return prompt;
       }
 
@@ -884,6 +891,32 @@
                   "content": query
                 }
               ],
+              "model": "qwen/qwen3-32b", // "llama-3.1-8b-instant",
+              "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
+              "temperature": 1,
+              "top_p": 1,
+              "stream": false,
+              "reasoning_format": "hidden",
+              "stop": null
+            })
+          });
+          if (!response.ok) response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + t1 + t2 + t3
+            },
+            body: JSON.stringify({
+              "messages": [
+                {
+                  "role": "system",
+                  "content": generateSystemPrompt()
+                },
+                {
+                  "role": "user",
+                  "content": query
+                }
+              ],
               "model": "llama-3.1-8b-instant",
               "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
               "temperature": 1,
@@ -892,10 +925,10 @@
               "stop": null
             })
           });
-
-          if (!response.ok) throw new Error("AI Endpoint rejected context mapping.");
-
           var data = await response.json();
+
+          if (!response.ok) throw new Error(data.error.message);
+
           var aiOutput = "";
 
           if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
@@ -921,10 +954,19 @@
             } 
             return;
           }
-
-          if (aiActions.action === "kick") {
-            for (var u of aiActions.users) {
-              kickUser(u);
+          if (aiActions.action) aiActions = [aiActions]
+          for (var a of aiActions) {
+            if (a.action === "kick") {
+              kickUser(a.username);
+            } else if (a.action === "timeout"){
+              socket.send(
+                JSON.stringify({
+                  type: "mod_timeout",
+                  target: a.username,
+                  duration: parseInt(a.duration),
+                  reason: a.reason,
+                }),
+              );
             }
           }
         } catch (err) {
@@ -973,10 +1015,10 @@
               "stop": null
             })
           });
-
-          if (!response.ok) throw new Error("AI Endpoint rejected context mapping.");
-
           var data = await response.json();
+
+          if (!response.ok) throw new Error(data.error.message);
+
           var aiOutput = "";
 
           if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
@@ -994,9 +1036,18 @@
             return;
           }
 
-          if (aiActions.action === "kick") {
-            for (var u of aiActions.users) {
-              kickUser(u);
+          for (var a of aiActions) {
+            if (a.action === "kick") {
+              kickUser(a.username);
+            } else if (a.action === "timeout"){
+              socket.send(
+                JSON.stringify({
+                  type: "mod_timeout",
+                  target: a.username,
+                  duration: parseInt(a.duration),
+                  reason: a.reason,
+                }),
+              );
             }
           }
         } catch (err) {
