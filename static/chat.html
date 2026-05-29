@@ -839,7 +839,7 @@
       }
 
       var aiMemory = localStorage.getItem("unreader-ai-memory") || "";
-      var aiHistory = "";
+      var aiHistory = [];
       function generateSystemPrompt() {
         var users = "";
         for (var user of onlineUsers) {
