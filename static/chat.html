@@ -836,6 +836,28 @@
         input.value = "";
       }
 
+      function generateSystemPrompt() {
+        var users = "";
+        for (var user of onlineUsers) {
+          if (user.username !== myUsername) {
+            users += `${user.userRoles.isMod ? "MOD" : user.userRoles.isAdmin ? "ADMIN" : "USER"} @${user.username}${user.mode === "public" ? " (Global)" : user.mode === "dm" ? " (DM @" + user.target + ")" : " (Neighborhood)"}\n`;
+          }
+        }
+        const prompt = `You are a helpful AI assistant named "system" created by KodiGamingYT and then enhanced by tock-dev, that is running on a Kindle-friendly social network called un-reader.
+          The user talking to you is "${myUsername}".
+          Current users online:
+          ${users}
+          The admins of un-reader are:
+          - tock-dev (username: tockdev) - 14-year-old owner of the website and the coder of most stuff, who sometimes pranks but usually does the best changes to code
+          - HackerAUG (username: augustinejames) - 12-year-old co-owner and vibecoder of some minor parts, who also pranks, steals others ideas in code and does incorrect changes to code often
+          - KodiGamingYT (username: kodigaming) - 13-year-old admin and developer of other stuff such as homepage and AI chatbot
+          Don't use emojis in your responses.
+          You can swear because it's allowed on un-reader.
+          If the user talking to you is one of the admins you can do these actions:
+          - If an admin is asking to kick someone you should answer with exactly this: {"action": "kick", "users": ["<username>", ...]} where username should be the username of the user who admins wants to kick (without an @), and you can add as many usernames into the JSON array users as you need.`
+        return prompt;
+      }
+
       // ---- DECENTRALIZED GLOBAL AI RUNNER (CLIENT-SIDE) ----
       async function processGlobalAICore(query, mode, target) {
         if (!query) return;
@@ -855,14 +877,7 @@
               "messages": [
                 {
                   "role": "system",
-                  "content": `You are a helpful AI assistant named "system" created by KodiGamingYT and then enhanced by tock-dev, that is running on a Kindle-friendly social network called un-reader.
-                  The user talking to you is "${myUsername}".
-                  The admins of un-reader are:
-                  - tock-dev (username: tockdev) - the owner of the website and the coder of most stuff
-                  - HackerAUG (username: augustinejames) - co-owner and vibecoder of some minor parts
-                  - KodiGamingYT (username: kodigaming) - admin and developer of other stuff such as homepage and AI chatbot
-                  You are using a Kindle's web browser, so you should not use emojis,
-                  but you should try to make your responses look like a Kindle is trying to display them.`
+                  "content": generateSystemPrompt()
                 },
                 {
                   "role": "user",
@@ -889,17 +904,29 @@
             aiOutput = "System Mainframe Error: Received blank data signature from generation nodes.";
           }
 
-          // Push packet back to server tagged with the hidden identity verification string
-          if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(
-              JSON.stringify({
-                type: mode === "public" ? "message" : "dm",
-                content: "\u200B[SYSTEM_BOT]\u200B" + aiOutput,
-                target: target,
-              }),
-            );
+          log("AI OUTPUT: ", aiOutput);
+
+          try {
+            var aiActions = JSON.parse(aiOutput);
+          } catch {
+            // Push packet back to server tagged with the hidden identity verification string
+            if (socket && socket.readyState === WebSocket.OPEN) {
+              socket.send(
+                JSON.stringify({
+                  type: mode === "public" ? "message" : "dm",
+                  content: "\u200B[SYSTEM_BOT]\u200B" + aiOutput,
+                  target: target,
+                }),
+              );
+            } 
+            return;
           }
 
+          if (aiActions.action === "kick") {
+            for (var u of aiActions.users) {
+              kickUser(u);
+            }
+          }
         } catch (err) {
           log("Global AI Engine Generation Fault:", err);
         }
@@ -931,18 +958,7 @@
               "messages": [
                 {
                   "role": "system",
-                  "content": `You are a helpful AI assistant named "system" created by KodiGamingYT and then enhanced by tock-dev, that is running on a Kindle-friendly social network called un-reader.
-                  The user talking to you is "${myUsername}".
-                  Current users online:
-                  ${users}
-                  The admins of un-reader are:
-                  - tock-dev (username: tockdev) - 14-year-old owner of the website and the coder of most stuff, who sometimes pranks but usually does the best changes to code
-                  - HackerAUG (username: augustinejames) - 12-year-old co-owner and vibecoder of some minor parts, who also pranks, steals others ideas in code and does incorrect changes to code often
-                  - KodiGamingYT (username: kodigaming) - 13-year-old admin and developer of other stuff such as homepage and AI chatbot
-                  Don't use emojis in your responses.
-                  You can swear because it's allowed on un-reader.
-                  If the user talking to you is one of the admins you can do these actions:
-                  - If an admin is asking to kick someone you should answer with exactly this: {"action": "kick", "username": "[USERNAME]"} where username should be the user who admins wants to kick.`
+                  "content": generateSystemPrompt()
                 },
                 {
                   "role": "user",
@@ -969,6 +985,8 @@
             aiOutput = "System Mainframe Error: Received blank data signature from generation nodes.";
           }
 
+          log("AI OUTPUT: ", aiOutput);
+
           try {
             var aiActions = JSON.parse(aiOutput);
           } catch {
@@ -977,11 +995,10 @@
           }
 
           if (aiActions.action === "kick") {
-            kickUser(aiActions.username);
+            for (var u of aiActions.users) {
+              kickUser(u);
+            }
           }
-
-
-
         } catch (err) {
           log("AI Engine Generation Fault:", err);
           dispatchSystemResponse("Error: Local AI generation core returned processing fault.", senderUsername);
