@@ -613,8 +613,23 @@
             }
           },
         },
+        {
+          id: 'buymeacoffee',
+          name: 'Buy me a coffee',
+          url: 'https://www.buymeacoffee.com/tockdev',
+        },
+        // TODO: setup payment method in Ko-Fi before sharing it
+        /* {
+          id: 'kofi',
+          name: 'Ko-Fi',
+          url: 'https://ko-fi.com/tockdev',
+        }, */
         { id: 'modmenu', name: 'Moderation', url: 'modmenu.html' },
-        { id: 'settings_app', name: 'Settings' },
+        {
+          id: 'settings_app',
+          name: 'Settings',
+          onclick: () => openView('settings-view'),
+        },
       ];
 
       function buildApplicationGrid() {
@@ -635,12 +650,8 @@
           itemEl.innerHTML = `<div class="app-label">${app.name}</div>`;
           itemEl.addEventListener('click', async () => {
             triggerEinkRefreshCheck();
-            if (app.id === 'settings_app') {
-              openView('settings-view');
-            } else {
-              if (app.onclick) await app.onclick();
-              window.location.href = app.url;
-            }
+            if (app.onclick) await app.onclick();
+            if (app.url) window.location.href = app.url;
           });
           container.appendChild(itemEl);
         });
