@@ -360,7 +360,7 @@ app.post('/api/profile', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/mod-logs', authenticateToken, async (req, res) => {
-  if (!req.user.is_admin && !req.user.is_moderator)
+  if (!['admin', 'moderator'].includes(req.user.role.role))
     return res.status(403).json({ error: 'Unauthorized' });
   const r = await db.query('SELECT * FROM mod_logs ORDER BY id DESC LIMIT 50;');
   const tr = r.rows;
@@ -399,6 +399,22 @@ app.get(
     );
     if (!r.rows[0]) return res.status(404).json({ error: 'User not found' });
     const userInfo = r.rows[0];
+    userInfo.roles = JSON.parse(userInfo.roles);
+
+    userInfo.roles.sort(async (a, b) => {
+      const aRole = await db.query(
+        'SELECT priority FROM roles WHERE role = $1;',
+        [a],
+      );
+      const bRole = await db.query(
+        'SELECT priority FROM roles WHERE role = $1;',
+        [b],
+      );
+      const aPriority = aRole.rows[0]?.priority || 0;
+      const bPriority = bRole.rows[0]?.priority || 0;
+      return bPriority - aPriority;
+    });
+
     // Find alts (other users with same IP)
     let alts = [];
     if (userInfo.last_ip) {
@@ -408,6 +424,7 @@ app.get(
       );
       alts = altsRes.rows.map((r) => r.username);
     }
+
     // Redact IP for moderators (non-admins)
     if (req.user.role.role !== 'admin') {
       userInfo.last_ip = '[redacted]';
@@ -428,9 +445,9 @@ app.post('/api/admin/set-role', authenticateToken, async (req, res) => {
     target,
   ]);
   roles = JSON.parse(roles.rows[0].roles);
-  if (is_moderator) {
+  if (is_moderator && !roles.includes('moderator')) {
     roles.push('moderator');
-  } else {
+  } else if (!is_moderator && roles.includes('moderator')) {
     roles = roles.filter((role) => role !== 'moderator');
   }
   await db.query('UPDATE users SET roles = $1 WHERE username = $2;', [

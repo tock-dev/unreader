@@ -434,7 +434,7 @@
               <strong>Username:</strong> ${safeUsername}<br>
               <strong>Last IP:</strong> ${safeIP}<br>
               <strong>Status:</strong> ${safeStatus}<br>
-              <strong>Roles:</strong> ${JSON.parse(u.roles).map((r) => r.role.toUpperCase()).join(', ')}<br>`;
+              <strong>Roles:</strong> ${JSON.parse(u.roles).map((r) => r.toUpperCase()).join(', ')}<br>`;
               if (u.alts && u.alts.length > 0) {
                 html += `<strong>Alt Accounts:</strong> ${safeAlts}<br>`;
               }
