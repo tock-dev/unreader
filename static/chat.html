@@ -633,7 +633,7 @@
         
         // Render precise BOT rank tag instead of copying your Admin title
         var nameDisplay =
-          (data.is_bot ? "BOT " : data.is_admin ? "ADMIN " : (data.is_moderator || effectiveUsername === "system") ? "MOD " : "")
+          (data.is_bot ? "AI " : data.is_admin ? "ADMIN " : (data.is_moderator || effectiveUsername === "system") ? "MOD " : "")
           + "@" + effectiveUsername;
         meta.textContent = nameDisplay + " • " + timeStr;
         (function (username) {
