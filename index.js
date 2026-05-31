@@ -474,16 +474,21 @@ app.get('/topic-history', authenticateToken, async (req, res) => {
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const slug = sanitize(req.query.slug);
   const r = await db.query(
-    'SELECT tm.*, u.is_admin, u.is_moderator FROM topic_messages tm LEFT JOIN users u ON tm.username = u.username WHERE tm.topic_slug = $1 ORDER BY tm.id DESC LIMIT 10 OFFSET $2;',
+    'SELECT tm.* FROM topic_messages tm LEFT JOIN users u ON tm.username = u.username WHERE tm.topic_slug = $1 ORDER BY tm.id DESC LIMIT 10 OFFSET $2;',
     [slug, off],
   );
-  res.json(r.rows.reverse());
+  let result = [];
+  r.rows.forEach((row) => {
+    row.role = getUserRoles(row.username);
+    result.push(row);
+  });
+  res.json(result.reverse());
 });
 
 app.get('/neighborhood-history', authenticateToken, async (req, res) => {
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const query = `
-    SELECT p.*, u.is_admin, u.is_moderator, 
+    SELECT p.*, 
     COALESCE(json_agg(json_build_object('id', c.id, 'username', c.username, 'content', c.content, 'timestamp', c.timestamp, 'is_deleted', c.is_deleted, 'deleted_by', c.deleted_by, 'is_admin', cu.is_admin, 'is_moderator', cu.is_moderator) ORDER BY c.id ASC) FILTER (WHERE c.id IS NOT NULL), '[]') as comments 
     FROM neighborhood_posts p 
     LEFT JOIN users u ON p.username = u.username
@@ -491,7 +496,15 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
     LEFT JOIN users cu ON c.username = cu.username
     GROUP BY p.id, u.id ORDER BY p.id DESC LIMIT 10 OFFSET $1;`;
   const posts = await db.query(query, [off]);
-  res.json(posts.rows);
+  let result = [];
+  posts.rows.forEach((row) => {
+    row.role = getUserRoles(row.username);
+    row.comments.forEach((comment) => {
+      comment.role = getUserRoles(comment.username);
+    });
+    result.push(row);
+  });
+  res.json(result.reverse());
 });
 
 const server = app.listen(process.env.PORT || 10000, '0.0.0.0', () =>

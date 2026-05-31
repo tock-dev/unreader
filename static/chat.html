@@ -614,7 +614,7 @@
         var effectiveUsername = data.username || data.sender || "UNKNOWN_NODE";
         var isMe = effectiveUsername === myUsername;
         msgDiv.style.float = isMe ? "right" : "left";
-        msgDiv.style += data.role.style
+        msgDiv.style.cssText += data.role.style
 
         var styleClass = "message ";
         if (data.is_deleted) styleClass += "purged-msg";
@@ -628,10 +628,7 @@
         meta.className = "message-meta";
         meta.style.cursor = "pointer";
         
-        // Render precise BOT rank tag instead of copying your Admin title
-        var nameDisplay =
-          (data.is_bot ? "AI " : data.is_admin ? "ADMIN " : (data.is_moderator || effectiveUsername === "system") ? "MOD " : "")
-          + "@" + effectiveUsername;
+        var nameDisplay = data.role.prefix + "@" + effectiveUsername;
         meta.textContent = nameDisplay + " • " + timeStr;
         (function (username) {
           meta.onclick = function () {

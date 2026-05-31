@@ -1000,13 +1000,12 @@
         var effectiveUsername = data.username || data.sender || 'UNKNOWN_NODE';
         var isMe = effectiveUsername === myUsername;
         msgDiv.style.float = isMe ? 'right' : 'left';
+        msgDiv.style.cssText += data.role.style;
 
         var styleClass = 'message ';
         if (data.is_deleted) styleClass += 'purged-msg';
         else {
-          if (data.is_admin) styleClass += 'admin-msg';
-          else if (data.is_moderator) styleClass += 'mod-msg';
-          else styleClass += isMe ? 'my-msg' : 'other-msg';
+          styleClass += isMe ? 'my-msg' : 'other-msg';
         }
         msgDiv.className = styleClass;
 
@@ -1014,10 +1013,7 @@
         var meta = document.createElement('div');
         meta.className = 'message-meta';
         meta.style.cursor = 'pointer';
-        var nameDisplay =
-          (data.is_admin ? 'ADMIN ' : data.is_moderator ? 'MOD ' : '') +
-          '@' +
-          effectiveUsername;
+        var nameDisplay = data.role.prefix + '@' + effectiveUsername;
         meta.textContent = nameDisplay + ' • ' + timeStr;
         (function (username) {
           meta.onclick = function () {
