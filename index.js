@@ -31,7 +31,6 @@ function sanitizeUsername(username) {
   return username.replace(/[^a-zA-Z0-9_\-]/g, '').slice(0, 32);
 }
 
-// CORRECT RELEASE URL
 let connectionString =
   process.env.DATABASE_URL ||
   'postgresql://postgres:postgres@localhost:5432/unreader';
@@ -145,7 +144,6 @@ app.set('trust proxy', true);
 app.use(cors());
 app.use(express.json());
 
-// Middleware to catch and drop traffic from banned IPs
 async function blockBannedIPs(req, res, next) {
   try {
     const clientIp = req.ip;
@@ -217,24 +215,20 @@ app.post('/api/admin/ban-ip', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Missing target IP address.' });
     }
 
-    // Add IP to the persistent blocklist
     await db.query(
       `INSERT INTO banned_ips (ip, banned_by, reason, timestamp) 
        VALUES ($1, $2, $3, $4) ON CONFLICT (ip) DO NOTHING;`,
       [ip, req.user.username, reason || 'No reason provided', Date.now()]
     );
 
-    // Save action log to mod history
     await db.query(
       `INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) 
        VALUES ($1, $2, $3, $4, $5);`,
       [req.user.username, 'IP_BAN', ip, reason || 'No reason provided', Date.now()]
     );
 
-    // Hard-ban any local users attached to this matching registration footprint
     await db.query('UPDATE users SET is_banned = true WHERE last_ip = $1;', [ip]);
 
-    // Force disconnect active socket connections linked to this IP footprint
     for (const [username, client] of activeClients.entries()) {
       if (client.lastIp === ip && client.ws) {
         client.ws.send(JSON.stringify({ type: 'SYSTEM_ALERT', message: 'Your network has been banned.' }));
@@ -252,7 +246,7 @@ app.post('/api/admin/ban-ip', authenticateToken, async (req, res) => {
   }
 });
 
-const activeClients = new Map(); // { username: { ws, mode, target, lastIp } }
+const activeClients = new Map();
 
 function broadcastSystemUpdate(payloadObj, filterFn = null) {
   const payload = JSON.stringify(payloadObj);
@@ -265,6 +259,5 @@ function broadcastSystemUpdate(payloadObj, filterFn = null) {
   }
 }
 
-// HTTP Server Initialization
 const PORT = process.env.PORT || 3000;
-      
+app.listen(PORT, () => log(`Server parsing engine listening on port ${PORT}`));
