@@ -3,10 +3,10 @@ const DEBUG = false;
 const DO_LOGGING = true;
 var BACKEND_URL = DEBUG
   ? 'http://192.168.100.64:80'
-  : 'https://unreader.onrender.com';
+  : 'https://unreader-v4yf.onrender.com';
 var WS_URL = DEBUG
   ? 'ws://192.168.100.64:80'
-  : 'wss://unreader.onrender.com';
+  : 'wss://unreader-v4yf.onrender.com';
 
 function log(...args) {
   if (DO_LOGGING) console.log(`[CLIENT]`, ...args);
