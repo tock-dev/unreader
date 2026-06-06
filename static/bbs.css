@@ -9,7 +9,8 @@
 #sidebar-cell {
   width: 35%;
   max-width: 280px;
-  background: #fafafa;
+  background: var(--panel-color);
+  color: var(--text-color);
   border-right: var(--border);
   vertical-align: top;
   padding: 0;
@@ -21,7 +22,8 @@
   vertical-align: top;
   padding: 0;
   position: relative;
-  background-color: #ffffff;
+  background-color: var(--panel-color);
+  color: var(--text-color);
   flex-grow: 1;
   display: flex;
   flex-direction: column;
@@ -33,7 +35,8 @@
   text-transform: uppercase;
   border-bottom: var(--border);
   border-top: var(--border);
-  background: #eee;
+  background: var(--panel-alt);
+  color: var(--text-color);
   font-size: 12px;
   letter-spacing: 1px;
 }
@@ -59,7 +62,8 @@
   cursor: pointer;
   border-bottom: 1px solid #eee;
   font-size: 12px;
-  background: white;
+  background: var(--panel-color);
+  color: var(--text-color);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -77,7 +81,7 @@
 .sidebar-input-container {
   display: flex;
   padding: 4px;
-  background: white;
+  background: var(--panel-color);
   border-bottom: 1px solid #eee;
   width: 100%;
   box-sizing: border-box;
@@ -121,7 +125,8 @@
 
 #pagination-header-bar {
   padding: 6px;
-  background: #eee;
+  background: var(--panel-alt);
+  color: var(--text-color);
   border-bottom: var(--border);
   text-align: center;
   height: 26px;
@@ -153,7 +158,7 @@
 
 #input-bar-container {
   display: flex;
-  background-color: #eee;
+  background-color: var(--panel-alt);
   padding: 8px;
   box-sizing: border-box;
   border-top: var(--border);
@@ -169,7 +174,8 @@
   font-size: 13px;
   border: var(--border);
   outline: none;
-  background: white;
+  background: var(--panel-color);
+  color: var(--text-color);
   box-sizing: border-box;
   resize: none;
   overflow-y: hidden;

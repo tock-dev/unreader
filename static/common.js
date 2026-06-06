@@ -236,3 +236,19 @@ function unPrompt(message, defaultValue = '') {
 // Global replacement of alert, confirm, prompt if needed
 // But it's better to explicitly use unAlert, unConfirm, unPrompt
 // and update calls to use await.
+function initializeUnreaderPreferences() {
+  try {
+    applySavedPreferences();
+  } catch (err) {
+    console.error('Failed to apply saved preferences:', err);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener(
+    'DOMContentLoaded',
+    initializeUnreaderPreferences,
+  );
+} else {
+  initializeUnreaderPreferences();
+}

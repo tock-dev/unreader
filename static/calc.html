@@ -5,6 +5,7 @@
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>BBS Calculator - E-Ink Edition</title>
+  <script src="common.js"></script>
   <style type="text/css">
     /* --- E-Ink Optimization Variables --- */
     :root {
@@ -84,10 +85,36 @@
       margin-bottom: 12px;
       letter-spacing: 1px;
     }
+
+    /* Dark mode */
+    body.dark-mode {
+      --bg-color: #121212;
+      --text-color: #ffffff;
+      --border-color: #ffffff;
+      background-color: #121212 !important;
+      color: #ffffff !important;
+    }
+
+    body.dark-mode .calc-container,
+    body.dark-mode .calc-screen,
+    body.dark-mode .calc-btn {
+      background-color: #121212 !important;
+      color: #ffffff !important;
+      border-color: #ffffff !important;
+    }
+
+    body.dark-mode {
+      color: #ffffff;
+    }
+
+    body.dark-mode * {
+      border-color: #ffffff !important;
+    }
   </style>
 </head>
 
 <body>
+<script>applySavedPreferences();</script>
   <div class="calc-container">
     <div class="window-title">SYS: CALCULATOR Matrix</div>
     <input type="text" id="screen" class="calc-screen" value="0" readonly />

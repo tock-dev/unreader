@@ -230,6 +230,18 @@ body.dark-mode .mod-tray-btn {
   border-color: #ffffff !important;
 }
 
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+  background: var(--panel-color) !important;
+  color: var(--text-color) !important;
+  border-color: #ffffff !important;
+}
+
+body.dark-mode ::placeholder {
+  color: #aaaaaa !important;
+}
+
 body.contrast-medium {
   --border: 3px solid var(--text-color);
   --border-width: 3px;

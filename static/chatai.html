@@ -6,11 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>unreader // kindle ai</title>
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles.css" />
+    <script src="common.js"></script>
     <style>
+        :root {
+            --panel-color: #ffffff;
+            --text-color: #000000;
+            --border-color: #000000;
+        }
+
         /* Stark Minimalist E-Ink Aesthetic */
         body {
-            background-color: #ffffff;
-            color: #000000;
+            background-color: var(--panel-color);
+            color: var(--text-color);
             font-family: 'Courier New', Courier, monospace;
             max-width: 650px;
             margin: 40px auto;
@@ -19,7 +27,7 @@
         }
 
         h1 {
-            border-bottom: 2px solid #000000;
+            border-bottom: 2px solid var(--border-color);
             padding-bottom: 10px;
             margin-bottom: 5px;
             font-size: 24px;
@@ -41,10 +49,10 @@
 
         /* API Settings Panel */
         .settings-panel {
-            border: 2px solid #000000;
+            border: 2px solid var(--border-color);
             padding: 15px;
             margin-bottom: 30px;
-            background-color: #ffffff;
+            background-color: var(--panel-color);
         }
 
         .settings-panel h3 {
@@ -69,12 +77,12 @@
         .settings-panel textarea {
             width: 100%;
             padding: 8px;
-            border: 1px solid #000000;
+            border: 1px solid var(--border-color);
             font-family: monospace;
             box-sizing: border-box;
             font-size: 13px;
-            background-color: #ffffff;
-            color: #000000;
+            background-color: var(--panel-color);
+            color: var(--text-color);
         }
 
         .settings-panel textarea {
@@ -94,12 +102,12 @@
 
         .user {
             background-color: #f2f2f2;
-            border-left: 4px solid #000000;
+            border-left: 4px solid var(--border-color);
         }
 
         .ai {
-            background-color: #ffffff;
-            border: 1px dashed #000000;
+            background-color: var(--panel-color);
+            border: 1px dashed var(--border-color);
         }
 
         .msg-header {
@@ -113,9 +121,9 @@
         #user-input {
             width: 100%;
             height: 100px;
-            background-color: #ffffff;
-            border: 2px solid #000000;
-            color: #000000;
+            background-color: var(--panel-color);
+            border: 2px solid var(--border-color);
+            color: var(--text-color);
             font-family: 'Courier New', Courier, monospace;
             padding: 10px;
             box-sizing: border-box;
@@ -135,9 +143,9 @@
         }
 
         button {
-            background-color: #000000;
-            color: #ffffff;
-            border: 2px solid #000000;
+            background-color: var(--text-color);
+            color: var(--panel-color);
+            border: 2px solid var(--border-color);
             font-family: 'Courier New', Courier, monospace;
             padding: 8px 16px;
             cursor: pointer;
@@ -145,13 +153,13 @@
         }
 
         button:hover {
-            background-color: #ffffff;
-            color: #000000;
+            background-color: var(--panel-color);
+            color: var(--text-color);
         }
 
         button.secondary {
-            background-color: #ffffff;
-            color: #000000;
+            background-color: var(--panel-color);
+            color: var(--text-color);
             border: 1px solid #888888;
         }
 
@@ -178,10 +186,80 @@
                 opacity: 0.3;
             }
         }
+
+        /* Dark mode */
+        body.dark-mode {
+            background-color: #121212 !important;
+            color: #ffffff !important;
+        }
+
+        body.dark-mode h1,
+        body.dark-mode .subtitle {
+            color: #ffffff !important;
+            border-color: #ffffff !important;
+        }
+
+        body.dark-mode .credits {
+            color: #aaaaaa !important;
+        }
+
+        body.dark-mode .settings-panel {
+            background-color: #1a1a1a !important;
+            border-color: #ffffff !important;
+            color: #ffffff !important;
+        }
+
+        body.dark-mode .settings-panel input,
+        body.dark-mode .settings-panel textarea {
+            background-color: #121212 !important;
+            color: #ffffff !important;
+            border-color: #ffffff !important;
+        }
+
+        body.dark-mode .user {
+            background-color: #1e1e1e !important;
+            border-left-color: #ffffff !important;
+        }
+
+        body.dark-mode .ai {
+            background-color: #121212 !important;
+            border-color: #ffffff !important;
+        }
+
+        body.dark-mode #user-input {
+            background-color: #121212 !important;
+            color: #ffffff !important;
+            border-color: #ffffff !important;
+        }
+
+        body.dark-mode button {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border-color: #ffffff !important;
+        }
+
+        body.dark-mode button.secondary {
+            background-color: #1a1a1a !important;
+            color: #ffffff !important;
+            border-color: #888888 !important;
+        }
+
+        body.dark-mode .loading {
+            color: #aaaaaa !important;
+        }
+
+        body.dark-mode {
+            color: #ffffff;
+        }
+
+        body.dark-mode * {
+            border-color: #ffffff !important;
+        }
     </style>
 </head>
 
 <body>
+<script>applySavedPreferences();</script>
 
     <h1>unreader // kindle ai</h1>
     <div class="subtitle">clean formatting & chat for e-ink reading</div>
