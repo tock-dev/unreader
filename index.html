@@ -597,22 +597,12 @@
         {
           id: 'discord-link',
           name: 'Join our Discord server',
-          url: 'https://discord.gg/AqvFPzV8',
+          url: 'https://discord.gg/6jdVebZZQu',
         },
         {
           id: 'rekindle',
           name: 'reKindle',
-          url: 'rekindle.html',
-          onclick: async () => {
-            if (!localStorage.getItem('visited-rekindle-iframe')) {
-              await unAlert(
-                'Warning: The back button might overlap with parts of reKindle apps if you are using full-screen mode. Please turn off full-screen mode in reKindle for best experience.',
-                'OK',
-              );
-              localStorage.setItem('visited-rekindle-iframe', 'true');
-            }
-          },
-        },
+          url: 'rekindle.inl',
         {
           id: 'buymeacoffee',
           name: 'Buy me a pizza',
