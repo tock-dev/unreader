@@ -602,16 +602,7 @@
         {
           id: 'rekindle',
           name: 'reKindle',
-          url: 'rekindle.html',
-          onclick: async () => {
-            if (!localStorage.getItem('visited-rekindle-iframe')) {
-              await unAlert(
-                'Warning: The back button might overlap with parts of reKindle apps if you are using full-screen mode. Please turn off full-screen mode in reKindle for best experience.',
-                'OK',
-              );
-              localStorage.setItem('visited-rekindle-iframe', 'true');
-            }
-          },
+          url: 'rekindle.ink',
         },
         {
           id: 'buymeacoffee',
