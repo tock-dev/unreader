@@ -145,23 +145,9 @@ initDatabase();
 
 const app = express();
 app.set('trust proxy', true);
-/* app.use(async (req, res, next) => {
-  console.log('Received raw request')
-  if (req.url.startsWith('/api')
-    || !req.url.endsWith('.html')
-    || '..' in req.url) next()
-  else {
-    if (!fs.existsSync('.' + req.url)) {
-      console.log('Requested inexistant file')
-      res.status(404).send('<h1>File not found</h1>')
-      return
-    }
-    console.log('Requested ' + req.url)
-    res.status(200).sendFile('.' + req.url)
-  }
-}) */
 app.use(cors());
 app.use(express.json());
+app.use(express.static('./static/'));
 
 async function blockBannedIPs(req, res, next) {
   try {
@@ -562,6 +548,7 @@ app.post('/api/admin/ban-ip', authenticateToken, async (req, res) => {
 });
 
 app.get('/history', authenticateToken, async (req, res) => {
+  log(`history called by ${req.user.username} (${req.user.role.role})`);
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const r = await db.query(
     'SELECT m.* FROM messages m LEFT JOIN users u ON m.username = u.username ORDER BY m.id DESC LIMIT 10 OFFSET $1;',
@@ -741,6 +728,9 @@ wss.on('connection', (ws, req) => {
           'create_topic',
         ].includes(data.type)
       ) {
+        log(
+          `${data.type} called by ${authUser} (${activeClients.get(authUser).userRoles.role.role}): ${data.content}`,
+        );
         const tStr = String(Date.now());
         const mode =
           data.type === 'topic_message'
