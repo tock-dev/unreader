@@ -681,12 +681,12 @@ wss.on('connection', (ws, req) => {
             ws.close();
             return;
           }
-          if (BigInt(userRoles.timeout_until) > BigInt(Date.now())) {
+          if (userRoles.timeout_until > Date.now()) {
             log(`WS Termination Triggered: Banned or Timed out user session`);
             ws.send(
               JSON.stringify({
                 type: 'terminated',
-                reason: `You are timed out until ${new Date(BigInt(userRoles.timeout_until)).toLocaleString()}`,
+                reason: `You are timed out until ${new Date(userRoles.timeout_until).toLocaleString()}`,
               }),
             );
             ws.close();
