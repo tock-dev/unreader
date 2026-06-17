@@ -382,6 +382,20 @@
     </div>
   </div>
 
+  <div class='fullscreen-view' id='ryguy-view'>
+    <div class='view-wrapper'>
+      <div class="view-header">
+        <h2>ryguy248248</h2>
+        <button class="modal-btn" onclick="closeView('settings-view')" style="background: #000; color: #fff">
+          Back to Home
+        </button>
+      </div>
+      <p>In memory of ryguy248248 who sacrificd his browser for Catmanf11.</p>
+      <br>
+      <p>he will be remembered forever.</p>
+    </div>
+  </div>
+
   <div class="fullscreen-view" id="settings-view">
     <div class="view-wrapper">
       <div class="view-header">
@@ -603,6 +617,11 @@
         id: 'settings_app',
         name: 'Settings',
         onclick: () => openView('settings-view'),
+      },
+      {
+        id: 'ryguy_credits',
+        name: 'ryguy248248 memory',
+        onclick: () => openView('ryguy-view'),
       },
     ];
 
