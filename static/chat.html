@@ -471,9 +471,11 @@
             return;
           }
           if (data.type === "auth_success") {
-            if (data.userRoles.role.role && data.userRoles.role.role === 'admin') {
+            if (data.userRoles && data.userRoles.role && data.userRoles.role.role === 'admin') {
               show('#kick-all-btn');
             }
+            // CRITICAL FIX: Ensure chat payload initializes directly upon authorized confirmation
+            loadHistory();
             return;
           }
           if (data.type === "error_alert") {
@@ -499,7 +501,9 @@
                 show('#admin-invisible-box'); 
                 
                 adminInvisibleActive = localStorage.getItem("admin-invisible") === "true";
-                document.getElementById("admin-invisible-toggle").checked = adminInvisibleActive;
+                if(document.getElementById("admin-invisible-toggle")) {
+                  document.getElementById("admin-invisible-toggle").checked = adminInvisibleActive;
+                }
                 localStorage.setItem("unreader-rank", "admin");
                 
                 socket.send(JSON.stringify({ 
@@ -519,6 +523,8 @@
                 adminInvisibleActive = false;
               }
             }
+            // Apply fresh privilege states cleanly across layout templates
+            loadHistory();
             return;
           }
           if (currentHistoryIndex === 0) loadHistory();
