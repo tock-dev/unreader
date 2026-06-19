@@ -124,7 +124,6 @@
       overflow-y: auto;
     }
     
-    /* System Admin Hide Layout */
     .admin-invis-wrapper {
       margin-top: 6px;
       border-top: 1px dashed black;
@@ -423,7 +422,10 @@
                 localStorage.setItem("username", data.username);
                 token = data.token;
                 myUsername = data.username;
-                applySavedPreferences();
+                
+                if (typeof applySavedPreferences === "function") applySavedPreferences();
+                
+                // Spin up application session directly upon validation
                 initApp(false);
               } catch (e) {
                 log("Auth JSON parse error:", e);
