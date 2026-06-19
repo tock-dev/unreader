@@ -1,3 +1,4 @@
+//easter egg added!
 <!doctype html>
 <html lang="en">
 <head>
@@ -9,7 +10,7 @@
     * { box-sizing: border-box; transition: none !important; animation: none !important; border-radius: 0 !important; }
     :root { --bg-color: #ffffff; --text-color: #000000; --border-color: #000000; --border-width: 2px; --body-font: "Courier New", Courier, monospace; }
     body.dark-mode { --bg-color: #000000; --text-color: #ffffff; --border-color: #ffffff; }
-    html, body { width: 100%; height: 100%; margin: 0; background-color: var(--bg-color); color: var(--text-color); font-family: var(--body-font); overflow: hidden; }
+    html, body { width: 100%; height: 100%; margin: 0; background-color: var(--bg-color); color: var(--text-color); font-family: var(--body-font); }
 
     .top-bar { display: flex; justify-content: space-between; padding: 10px; border-bottom: var(--border-width) solid var(--border-color); font-weight: 900; }
     .apps-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 20px; }
@@ -22,8 +23,7 @@
     .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
     .setting-label { font-size: 14px; font-weight: 900; }
     .setting-desc { font-size: 10px; opacity: 0.8; }
-    .flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; pointer-events: none; background: var(--text-color); }
-    .modal-btn { width:100%; padding:10px; font-weight:900; border: 2px solid var(--text-color); background: var(--bg-color); color: var(--text-color); cursor: pointer; }
+    .modal-btn { width:100%; padding:10px; font-weight:900; border: 2px solid var(--text-color); background: var(--bg-color); color: var(--text-color); cursor: pointer; margin-top: 10px;}
   </style>
 </head>
 
@@ -35,65 +35,44 @@
 
   <div class="apps-grid" id="apps-container"></div>
 
+  <!-- Settings matching 32784.jpg -->
   <div class="fullscreen-view" id="settings-view">
     <div class="control-header">Control Panel</div>
+    
     <div class="setting-group">
-      <div class="setting-title">Appearance</div>
+      <div class="setting-title">Identity Management</div>
       <div class="setting-item">
-        <div><div class="setting-label">Theme</div><div class="setting-desc">Light, Dark, or Auto.</div></div>
-        <button onclick="document.body.classList.toggle('dark-mode')">Toggle</button>
+        <div><div class="setting-label">Session</div><div class="setting-desc" id="auth-status">Not logged in</div></div>
+        <button id="auth-btn">Log In</button>
       </div>
     </div>
-    <div class="setting-group">
-      <div class="setting-title">Location</div>
-      <div class="setting-item">
-        <div><div class="setting-label">Manual Location</div><div class="setting-desc" id="loc-text">Not set</div></div>
-        <button id="set-loc-btn">Set</button>
-      </div>
-    </div>
+
     <div class="setting-group">
       <div class="setting-title">System</div>
       <div class="setting-item">
-        <div><div class="setting-label">Flush Screen</div><div class="setting-desc">Clear e-ink artifacts.</div></div>
-        <button id="force-refresh-btn">Flush</button>
+        <div><div class="setting-label">Flush Screen</div><div class="setting-desc">Clear e-ink artifacts</div></div>
+        <button onclick="location.reload()">Flush</button>
       </div>
     </div>
     <button class="modal-btn" onclick="document.getElementById('settings-view').style.display='none'">[CLOSE]</button>
   </div>
 
   <script>
-    // --- KINDLE-SAFE MODAL ENGINE ---
-    async function unPrompt(message) {
-        return new Promise(resolve => {
-            const overlay = document.createElement('div');
-            overlay.className = 'fullscreen-view';
-            overlay.style.display = 'block';
-            overlay.innerHTML = `<div style="padding:20px"><p style="font-weight:900">${message}</p><input type="text" id="p-in" style="width:100%; border:2px solid black; padding:5px"><button class="modal-btn" id="p-ok">OK</button></div>`;
-            document.body.appendChild(overlay);
-            document.getElementById('p-ok').onclick = () => { resolve(document.getElementById('p-in').value); overlay.remove(); };
-        });
-    }
-
-    function flash() {
-      const f = document.createElement('div');
-      f.className = 'flash-overlay';
-      document.body.appendChild(f);
-      setTimeout(() => f.remove(), 150);
-    }
-
     const APP_DATABASE = [
       { name: 'CHAT', url: 'chat.html' },
       { name: 'TOPICS', url: 'topics.html' },
       { name: 'NEIGHBOURHOOD', url: 'neighbourhood.html' },
       { name: 'AI ASSISTANT', url: 'chatai.html' },
       { name: 'CALCULATOR', url: 'calc.html' },
-      { name: 'DISCORD', url: 'https://discord.gg/6jdVebZZQu' }
+      { name: 'MODERATION', url: 'modmenu.html', req: 'mod' }
     ];
 
     function buildGrid() {
       const container = document.getElementById('apps-container');
+      const rank = localStorage.getItem('unreader-rank') || 'user';
       container.innerHTML = '';
       APP_DATABASE.forEach(app => {
+        if (app.req === 'mod' && rank !== 'mod') return;
         const div = document.createElement('div');
         div.className = 'app-item';
         div.innerHTML = app.name;
@@ -102,12 +81,17 @@
       });
     }
 
+    // Auth logic
+    const user = localStorage.getItem('unreader-username');
+    if(user) {
+        document.getElementById('auth-status').textContent = 'User: ' + user;
+        document.getElementById('auth-btn').textContent = 'Log Out';
+        document.getElementById('auth-btn').onclick = () => { localStorage.clear(); location.reload(); };
+    } else {
+        document.getElementById('auth-btn').onclick = () => alert('Login functionality placeholder - redirect to auth.html');
+    }
+
     document.getElementById('settings-trigger').onclick = () => document.getElementById('settings-view').style.display='block';
-    document.getElementById('force-refresh-btn').onclick = flash;
-    document.getElementById('set-loc-btn').onclick = async () => {
-        const loc = await unPrompt('Enter New Location:');
-        if(loc) document.getElementById('loc-text').textContent = loc;
-    };
     buildGrid();
   </script>
 </body>
