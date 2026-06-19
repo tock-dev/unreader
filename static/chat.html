@@ -123,6 +123,21 @@
       box-shadow: var(--shadow);
       overflow-y: auto;
     }
+    
+    /* Admin Toggle Feature Styling Injection */
+    .admin-invis-wrapper {
+      margin-top: 6px;
+      border-top: 1px dashed black;
+      padding-top: 6px;
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .admin-invis-wrapper input {
+      margin-right: 6px;
+      cursor: pointer;
+    }
   </style>
 </head>
 
@@ -313,6 +328,10 @@
               onclick="window.location.href = 'modmenu.html'">
               MODERATION APP
             </button>
+            
+            <div class="admin-invis-wrapper">
+               <label><input type="checkbox" id="admin-invisible-toggle" onchange="toggleInvisibleMode()"> INVISIBLE MODE</label>
+            </div>
           </div>
         </div>
       </div>
@@ -345,6 +364,9 @@
       var currentHistoryIndex = 0;
       var modModeActive = false;
       var userRoles = { role: { role: '', prefix: '', style: '', class: '' }, is_banned: false, timeout_until: 0, last_ip: null };
+      
+      // Load or establish local active state tracking keys
+      var adminInvisibleActive = localStorage.getItem("admin-invisible") === "true";
 
       function toggleModMode() {
         modModeActive = !modModeActive;
@@ -353,6 +375,25 @@
         btn.textContent = modModeActive ? "MOD MODE: ACTIVE" : "MOD MODE: OFF";
         btn.classList.toggle("mod-indicator-active", modModeActive);
         loadHistory();
+      }
+      
+      // Dedicated visibility handling function
+      function toggleInvisibleMode() {
+        adminInvisibleActive = document.getElementById("admin-invisible-toggle").checked;
+        localStorage.setItem("admin-invisible", adminInvisibleActive ? "true" : "false");
+        log("Invisible mode flipped to:", adminInvisibleActive);
+        
+        // Force an active push sequence upstream so the back-end flags drop us instantly
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ 
+            type: "switch_context", 
+            mode: currentMode, 
+            target: currentTarget,
+            invisible: adminInvisibleActive 
+          }));
+        }
+        // Force immediate clean client rendering recalculation pass
+        renderUserRoster(onlineUsers);
       }
 
       document.getElementById("auth-toggle").onclick = function () {
@@ -421,6 +462,20 @@
         socket.onopen = function () {
           log("WS Link connected. Authenticating...");
           socket.send(JSON.stringify({ type: "auth", token: token }));
+          
+          // Re-sync correct state on a reconnection drop or reboot sequence cleanly
+          if (adminInvisibleActive) {
+            setTimeout(function() {
+              if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ 
+                  type: "switch_context", 
+                  mode: currentMode, 
+                  target: currentTarget,
+                  invisible: true 
+                }));
+              }
+            }, 500);
+          }
         };
         socket.onmessage = async function (event) {
           var data = JSON.parse(event.data);
@@ -456,6 +511,7 @@
               log("Roles updated:", userRoles);
               if (userRoles.role.role && (userRoles.role.role === 'admin' || userRoles.role.role === 'moderator')) {
                 document.querySelector('#mod-toggle-container').style.display = "flex";
+                document.getElementById("admin-invisible-toggle").checked = adminInvisibleActive;
                 localStorage.setItem("unreader-rank", "mod");
               } else {
                 localStorage.setItem("unreader-rank", "user");
@@ -487,21 +543,38 @@
         var container = document.getElementById("roster-list");
         container.innerHTML = "";
 
-        var sysDiv = document.createElement("div");
-        sysDiv.className = "roster-user";
-        sysDiv.style.display = "flex";
-        sysDiv.style.justifyContent = "space-between";
-        sysDiv.style.alignItems = "center";
-        var sysSpan = document.createElement("span");
-        sysSpan.className = "roster-name";
-        sysSpan.textContent = "system (Global)";
-        sysSpan.onclick = function () { openProfileModal("system"); };
-        sysDiv.appendChild(sysSpan);
-        container.appendChild(sysDiv);
+        // Fallback checks preventing system panel generation leaks if you chose to hide
+        if (adminInvisibleActive) {
+          log("Invisible protection applied: system global bypassed local view.");
+        } else {
+          var sysDiv = document.createElement("div");
+          sysDiv.className = "roster-user";
+          sysDiv.style.display = "flex";
+          sysDiv.style.justifyContent = "space-between";
+          sysDiv.style.alignItems = "center";
+          var sysSpan = document.createElement("span");
+          sysSpan.className = "roster-name";
+          sysSpan.textContent = "system (Global)";
+          sysSpan.onclick = function () { openProfileModal("system"); };
+          sysDiv.appendChild(sysSpan);
+          container.appendChild(sysDiv);
+        }
 
         for (var i = 0; i < userList.length; i++) {
           var u = userList[i];
           if (u.username === "system") continue;
+          
+          // --- ELEVATED CLIENT-SIDE ROSTER INTERCEPT ---
+          // 1. If you are invisible, don't put yourself in your own layout sidebar array
+          if (adminInvisibleActive && u.username === myUsername) {
+            continue;
+          }
+          // 2. Clear other backend flags passing custom parameters if the server pushes them
+          if (u.invisible && u.username !== myUsername) {
+            continue;
+          }
+          // ---------------------------------------------
+
           var div = document.createElement("div");
           div.className = "roster-user";
           div.style.display = "flex";
@@ -586,7 +659,12 @@
         currentHistoryIndex = 0;
 
         if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: "switch_context", mode: mode, target: target }));
+          socket.send(JSON.stringify({ 
+            type: "switch_context", 
+            mode: mode, 
+            target: target,
+            invisible: adminInvisibleActive // Send current hidden state when swapping rooms
+          }));
         }
 
         var items = document.getElementsByClassName("nav-item");
@@ -816,6 +894,7 @@
               type: currentMode === "public" ? "message" : "dm",
               content: text,
               target: currentTarget,
+              invisible: adminInvisibleActive // Pass state down to prevent un-hiding execution loops
             }),
           );
           input.value = "";
@@ -832,6 +911,7 @@
             type: currentMode === "public" ? "message" : "dm",
             content: text,
             target: currentTarget,
+            invisible: adminInvisibleActive // Keep standard messages matching state configuration flags
           }),
         );
         input.value = "";
@@ -842,6 +922,8 @@
       function generateSystemPrompt() {
         var users = "";
         for (var user of onlineUsers) {
+          // Instruct AI payload tracker to respect hidden flags safely
+          if (user.invisible) continue;
           users += `${user.userRoles.role.prefix} @${user.username}${user.mode === "public" ? " (Global)" : user.mode === "dm" ? " (DM @" + user.target + ")" : " (Neighborhood)"}\n`;
         }
         aiMemory = localStorage.getItem("unreader-ai-memory") || "";
@@ -922,7 +1004,7 @@
                 }
               ],
               "model": "qwen/qwen3-32b", // "llama-3.1-8b-instant",
-              "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
+              "max_completion_tokens": 4096,
               "temperature": 1,
               "top_p": 1,
               "stream": false,
@@ -949,7 +1031,7 @@
                 }
               ],
               "model": "llama-3.1-8b-instant",
-              "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
+              "max_completion_tokens": 4096,
               "temperature": 1,
               "top_p": 1,
               "stream": false,
@@ -987,6 +1069,7 @@
                   type: mode === "public" ? "message" : "dm",
                   content: "\u200B[SYSTEM_BOT]\u200B" + aiOutput,
                   target: target,
+                  invisible: adminInvisibleActive // Match state tracking
                 }),
               );
             }
@@ -1012,6 +1095,7 @@
                     type: mode === "public" ? "message" : "dm",
                     content: "\u200B[SYSTEM_BOT]\u200B" + a.message,
                     target: target,
+                    invisible: adminInvisibleActive
                   }),
                 );
               }
@@ -1021,6 +1105,7 @@
                   type: "dm",
                   content: a.system ? "\u200B[SYSTEM_BOT]\u200B" + a.message : a.message,
                   target: a.username,
+                  invisible: adminInvisibleActive
                 }),
               );
             } else if (a.action === 'memory') {
@@ -1042,6 +1127,7 @@
                 type: mode === "public" ? "message" : "dm",
                 content: "\u200B[SYSTEM_BOT]\u200B" + err,
                 target: target,
+                invisible: adminInvisibleActive
               }),
             );
           }
@@ -1077,7 +1163,7 @@
                 }
               ],
               "model": "llama-3.1-8b-instant",
-              "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
+              "max_completion_tokens": 4096,
               "temperature": 1,
               "top_p": 1,
               "stream": false,
