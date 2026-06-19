@@ -123,20 +123,6 @@
       box-shadow: var(--shadow);
       overflow-y: auto;
     }
-    
-    .admin-invis-wrapper {
-      margin-top: 6px;
-      border-top: 1px dashed black;
-      padding-top: 6px;
-      display: flex;
-      align-items: center;
-      font-size: 12px;
-      font-weight: bold;
-    }
-    .admin-invis-wrapper input {
-      margin-right: 6px;
-      cursor: pointer;
-    }
   </style>
 </head>
 
@@ -327,10 +313,6 @@
               onclick="window.location.href = 'modmenu.html'">
               MODERATION APP
             </button>
-            
-            <div class="admin-invis-wrapper hide" id="admin-invisible-box">
-               <label><input type="checkbox" id="admin-invisible-toggle" onchange="toggleInvisibleMode()"> INVISIBLE MODE</label>
-            </div>
           </div>
         </div>
       </div>
@@ -363,8 +345,6 @@
       var currentHistoryIndex = 0;
       var modModeActive = false;
       var userRoles = { role: { role: '', prefix: '', style: '', class: '' }, is_banned: false, timeout_until: 0, last_ip: null };
-      
-      var adminInvisibleActive = false;
 
       function toggleModMode() {
         modModeActive = !modModeActive;
@@ -373,22 +353,6 @@
         btn.textContent = modModeActive ? "MOD MODE: ACTIVE" : "MOD MODE: OFF";
         btn.classList.toggle("mod-indicator-active", modModeActive);
         loadHistory();
-      }
-      
-      function toggleInvisibleMode() {
-        adminInvisibleActive = document.getElementById("admin-invisible-toggle").checked;
-        localStorage.setItem("admin-invisible", adminInvisibleActive ? "true" : "false");
-        log("Pushing server-side invisible request. State:", adminInvisibleActive);
-        
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ 
-            type: "switch_context", 
-            mode: currentMode, 
-            target: currentTarget,
-            invisible: adminInvisibleActive 
-          }));
-        }
-        renderUserRoster(onlineUsers);
       }
 
       document.getElementById("auth-toggle").onclick = function () {
@@ -422,10 +386,7 @@
                 localStorage.setItem("username", data.username);
                 token = data.token;
                 myUsername = data.username;
-                
-                if (typeof applySavedPreferences === "function") applySavedPreferences();
-                
-                // Spin up application session directly upon validation
+                applySavedPreferences();
                 initApp(false);
               } catch (e) {
                 log("Auth JSON parse error:", e);
@@ -471,11 +432,9 @@
             return;
           }
           if (data.type === "auth_success") {
-            if (data.userRoles && data.userRoles.role && data.userRoles.role.role === 'admin') {
-              show('#kick-all-btn');
+            if (data.userRoles.role.role && data.userRoles.role.role === 'admin') {
+              show('#kick-all-btn')
             }
-            // CRITICAL FIX: Ensure chat payload initializes directly upon authorized confirmation
-            loadHistory();
             return;
           }
           if (data.type === "error_alert") {
@@ -495,36 +454,13 @@
             if (data.user_roles) {
               userRoles = data.user_roles;
               log("Roles updated:", userRoles);
-              
-              if (userRoles.role.role && userRoles.role.role === 'admin') {
+              if (userRoles.role.role && (userRoles.role.role === 'admin' || userRoles.role.role === 'moderator')) {
                 document.querySelector('#mod-toggle-container').style.display = "flex";
-                show('#admin-invisible-box'); 
-                
-                adminInvisibleActive = localStorage.getItem("admin-invisible") === "true";
-                if(document.getElementById("admin-invisible-toggle")) {
-                  document.getElementById("admin-invisible-toggle").checked = adminInvisibleActive;
-                }
-                localStorage.setItem("unreader-rank", "admin");
-                
-                socket.send(JSON.stringify({ 
-                  type: "switch_context", 
-                  mode: currentMode, 
-                  target: currentTarget,
-                  invisible: adminInvisibleActive 
-                }));
-
-              } else if (userRoles.role.role && userRoles.role.role === 'moderator') {
-                document.querySelector('#mod-toggle-container').style.display = "flex";
-                hide('#admin-invisible-box'); 
                 localStorage.setItem("unreader-rank", "mod");
-                adminInvisibleActive = false;
               } else {
                 localStorage.setItem("unreader-rank", "user");
-                adminInvisibleActive = false;
               }
             }
-            // Apply fresh privilege states cleanly across layout templates
-            loadHistory();
             return;
           }
           if (currentHistoryIndex === 0) loadHistory();
@@ -566,11 +502,6 @@
         for (var i = 0; i < userList.length; i++) {
           var u = userList[i];
           if (u.username === "system") continue;
-          
-          if (u.invisible && userRoles.role.role !== 'admin') {
-            continue;
-          }
-
           var div = document.createElement("div");
           div.className = "roster-user";
           div.style.display = "flex";
@@ -578,10 +509,7 @@
           div.style.alignItems = "center";
           var span = document.createElement("span");
           span.className = "roster-name";
-          
           var context = u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (Neighborhood)";
-          if (u.invisible) context += " [HIDDEN]"; 
-          
           span.textContent = u.username + context;
           (function (user) {
             span.onclick = function () {
@@ -589,7 +517,10 @@
             };
           })(u);
           div.appendChild(span);
-
+          log("Showing online user: " + u.username +
+            (u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (Neighborhood)") +
+            " who " + (userRoles.role.role && (userRoles.role.role === 'admin' || userRoles.role.role === 'moderator')
+              && u.username !== myUsername ? "can" : "cannot") + " be kicked.");
           if (u.username !== myUsername
             && userRoles.role.role && (userRoles.role.role === 'admin' ||
               (userRoles.role.role === 'moderator'
@@ -654,17 +585,8 @@
         currentTarget = target || "";
         currentHistoryIndex = 0;
 
-        var currentInvisState = document.getElementById("admin-invisible-toggle") ? 
-                                document.getElementById("admin-invisible-toggle").checked : 
-                                (localStorage.getItem("admin-invisible") === "true");
-
         if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ 
-            type: "switch_context", 
-            mode: mode, 
-            target: target,
-            invisible: currentInvisState 
-          }));
+          socket.send(JSON.stringify({ type: "switch_context", mode: mode, target: target }));
         }
 
         var items = document.getElementsByClassName("nav-item");
@@ -681,11 +603,13 @@
       }
 
       function appendMessage(data) {
+        // --- CLIENT-SIDE INTERCEPTION SPOOFING FLAG ---
         if (data.content && data.content.startsWith("\u200B[SYSTEM_BOT]\u200B")) {
-          data.username = "system"; 
-          data.content = data.content.replace("\u200B[SYSTEM_BOT]\u200B", ""); 
+          data.username = "system"; // Forces UI to parse identity as system
+          data.content = data.content.replace("\u200B[SYSTEM_BOT]\u200B", ""); // Clear raw tag block
           data.role = { role: 'bot', prefix: 'BOT', style: 'border: 3px solid #808080 !important;box-shadow: 4px 4px 0px #80808050 !important;', priority: 10 };
         }
+        // ----------------------------------------------
 
         log("APPEND_MESSAGE payload details:", JSON.stringify(data));
         var chatWrapper = document.getElementById("chat-scroll-wrapper");
@@ -853,6 +777,7 @@
               appendMessage(data[i]);
             }
 
+            // ---- SERVER-SIDE PERSISTENCE DETECTOR FOR ALT BOT ACCOUNT ----
             if (data.length > 0 && myUsername === "system" && currentHistoryIndex === 0) {
               var latestMsg = data.reduce((max, msg) => (msg.id > max.id ? msg : max), data[0]);
               var lastRespondedId = localStorage.getItem("sys_last_id");
@@ -870,6 +795,7 @@
                 }
               }
             }
+            // -------------------------------------------------------------
           }
         };
         xhr.send();
@@ -880,23 +806,21 @@
         var text = input.value.trim();
         if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
 
-        var currentInvisState = document.getElementById("admin-invisible-toggle") ? 
-                                document.getElementById("admin-invisible-toggle").checked : 
-                                (localStorage.getItem("admin-invisible") === "true");
-
+        // GLOBAL CHAT INTERCEPT: Checks for the @system keyword in both public and DMs
         if (text.includes("@system")) {
           log("Global decentralized AI intercept sequence triggered.");
 
+          // 1. Instantly send out your query block so the rest of the BBS sees your prompt
           socket.send(
             JSON.stringify({
               type: currentMode === "public" ? "message" : "dm",
               content: text,
               target: currentTarget,
-              invisible: currentInvisState 
             }),
           );
           input.value = "";
 
+          // 2. Extract your query and run it through the decentralized generator link
           var query = text.substring(7).trim();
           processGlobalAICore(query, currentMode, currentTarget);
           return;
@@ -908,7 +832,6 @@
             type: currentMode === "public" ? "message" : "dm",
             content: text,
             target: currentTarget,
-            invisible: currentInvisState 
           }),
         );
         input.value = "";
@@ -919,7 +842,6 @@
       function generateSystemPrompt() {
         var users = "";
         for (var user of onlineUsers) {
-          if (user.invisible) continue;
           users += `${user.userRoles.role.prefix} @${user.username}${user.mode === "public" ? " (Global)" : user.mode === "dm" ? " (DM @" + user.target + ")" : " (Neighborhood)"}\n`;
         }
         aiMemory = localStorage.getItem("unreader-ai-memory") || "";
@@ -970,12 +892,9 @@
         return prompt;
       }
 
+      // ---- DECENTRALIZED GLOBAL AI RUNNER (CLIENT-SIDE) ----
       async function processGlobalAICore(query, mode, target) {
         if (!query) return;
-        
-        var currentInvisState = document.getElementById("admin-invisible-toggle") ? 
-                                document.getElementById("admin-invisible-toggle").checked : 
-                                (localStorage.getItem("admin-invisible") === "true");
 
         var t1 = "gsk_YBuYi4R3exl";
         var t2 = "Wj5dMZG87WGdyb3FYVt6SIkkk";
@@ -1002,8 +921,8 @@
                   "content": query
                 }
               ],
-              "model": "qwen/qwen3-32b", 
-              "max_completion_tokens": 4096,
+              "model": "qwen/qwen3-32b", // "llama-3.1-8b-instant",
+              "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
               "temperature": 1,
               "top_p": 1,
               "stream": false,
@@ -1030,7 +949,7 @@
                 }
               ],
               "model": "llama-3.1-8b-instant",
-              "max_completion_tokens": 4096,
+              "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
               "temperature": 1,
               "top_p": 1,
               "stream": false,
@@ -1061,13 +980,13 @@
           try {
             var aiActions = JSON.parse(aiOutput);
           } catch {
+            // Push packet back to server tagged with the hidden identity verification string
             if (socket && socket.readyState === WebSocket.OPEN) {
               socket.send(
                 JSON.stringify({
                   type: mode === "public" ? "message" : "dm",
                   content: "\u200B[SYSTEM_BOT]\u200B" + aiOutput,
                   target: target,
-                  invisible: currentInvisState 
                 }),
               );
             }
@@ -1093,7 +1012,6 @@
                     type: mode === "public" ? "message" : "dm",
                     content: "\u200B[SYSTEM_BOT]\u200B" + a.message,
                     target: target,
-                    invisible: currentInvisState
                   }),
                 );
               }
@@ -1103,7 +1021,6 @@
                   type: "dm",
                   content: a.system ? "\u200B[SYSTEM_BOT]\u200B" + a.message : a.message,
                   target: a.username,
-                  invisible: currentInvisState
                 }),
               );
             } else if (a.action === 'memory') {
@@ -1125,14 +1042,14 @@
                 type: mode === "public" ? "message" : "dm",
                 content: "\u200B[SYSTEM_BOT]\u200B" + err,
                 target: target,
-                invisible: currentInvisState
               }),
             );
           }
         }
       }
 
-      function simulateSystemSearch(query, senderUsername) {
+      // ---- LIVE AI ENGINE DISPATCHER (GEMINI CORE INTEGRATION FOR ALT BOT USER) ----
+      async function simulateSystemSearch(query, senderUsername) {
         if (!query) return;
 
         var t1 = "gsk_YBuYi4R3exl";
@@ -1160,7 +1077,7 @@
                 }
               ],
               "model": "llama-3.1-8b-instant",
-              "max_completion_tokens": 4096,
+              "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
               "temperature": 1,
               "top_p": 1,
               "stream": false,
@@ -1235,21 +1152,17 @@
       }
 
       function dispatchSystemResponse(outputText, senderUsername) {
-        var currentInvisState = document.getElementById("admin-invisible-toggle") ? 
-                                document.getElementById("admin-invisible-toggle").checked : 
-                                (localStorage.getItem("admin-invisible") === "true");
-
         if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(
             JSON.stringify({
               type: currentMode === "public" ? "message" : "dm",
               content: outputText,
               target: currentMode === "public" ? "" : senderUsername,
-              invisible: currentInvisState
             }),
           );
         }
       }
+      // -----------------------------------------------------------------
 
       document.getElementById("send").onclick = sendMessage;
       document.getElementById("content").onkeydown = function (e) {
@@ -1419,4 +1332,4 @@
     </script>
 </body>
 
-</html>
+  </html>
