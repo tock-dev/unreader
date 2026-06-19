@@ -19,23 +19,24 @@
     body.dark-mode { --bg-color: #000000; --text-color: #ffffff; --border-color: #ffffff; }
     body.dyslexic-font { --body-font: "OpenDyslexic", sans-serif; }
     
-    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); font-family: var(--body-font); overflow: hidden; }
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); font-family: var(--body-font); overflow-x: hidden; }
 
     /* Home Layout Frame */
-    .header-container { text-align: center; padding: 20px; border-bottom: var(--border-width) solid var(--border-color); position: relative; }
+    .header-container { text-align: center; padding: 20px; border-bottom: var(--border-width) solid var(--border-color); position: relative; width: 100%; }
     .title { font-size: 24px; font-weight: 900; margin: 0; letter-spacing: 1px; }
     .subtitle { font-size: 13px; margin-top: 5px; font-weight: bold; }
     .settings-btn { position: absolute; top: 20px; right: 20px; cursor: pointer; font-weight: 900; font-size: 14px; text-decoration: underline; }
 
-    /* Featured App Container Grid */
-    .featured-box { margin: 20px; border: var(--border-width) solid var(--border-color); padding: 15px; background: var(--bg-color); }
+    /* Featured App Container Grid - FIXED FOR MOBILE OVERFLOW */
+    .featured-box { margin: 15px; border: var(--border-width) solid var(--border-color); padding: 15px; background: var(--bg-color); max-width: calc(100% - 30px); }
     .featured-title { font-weight: 900; font-size: 14px; border-bottom: var(--border-width) solid var(--border-color); padding-bottom: 5px; margin-bottom: 15px; letter-spacing: 1px; }
     
-    .apps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-    .app-item { padding: 15px; border: var(--border-width) solid var(--border-color); cursor: pointer; text-align: left; background: var(--bg-color); position: relative; }
+    /* Defensive grid constraints for narrow viewports */
+    .apps-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; }
+    .app-item { padding: 12px 8px; border: var(--border-width) solid var(--border-color); cursor: pointer; text-align: left; background: var(--bg-color); position: relative; word-wrap: break-word; overflow: hidden; }
     .app-item:active { background: var(--text-color); color: var(--bg-color); }
-    .app-name { font-weight: 900; font-size: 14px; }
-    .app-desc { font-size: 11px; font-style: italic; margin-top: 5px; opacity: 0.8; }
+    .app-name { font-weight: 900; font-size: 13px; word-break: break-word; }
+    .app-desc { font-size: 10px; font-style: italic; margin-top: 5px; opacity: 0.8; line-height: 1.2; }
 
     /* --- CONTROL PANEL WINDOW (Ref: 32784.jpg) --- */
     .fullscreen-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 2000; padding: 12px; border: 3px solid var(--border-color); overflow-y: auto; }
@@ -129,7 +130,6 @@
     // --- COOKIE STORAGE ENGINE FOR LEGACY HARDWARE ---
     function setStorageItem(key, value) {
         localStorage.setItem(key, value);
-        // Backup to document.cookie path for basic proxy gateways or rigid e-readers
         document.cookie = key + "=" + value + "; path=/; max-age=31536000;";
     }
 
