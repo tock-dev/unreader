@@ -329,7 +329,6 @@
               MODERATION APP
             </button>
             
-            <!-- Only Visible if User Role is strictly authorized via backend check -->
             <div class="admin-invis-wrapper hide" id="admin-invisible-box">
                <label><input type="checkbox" id="admin-invisible-toggle" onchange="toggleInvisibleMode()"> INVISIBLE MODE</label>
             </div>
@@ -366,8 +365,7 @@
       var modModeActive = false;
       var userRoles = { role: { role: '', prefix: '', style: '', class: '' }, is_banned: false, timeout_until: 0, last_ip: null };
       
-      // Track states locally so we can automatically push stealth preferences on reload
-      var adminInvisibleActive = localStorage.getItem("admin-invisible") === "true";
+      var adminInvisibleActive = false;
 
       function toggleModMode() {
         modModeActive = !modModeActive;
@@ -378,13 +376,11 @@
         loadHistory();
       }
       
-      // Tells the server directly via Websocket to drop this user's tracking flags globally
       function toggleInvisibleMode() {
         adminInvisibleActive = document.getElementById("admin-invisible-toggle").checked;
         localStorage.setItem("admin-invisible", adminInvisibleActive ? "true" : "false");
         log("Pushing server-side invisible request. State:", adminInvisibleActive);
         
-        // Pushes state down the active WS socket to trigger server logic handling
         if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ 
             type: "switch_context", 
@@ -462,20 +458,6 @@
         socket.onopen = function () {
           log("WS Link connected. Authenticating...");
           socket.send(JSON.stringify({ type: "auth", token: token }));
-          
-          // Re-sync correct state on a reconnection drop or reboot sequence cleanly
-          if (adminInvisibleActive) {
-            setTimeout(function() {
-              if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ 
-                  type: "switch_context", 
-                  mode: currentMode, 
-                  target: currentTarget,
-                  invisible: true 
-                }));
-              }
-            }, 500);
-          }
         };
         socket.onmessage = async function (event) {
           var data = JSON.parse(event.data);
@@ -510,18 +492,29 @@
               userRoles = data.user_roles;
               log("Roles updated:", userRoles);
               
-              // CRITICAL ACCESS CONTROL: Only show option if role is explicitly verified as admin
               if (userRoles.role.role && userRoles.role.role === 'admin') {
                 document.querySelector('#mod-toggle-container').style.display = "flex";
-                show('#admin-invisible-box'); // Reveal the toggle block safely to admins only
+                show('#admin-invisible-box'); 
+                
+                adminInvisibleActive = localStorage.getItem("admin-invisible") === "true";
                 document.getElementById("admin-invisible-toggle").checked = adminInvisibleActive;
                 localStorage.setItem("unreader-rank", "admin");
+                
+                socket.send(JSON.stringify({ 
+                  type: "switch_context", 
+                  mode: currentMode, 
+                  target: currentTarget,
+                  invisible: adminInvisibleActive 
+                }));
+
               } else if (userRoles.role.role && userRoles.role.role === 'moderator') {
                 document.querySelector('#mod-toggle-container').style.display = "flex";
-                hide('#admin-invisible-box'); // Hide Option from regular moderators!
+                hide('#admin-invisible-box'); 
                 localStorage.setItem("unreader-rank", "mod");
+                adminInvisibleActive = false;
               } else {
                 localStorage.setItem("unreader-rank", "user");
+                adminInvisibleActive = false;
               }
             }
             return;
@@ -550,7 +543,6 @@
         var container = document.getElementById("roster-list");
         container.innerHTML = "";
 
-        // Standard global entry setup
         var sysDiv = document.createElement("div");
         sysDiv.className = "roster-user";
         sysDiv.style.display = "flex";
@@ -567,7 +559,6 @@
           var u = userList[i];
           if (u.username === "system") continue;
           
-          // Fallback UI Filter: If backend returns someone flagged invisible, only show them if you are admin
           if (u.invisible && userRoles.role.role !== 'admin') {
             continue;
           }
@@ -580,9 +571,8 @@
           var span = document.createElement("span");
           span.className = "roster-name";
           
-          // Append clear text context mapping
           var context = u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (Neighborhood)";
-          if (u.invisible) context += " [HIDDEN]"; // Visual aid for tracking admins
+          if (u.invisible) context += " [HIDDEN]"; 
           
           span.textContent = u.username + context;
           (function (user) {
@@ -656,12 +646,16 @@
         currentTarget = target || "";
         currentHistoryIndex = 0;
 
+        var currentInvisState = document.getElementById("admin-invisible-toggle") ? 
+                                document.getElementById("admin-invisible-toggle").checked : 
+                                (localStorage.getItem("admin-invisible") === "true");
+
         if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ 
             type: "switch_context", 
             mode: mode, 
             target: target,
-            invisible: adminInvisibleActive // Propagate active stealth choice down the pipeline
+            invisible: currentInvisState 
           }));
         }
 
@@ -878,6 +872,10 @@
         var text = input.value.trim();
         if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
 
+        var currentInvisState = document.getElementById("admin-invisible-toggle") ? 
+                                document.getElementById("admin-invisible-toggle").checked : 
+                                (localStorage.getItem("admin-invisible") === "true");
+
         if (text.includes("@system")) {
           log("Global decentralized AI intercept sequence triggered.");
 
@@ -886,7 +884,7 @@
               type: currentMode === "public" ? "message" : "dm",
               content: text,
               target: currentTarget,
-              invisible: adminInvisibleActive 
+              invisible: currentInvisState 
             }),
           );
           input.value = "";
@@ -902,7 +900,7 @@
             type: currentMode === "public" ? "message" : "dm",
             content: text,
             target: currentTarget,
-            invisible: adminInvisibleActive 
+            invisible: currentInvisState 
           }),
         );
         input.value = "";
@@ -966,6 +964,10 @@
 
       async function processGlobalAICore(query, mode, target) {
         if (!query) return;
+        
+        var currentInvisState = document.getElementById("admin-invisible-toggle") ? 
+                                document.getElementById("admin-invisible-toggle").checked : 
+                                (localStorage.getItem("admin-invisible") === "true");
 
         var t1 = "gsk_YBuYi4R3exl";
         var t2 = "Wj5dMZG87WGdyb3FYVt6SIkkk";
@@ -1057,7 +1059,7 @@
                   type: mode === "public" ? "message" : "dm",
                   content: "\u200B[SYSTEM_BOT]\u200B" + aiOutput,
                   target: target,
-                  invisible: adminInvisibleActive 
+                  invisible: currentInvisState 
                 }),
               );
             }
@@ -1083,7 +1085,7 @@
                     type: mode === "public" ? "message" : "dm",
                     content: "\u200B[SYSTEM_BOT]\u200B" + a.message,
                     target: target,
-                    invisible: adminInvisibleActive
+                    invisible: currentInvisState
                   }),
                 );
               }
@@ -1093,7 +1095,7 @@
                   type: "dm",
                   content: a.system ? "\u200B[SYSTEM_BOT]\u200B" + a.message : a.message,
                   target: a.username,
-                  invisible: adminInvisibleActive
+                  invisible: currentInvisState
                 }),
               );
             } else if (a.action === 'memory') {
@@ -1115,14 +1117,14 @@
                 type: mode === "public" ? "message" : "dm",
                 content: "\u200B[SYSTEM_BOT]\u200B" + err,
                 target: target,
-                invisible: adminInvisibleActive
+                invisible: currentInvisState
               }),
             );
           }
         }
       }
 
-      async function simulateSystemSearch(query, senderUsername) {
+      function simulateSystemSearch(query, senderUsername) {
         if (!query) return;
 
         var t1 = "gsk_YBuYi4R3exl";
@@ -1225,12 +1227,17 @@
       }
 
       function dispatchSystemResponse(outputText, senderUsername) {
+        var currentInvisState = document.getElementById("admin-invisible-toggle") ? 
+                                document.getElementById("admin-invisible-toggle").checked : 
+                                (localStorage.getItem("admin-invisible") === "true");
+
         if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(
             JSON.stringify({
               type: currentMode === "public" ? "message" : "dm",
               content: outputText,
               target: currentMode === "public" ? "" : senderUsername,
+              invisible: currentInvisState
             }),
           );
         }
