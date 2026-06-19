@@ -52,12 +52,15 @@
     button:active { background: var(--text-color); color: var(--bg-color); }
     .modal-btn { width: 100%; padding: 12px; font-weight: 900; font-size: 14px; margin-top: 15px; }
     .flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; pointer-events: none; background: var(--text-color); }
+
+    /* Custom Kindle-Safe Input Box style */
+    .kindle-prompt-box { border: 3px solid var(--border-color); padding: 15px; margin-top: 30%; background: var(--bg-color); text-align: left; }
+    .kindle-input { width: 100%; border: 2px solid var(--border-color); background: var(--bg-color); color: var(--text-color); padding: 10px; font-family: inherit; font-size: 16px; margin: 15px 0 10px 0; }
   </style>
 </head>
 
 <body>
 
-  <!-- HOME SCREEN DASHBOARD -->
   <div class="header-container">
     <div class="title">UN-READER</div>
     <div class="subtitle" id="user-status">Guest Mode</div>
@@ -70,11 +73,9 @@
   </div>
 
 
-  <!-- CONTROL PANEL POPUP -->
   <div class="fullscreen-view" id="settings-view">
     <div class="control-header">Control Panel</div>
     
-    <!-- Identity Management Section -->
     <div class="setting-group">
       <div class="setting-title">Identity Management</div>
       <div class="setting-item">
@@ -86,7 +87,6 @@
       </div>
     </div>
 
-    <!-- Appearance Parameters Section -->
     <div class="setting-group">
       <div class="setting-title">Appearance</div>
       <div class="setting-item">
@@ -98,7 +98,6 @@
       </div>
     </div>
 
-    <!-- Accessibility Profiles Section -->
     <div class="setting-group">
       <div class="setting-title">Accessibility</div>
       <div class="setting-item">
@@ -110,7 +109,6 @@
       </div>
     </div>
 
-    <!-- Core Hardware Management Section -->
     <div class="setting-group">
       <div class="setting-title">System</div>
       <div class="setting-item">
@@ -130,19 +128,55 @@
     // --- COOKIE STORAGE ENGINE FOR LEGACY HARDWARE ---
     function setStorageItem(key, value) {
         localStorage.setItem(key, value);
-        document.cookie = key + "=" + value + "; path=/; max-age=31536000;";
+        document.cookie = key + "=" + encodeURIComponent(value) + "; path=/; max-age=31536000;";
     }
 
+    // Heavy-duty fallback parser to extract cookie arrays on strict or isolated multi-page routes
     function getStorageItem(key) {
         let val = localStorage.getItem(key);
         if (!val) {
             const pairs = document.cookie.split('; ');
             for (let i = 0; i < pairs.length; i++) {
                 const parts = pairs[i].split('=');
-                if (parts[0] === key) return parts[1];
+                if (parts[0] === key) return decodeURIComponent(parts[1]);
             }
         }
         return val;
+    }
+
+    // --- KINDLE-SAFE MODAL ENGINE (Replaces broken browser alerts/prompts natively) ---
+    function customKindlePrompt(message) {
+        return new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.className = 'fullscreen-view';
+            overlay.style.display = 'block';
+            overlay.style.zIndex = '3000';
+            
+            overlay.innerHTML = `
+                <div class="kindle-prompt-box">
+                    <div style="font-weight:900; text-transform:uppercase;">${message}</div>
+                    <input type="text" id="k-prompt-input" class="kindle-input" autofocus autocomplete="off">
+                    <div style="display:flex; gap:10px;">
+                        <button style="flex:1;" id="k-prompt-submit">SUBMIT</button>
+                        <button style="flex:1;" id="k-prompt-cancel">CANCEL</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            
+            // Wait for display cycle, focus text field securely
+            setTimeout(() => { document.getElementById('k-prompt-input').focus(); }, 50);
+
+            document.getElementById('k-prompt-submit').onclick = () => {
+                const textVal = document.getElementById('k-prompt-input').value;
+                overlay.remove();
+                resolve(textVal ? textVal.trim() : null);
+            };
+            document.getElementById('k-prompt-cancel').onclick = () => {
+                overlay.remove();
+                resolve(null);
+            };
+        });
     }
 
     // Load State Parameters immediately
@@ -200,19 +234,36 @@
         setTimeout(() => overlay.remove(), 150);
     };
 
-    // Identity Engine Authentication Check
+    // Identity Engine Authentication Check & Kindle-safe Modal Prompt Implementation
     if (activeSessionUser) {
         document.getElementById('auth-status').textContent = 'User: ' + activeSessionUser;
         document.getElementById('auth-btn').textContent = 'Log Out';
         document.getElementById('auth-btn').onclick = () => {
             localStorage.removeItem('unreader-username');
             localStorage.removeItem('unreader-rank');
-            document.cookie = "unreader-username=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
-            document.cookie = "unreader-rank=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+            
+            // Clear cookies globally by forcing past epoch expiration explicitly on global path boundary "/"
+            document.cookie = "unreader-username=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
+            document.cookie = "unreader-rank=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
+            
             location.reload();
         };
     } else {
-        document.getElementById('auth-btn').onclick = () => { window.location.href = 'auth.html'; };
+        document.getElementById('auth-btn').onclick = async () => { 
+            // Kindle safe asynchronous layout pop instead of native prompt() window
+            const username = await customKindlePrompt("Enter username to sign in:");
+            if (username && username !== "") {
+                setStorageItem('unreader-username', username);
+                
+                // Secret passphrase trapdoor for testing mod access without an auth.html page template
+                if (username.toLowerCase() === 'admin' || username.toLowerCase() === 'mod') {
+                    setStorageItem('unreader-rank', 'mod');
+                } else {
+                    setStorageItem('unreader-rank', 'user');
+                }
+                location.reload();
+            }
+        };
     }
 
     // Run layout deployment logic
