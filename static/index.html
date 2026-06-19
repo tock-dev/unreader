@@ -27,11 +27,10 @@
     .subtitle { font-size: 13px; margin-top: 5px; font-weight: bold; }
     .settings-btn { position: absolute; top: 20px; right: 20px; cursor: pointer; font-weight: 900; font-size: 14px; text-decoration: underline; }
 
-    /* Featured App Container Grid - FIXED FOR MOBILE OVERFLOW */
+    /* Featured App Container Grid */
     .featured-box { margin: 15px; border: var(--border-width) solid var(--border-color); padding: 15px; background: var(--bg-color); max-width: calc(100% - 30px); }
     .featured-title { font-weight: 900; font-size: 14px; border-bottom: var(--border-width) solid var(--border-color); padding-bottom: 5px; margin-bottom: 15px; letter-spacing: 1px; }
     
-    /* Defensive grid constraints for narrow viewports */
     .apps-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; }
     .app-item { padding: 12px 8px; border: var(--border-width) solid var(--border-color); cursor: pointer; text-align: left; background: var(--bg-color); position: relative; word-wrap: break-word; overflow: hidden; }
     .app-item:active { background: var(--text-color); color: var(--bg-color); }
@@ -53,10 +52,12 @@
     .modal-btn { width: 100%; padding: 12px; font-weight: 900; font-size: 14px; margin-top: 15px; }
     .flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; pointer-events: none; background: var(--text-color); }
 
-    /* Custom Kindle-Safe Input Box style */
-    .kindle-prompt-box { border: 3px solid var(--border-color); padding: 15px; margin-top: 30%; background: var(--bg-color); text-align: left; }
-    .kindle-input { width: 100%; border: 2px solid var(--border-color); background: var(--bg-color); color: var(--text-color); padding: 10px; font-family: inherit; font-size: 16px; margin: 15px 0 10px 0; }
+    /* Kindle-Safe Auth Modal Layout */
+    .kindle-auth-box { border: 3px solid var(--border-color); padding: 15px; margin-top: 15%; background: var(--bg-color); }
+    .kindle-input { width: 100%; border: 2px solid var(--border-color); background: var(--bg-color); color: var(--text-color); padding: 8px; font-family: inherit; font-size: 14px; margin-bottom: 10px; }
+    .error-msg { color: var(--text-color); font-weight: bold; font-size: 12px; margin-bottom: 10px; border: 1px dashed var(--border-color); padding: 5px; display: none; }
   </style>
+  <script src="common.js"></script>
 </head>
 
 <body>
@@ -124,6 +125,28 @@
   </div>
 
 
+  <div class="fullscreen-view" id="login-modal-view">
+    <div class="kindle-auth-box">
+      <div class="control-header" id="modal-auth-title">LOGIN</div>
+      <div id="modal-error-log" class="error-msg"></div>
+      
+      <div style="font-weight: 900; margin-bottom: 4px; font-size: 12px;">USERNAME:</div>
+      <input type="text" id="modal-auth-user" class="kindle-input" autocomplete="off" />
+      
+      <div style="font-weight: 900; margin-bottom: 4px; font-size: 12px;">PASSWORD:</div>
+      <input type="password" id="modal-auth-pass" class="kindle-input" />
+      
+      <button id="modal-auth-submit" style="width: 100%; padding: 10px; margin-top: 5px;">SUBMIT</button>
+      
+      <div id="modal-auth-toggle" style="font-size: 11px; margin-top: 15px; cursor: pointer; text-decoration: underline; text-align: center; font-weight: bold;">
+        Need an account? Register
+      </div>
+      
+      <button class="modal-btn" style="margin-top: 15px;" onclick="document.getElementById('login-modal-view').style.display='none'">[CANCEL]</button>
+    </div>
+  </div>
+
+
   <script>
     // --- COOKIE STORAGE ENGINE FOR LEGACY HARDWARE ---
     function setStorageItem(key, value) {
@@ -131,7 +154,6 @@
         document.cookie = key + "=" + encodeURIComponent(value) + "; path=/; max-age=31536000;";
     }
 
-    // Heavy-duty fallback parser to extract cookie arrays on strict or isolated multi-page routes
     function getStorageItem(key) {
         let val = localStorage.getItem(key);
         if (!val) {
@@ -144,48 +166,17 @@
         return val;
     }
 
-    // --- KINDLE-SAFE MODAL ENGINE (Replaces broken browser alerts/prompts natively) ---
-    function customKindlePrompt(message) {
-        return new Promise(resolve => {
-            const overlay = document.createElement('div');
-            overlay.className = 'fullscreen-view';
-            overlay.style.display = 'block';
-            overlay.style.zIndex = '3000';
-            
-            overlay.innerHTML = `
-                <div class="kindle-prompt-box">
-                    <div style="font-weight:900; text-transform:uppercase;">${message}</div>
-                    <input type="text" id="k-prompt-input" class="kindle-input" autofocus autocomplete="off">
-                    <div style="display:flex; gap:10px;">
-                        <button style="flex:1;" id="k-prompt-submit">SUBMIT</button>
-                        <button style="flex:1;" id="k-prompt-cancel">CANCEL</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-            
-            // Wait for display cycle, focus text field securely
-            setTimeout(() => { document.getElementById('k-prompt-input').focus(); }, 50);
-
-            document.getElementById('k-prompt-submit').onclick = () => {
-                const textVal = document.getElementById('k-prompt-input').value;
-                overlay.remove();
-                resolve(textVal ? textVal.trim() : null);
-            };
-            document.getElementById('k-prompt-cancel').onclick = () => {
-                overlay.remove();
-                resolve(null);
-            };
-        });
-    }
-
     // Load State Parameters immediately
     if (getStorageItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
     if (getStorageItem('dyslexic-font') === 'true') document.body.classList.add('dyslexic-font');
 
+    // Sync variables using exact keys extracted from chat.html architecture
+    var token = getStorageItem("token");
+    var myUsername = getStorageItem("username");
+    var isRegisterMode = false;
+
     // Dynamic Header State Management
-    const activeSessionUser = getStorageItem('unreader-username');
-    document.getElementById('user-status').textContent = activeSessionUser ? activeSessionUser : 'Guest Mode';
+    document.getElementById('user-status').textContent = myUsername ? "@" + myUsername : 'Guest Mode';
 
     // Application Master Array
     const APP_DATABASE = [
@@ -234,35 +225,82 @@
         setTimeout(() => overlay.remove(), 150);
     };
 
-    // Identity Engine Authentication Check & Kindle-safe Modal Prompt Implementation
-    if (activeSessionUser) {
-        document.getElementById('auth-status').textContent = 'User: ' + activeSessionUser;
+    // Modal view authentication mode swapper
+    document.getElementById("modal-auth-toggle").onclick = function () {
+        isRegisterMode = !isRegisterMode;
+        document.getElementById("modal-auth-title").textContent = isRegisterMode ? "REGISTER" : "LOGIN";
+        this.textContent = isRegisterMode ? "Already have an account? Login" : "Need an account? Register";
+    };
+
+    // --- LIVE EXPLICIT REPLICATION OF THE CHAT.HTML AUTH PIPELINE ---
+    document.getElementById("modal-auth-submit").onclick = function () {
+        var usernameInput = document.getElementById("modal-auth-user").value.trim();
+        var passwordInput = document.getElementById("modal-auth-pass").value;
+        var errorDisplay = document.getElementById("modal-error-log");
+        
+        if (!usernameInput || !passwordInput) {
+            errorDisplay.textContent = "Fill in all log credentials.";
+            errorDisplay.style.display = "block";
+            return;
+        }
+        
+        var url = isRegisterMode ? "/api/register" : "/api/login";
+        var xhr = new XMLHttpRequest();
+        // BACKEND_URL variable pulled directly from loaded common.js config context
+        xhr.open("POST", BACKEND_URL + url, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        // Save to storage using exact structural definitions matching chat.html
+                        setStorageItem("token", data.token);
+                        setStorageItem("username", data.username);
+                        
+                        // Default rank safely, apps will auto-elevate this during WebSocket verification
+                        setStorageItem("unreader-rank", (data.username.toLowerCase() === 'admin' || data.username.toLowerCase() === 'mod') ? 'mod' : 'user');
+                        
+                        location.reload();
+                    } catch (e) {
+                        errorDisplay.textContent = "Server returned an invalid packet signature.";
+                        errorDisplay.style.display = "block";
+                    }
+                } else {
+                    try {
+                        var errData = JSON.parse(xhr.responseText);
+                        errorDisplay.textContent = "Server error: " + (errData.error || "Access Denied");
+                    } catch (e) {
+                        errorDisplay.textContent = "Structural connection failure.";
+                    }
+                    errorDisplay.style.display = "block";
+                }
+            }
+        };
+        xhr.send(JSON.stringify({ username: usernameInput, password: passwordInput }));
+    };
+
+    // Identity Engine Authentication Check
+    if (token && myUsername) {
+        document.getElementById('auth-status').textContent = 'User: ' + myUsername;
         document.getElementById('auth-btn').textContent = 'Log Out';
-        document.getElementById('auth-btn').onclick = () => {
-            localStorage.removeItem('unreader-username');
-            localStorage.removeItem('unreader-rank');
+        document.getElementById('auth-btn').onclick = function () {
+            // MATCHES CORES OF CHAT.HTML: Complete cache purge across all application structures
+            localStorage.clear();
             
-            // Clear cookies globally by forcing past epoch expiration explicitly on global path boundary "/"
-            document.cookie = "unreader-username=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
+            // Wipe standard path cookies to ensure tracking values drop entirely
+            document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
+            document.cookie = "username=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
             document.cookie = "unreader-rank=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
             
             location.reload();
         };
     } else {
-        document.getElementById('auth-btn').onclick = async () => { 
-            // Kindle safe asynchronous layout pop instead of native prompt() window
-            const username = await customKindlePrompt("Enter username to sign in:");
-            if (username && username !== "") {
-                setStorageItem('unreader-username', username);
-                
-                // Secret passphrase trapdoor for testing mod access without an auth.html page template
-                if (username.toLowerCase() === 'admin' || username.toLowerCase() === 'mod') {
-                    setStorageItem('unreader-rank', 'mod');
-                } else {
-                    setStorageItem('unreader-rank', 'user');
-                }
-                location.reload();
-            }
+        document.getElementById('auth-btn').onclick = function () { 
+            // Close settings menu window, open Kindle Safe inline login box
+            document.getElementById('settings-view').style.display = 'none';
+            document.getElementById('login-modal-view').style.display = 'block';
         };
     }
 
@@ -271,3 +309,4 @@
   </script>
 </body>
 </html>
+
