@@ -3,36 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Un-Reader Desktop</title>
+  <title>Un-Reader Dashboard</title>
   <style>
-    /* --- KINDLE E-INK AESTHETIC --- */
+    /* --- KINDLE E-INK CORE LAYOUT (Ref: 1781893955316.jpeg) --- */
     * { box-sizing: border-box; transition: none !important; animation: none !important; border-radius: 0 !important; }
-    :root { --bg-color: #ffffff; --text-color: #000000; --border-color: #000000; --border-width: 2px; --body-font: "Courier New", Courier, monospace; }
-    html, body { width: 100%; height: 100%; margin: 0; background-color: var(--bg-color); color: var(--text-color); font-family: var(--body-font); overflow: hidden; }
+    
+    :root { 
+      --bg-color: #ffffff; 
+      --text-color: #000000; 
+      --border-color: #000000; 
+      --border-width: 2px; 
+      --body-font: "Courier New", Courier, monospace; 
+    }
+    
+    body.dark-mode { --bg-color: #000000; --text-color: #ffffff; --border-color: #ffffff; }
+    body.dyslexic-font { --body-font: "OpenDyslexic", sans-serif; }
+    
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); font-family: var(--body-font); overflow: hidden; }
 
-    /* Home Layout (Ref: 1781893955316.jpeg) */
-    .header-container { text-align: center; padding: 20px; border-bottom: var(--border-width) solid var(--border-color); }
-    .title { font-size: 24px; font-weight: 900; }
-    .settings-btn { position: absolute; top: 10px; right: 20px; cursor: pointer; font-weight: 900; }
-    .featured-box { margin: 20px; border: var(--border-width) solid var(--border-color); padding: 15px; }
-    .featured-title { font-weight: 900; border-bottom: var(--border-width) solid var(--border-color); padding-bottom: 5px; margin-bottom: 15px; }
-    .apps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .app-item { padding: 15px; border: var(--border-width) solid var(--border-color); cursor: pointer; text-align: center; }
+    /* Home Layout Frame */
+    .header-container { text-align: center; padding: 20px; border-bottom: var(--border-width) solid var(--border-color); position: relative; }
+    .title { font-size: 24px; font-weight: 900; margin: 0; letter-spacing: 1px; }
+    .subtitle { font-size: 13px; margin-top: 5px; font-weight: bold; }
+    .settings-btn { position: absolute; top: 20px; right: 20px; cursor: pointer; font-weight: 900; font-size: 14px; text-decoration: underline; }
+
+    /* Featured App Container Grid */
+    .featured-box { margin: 20px; border: var(--border-width) solid var(--border-color); padding: 15px; background: var(--bg-color); }
+    .featured-title { font-weight: 900; font-size: 14px; border-bottom: var(--border-width) solid var(--border-color); padding-bottom: 5px; margin-bottom: 15px; letter-spacing: 1px; }
+    
+    .apps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .app-item { padding: 15px; border: var(--border-width) solid var(--border-color); cursor: pointer; text-align: left; background: var(--bg-color); position: relative; }
+    .app-item:active { background: var(--text-color); color: var(--bg-color); }
     .app-name { font-weight: 900; font-size: 14px; }
-    .app-desc { font-size: 10px; font-style: italic; margin-top: 4px; }
+    .app-desc { font-size: 11px; font-style: italic; margin-top: 5px; opacity: 0.8; }
 
-    /* Control Panel (Ref: 32784.jpg) */
-    .fullscreen-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 2000; padding: 10px; border: 3px solid var(--border-color); overflow-y: auto; }
-    .control-header { border: 3px solid var(--border-color); padding: 5px; font-weight: 900; text-align: center; margin-bottom: 10px; }
+    /* --- CONTROL PANEL WINDOW (Ref: 32784.jpg) --- */
+    .fullscreen-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 2000; padding: 12px; border: 3px solid var(--border-color); overflow-y: auto; }
+    .control-header { border: 3px solid var(--border-color); padding: 6px; font-weight: 900; text-align: center; margin-bottom: 15px; letter-spacing: 1px; text-transform: uppercase; }
     .setting-group { margin-bottom: 20px; }
-    .setting-title { font-weight: 900; text-transform: uppercase; border-bottom: 2px solid var(--border-color); margin-bottom: 10px; }
+    .setting-title { font-weight: 900; text-transform: uppercase; border-bottom: 2px solid var(--border-color); margin-bottom: 8px; padding-bottom: 4px; font-size: 13px; letter-spacing: 0.5px; }
     .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+    .setting-label { font-size: 14px; font-weight: 900; }
+    .setting-desc { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+    
+    /* Interactive Elements */
+    button { border: var(--border-width) solid var(--text-color); background: var(--bg-color); color: var(--text-color); font-weight: 900; padding: 6px 12px; cursor: pointer; font-family: inherit; }
+    button:active { background: var(--text-color); color: var(--bg-color); }
+    .modal-btn { width: 100%; padding: 12px; font-weight: 900; font-size: 14px; margin-top: 15px; }
     .flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; pointer-events: none; background: var(--text-color); }
   </style>
 </head>
 
 <body>
-  <!-- Header (Home Screen) -->
+
+  <!-- HOME SCREEN DASHBOARD -->
   <div class="header-container">
     <div class="title">UN-READER</div>
     <div class="subtitle" id="user-status">Guest Mode</div>
@@ -44,55 +68,155 @@
     <div class="apps-grid" id="apps-container"></div>
   </div>
 
-  <!-- Control Panel -->
+
+  <!-- CONTROL PANEL POPUP -->
   <div class="fullscreen-view" id="settings-view">
     <div class="control-header">Control Panel</div>
+    
+    <!-- Identity Management Section -->
+    <div class="setting-group">
+      <div class="setting-title">Identity Management</div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Session</div>
+          <div class="setting-desc" id="auth-status">Not logged in</div>
+        </div>
+        <button id="auth-btn">Log In</button>
+      </div>
+    </div>
+
+    <!-- Appearance Parameters Section -->
+    <div class="setting-group">
+      <div class="setting-title">Appearance</div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Theme</div>
+          <div class="setting-desc">Toggle between Light and Dark interface.</div>
+        </div>
+        <button id="theme-toggle">Toggle</button>
+      </div>
+    </div>
+
+    <!-- Accessibility Profiles Section -->
+    <div class="setting-group">
+      <div class="setting-title">Accessibility</div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">OpenDyslexic Font</div>
+          <div class="setting-desc">Use OpenDyslexic font for better readability.</div>
+        </div>
+        <button id="font-toggle">Toggle</button>
+      </div>
+    </div>
+
+    <!-- Core Hardware Management Section -->
     <div class="setting-group">
       <div class="setting-title">System</div>
       <div class="setting-item">
-        <div><div style="font-weight:900">Flush Screen</div></div>
+        <div>
+          <div class="setting-label">Flush Screen</div>
+          <div class="setting-desc">Force a complete layout inversion clear.</div>
+        </div>
         <button id="flush-btn">Flush</button>
       </div>
     </div>
-    <button style="width:100%; padding:10px; font-weight:900" onclick="document.getElementById('settings-view').style.display='none'">[CLOSE]</button>
+
+    <button class="modal-btn" onclick="document.getElementById('settings-view').style.display='none'">[CLOSE WINDOW]</button>
   </div>
 
-  <script>
-    // Logic: Username or Guest
-    const username = localStorage.getItem('unreader-username');
-    document.getElementById('user-status').textContent = username ? username : 'Guest Mode';
 
-    // App Database
+  <script>
+    // --- COOKIE STORAGE ENGINE FOR LEGACY HARDWARE ---
+    function setStorageItem(key, value) {
+        localStorage.setItem(key, value);
+        // Backup to document.cookie path for basic proxy gateways or rigid e-readers
+        document.cookie = key + "=" + value + "; path=/; max-age=31536000;";
+    }
+
+    function getStorageItem(key) {
+        let val = localStorage.getItem(key);
+        if (!val) {
+            const pairs = document.cookie.split('; ');
+            for (let i = 0; i < pairs.length; i++) {
+                const parts = pairs[i].split('=');
+                if (parts[0] === key) return parts[1];
+            }
+        }
+        return val;
+    }
+
+    // Load State Parameters immediately
+    if (getStorageItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
+    if (getStorageItem('dyslexic-font') === 'true') document.body.classList.add('dyslexic-font');
+
+    // Dynamic Header State Management
+    const activeSessionUser = getStorageItem('unreader-username');
+    document.getElementById('user-status').textContent = activeSessionUser ? activeSessionUser : 'Guest Mode';
+
+    // Application Master Array
     const APP_DATABASE = [
-      { name: 'CHAT', desc: 'Talk with people', url: 'chat.html' },
-      { name: 'TOPICS', desc: 'Discuss!', url: 'topics.html' },
-      { name: 'NEIGHBOURHOOD', desc: 'Connects people', url: 'neighbourhood.html' },
-      { name: 'AI', desc: 'AI Assistant [Beta]', url: 'chatai.html' },
-      { name: 'CALC', desc: 'MATH', url: 'calc.html' },
-      { name: 'MOD', desc: 'Moderation', url: 'modmenu.html', req: 'mod' }
+      { name: 'CHAT', desc: 'Real-time conversation feed', url: 'chat.html' },
+      { name: 'TOPICS', desc: 'Discuss anything!', url: 'topics.html' },
+      { name: 'NEIGHBOURHOOD', desc: 'Post & make connections', url: 'neighbourhood.html' },
+      { name: 'AI ASSISTANT', desc: 'AI Assistant Beta', url: 'chatai.html' },
+      { name: 'CALCULATOR', desc: 'MATH', url: 'calc.html' },
+      { name: 'MODERATION', desc: 'Moderation Panelpanel', url: 'modmenu.html', req: 'mod' }
     ];
 
-    function buildGrid() {
+    // Build functional home UI grid layout
+    function buildDashboardGrid() {
       const container = document.getElementById('apps-container');
-      const rank = localStorage.getItem('unreader-rank') || 'user';
+      const currentRank = getStorageItem('unreader-rank') || 'user';
       container.innerHTML = '';
+      
       APP_DATABASE.forEach(app => {
-        if (app.req === 'mod' && rank !== 'mod') return;
+        if (app.req === 'mod' && currentRank !== 'mod') return;
+        
         const div = document.createElement('div');
         div.className = 'app-item';
-        div.innerHTML = `<div class="app-name">${app.name}</div><div class="app-desc">${app.desc}</div>`;
-        div.onclick = () => window.location.href = app.url;
+        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
+        div.onclick = () => { window.location.href = app.url; };
         container.appendChild(div);
       });
     }
 
-    // Handlers
-    document.getElementById('settings-trigger').onclick = () => document.getElementById('settings-view').style.display='block';
-    document.getElementById('flush-btn').onclick = () => {
-        const f = document.createElement('div'); f.className = 'flash-overlay';
-        document.body.appendChild(f); setTimeout(() => f.remove(), 150);
+    // Interface Dynamic Handlers
+    document.getElementById('settings-trigger').onclick = () => document.getElementById('settings-view').style.display = 'block';
+    
+    document.getElementById('theme-toggle').onclick = () => {
+        document.body.classList.toggle('dark-mode');
+        setStorageItem('dark-mode', document.body.classList.contains('dark-mode'));
     };
-    buildGrid();
+    
+    document.getElementById('font-toggle').onclick = () => {
+        document.body.classList.toggle('dyslexic-font');
+        setStorageItem('dyslexic-font', document.body.classList.contains('dyslexic-font'));
+    };
+
+    document.getElementById('flush-btn').onclick = () => {
+        const overlay = document.createElement('div');
+        overlay.className = 'flash-overlay';
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.remove(), 150);
+    };
+
+    // Identity Engine Authentication Check
+    if (activeSessionUser) {
+        document.getElementById('auth-status').textContent = 'User: ' + activeSessionUser;
+        document.getElementById('auth-btn').textContent = 'Log Out';
+        document.getElementById('auth-btn').onclick = () => {
+            localStorage.removeItem('unreader-username');
+            localStorage.removeItem('unreader-rank');
+            document.cookie = "unreader-username=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+            document.cookie = "unreader-rank=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+            location.reload();
+        };
+    } else {
+        document.getElementById('auth-btn').onclick = () => { window.location.href = 'auth.html'; };
+    }
+
+    // Run layout deployment logic
+    buildDashboardGrid();
   </script>
 </body>
 </html>
