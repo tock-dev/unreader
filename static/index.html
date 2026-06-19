@@ -5,74 +5,71 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Un-Reader Dashboard</title>
   <style>
-    /* --- E-INK "CONTROL PANEL" AESTHETIC --- */
+    /* --- KINDLE E-INK AESTHETIC --- */
     * { box-sizing: border-box; transition: none !important; animation: none !important; border-radius: 0 !important; }
     :root { --bg-color: #ffffff; --text-color: #000000; --border-color: #000000; --border-width: 2px; --body-font: "Courier New", Courier, monospace; }
-    body.dark-mode { --bg-color: #000000; --text-color: #ffffff; --border-color: #ffffff; }
     html, body { width: 100%; height: 100%; margin: 0; background-color: var(--bg-color); color: var(--text-color); font-family: var(--body-font); overflow: hidden; }
 
-    .top-bar { display: flex; justify-content: space-between; padding: 10px; border-bottom: var(--border-width) solid var(--border-color); font-weight: 900; }
-    .apps-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 20px; }
-    .app-item { padding: 20px; border: var(--border-width) solid var(--border-color); font-weight: 900; text-transform: uppercase; text-align: center; cursor: pointer; }
-    
+    /* Home Layout (Ref: 1781893955316.jpeg) */
+    .header-container { text-align: center; padding: 20px; border-bottom: var(--border-width) solid var(--border-color); }
+    .title { font-size: 24px; font-weight: 900; }
+    .settings-btn { position: absolute; top: 10px; right: 20px; cursor: pointer; font-weight: 900; }
+    .featured-box { margin: 20px; border: var(--border-width) solid var(--border-color); padding: 15px; }
+    .featured-title { font-weight: 900; border-bottom: var(--border-width) solid var(--border-color); padding-bottom: 5px; margin-bottom: 15px; }
+    .apps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .app-item { padding: 15px; border: var(--border-width) solid var(--border-color); cursor: pointer; text-align: center; }
+    .app-name { font-weight: 900; font-size: 14px; }
+    .app-desc { font-size: 10px; font-style: italic; margin-top: 4px; }
+
+    /* Control Panel (Ref: 32784.jpg) */
     .fullscreen-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 2000; padding: 10px; border: 3px solid var(--border-color); overflow-y: auto; }
     .control-header { border: 3px solid var(--border-color); padding: 5px; font-weight: 900; text-align: center; margin-bottom: 10px; }
     .setting-group { margin-bottom: 20px; }
-    .setting-title { font-weight: 900; text-transform: uppercase; border-bottom: 2px solid var(--border-color); margin-bottom: 10px; padding-bottom: 4px; }
+    .setting-title { font-weight: 900; text-transform: uppercase; border-bottom: 2px solid var(--border-color); margin-bottom: 10px; }
     .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
-    .setting-label { font-size: 14px; font-weight: 900; }
-    .setting-desc { font-size: 10px; opacity: 0.8; }
-    
-    /* Fixed Flush Logic */
     .flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; pointer-events: none; background: var(--text-color); }
   </style>
 </head>
 
 <body>
-  <div class="top-bar">
-    <span>UN-READER</span>
-    <span style="cursor:pointer" id="settings-trigger">[SETTINGS]</span>
+  <!-- Header (Home Screen) -->
+  <div class="header-container">
+    <div class="title">UN-READER</div>
+    <div class="subtitle" id="user-status">Guest Mode</div>
+    <div class="settings-btn" id="settings-trigger">[SETTINGS]</div>
   </div>
 
-  <div class="apps-grid" id="apps-container"></div>
+  <div class="featured-box">
+    <div class="featured-title">FEATURED</div>
+    <div class="apps-grid" id="apps-container"></div>
+  </div>
 
+  <!-- Control Panel -->
   <div class="fullscreen-view" id="settings-view">
     <div class="control-header">Control Panel</div>
-    
-    <div class="setting-group">
-      <div class="setting-title">Identity Management</div>
-      <div class="setting-item">
-        <div><div class="setting-label">Session</div><div class="setting-desc" id="auth-status">Not logged in</div></div>
-        <button id="auth-btn">Log In</button>
-      </div>
-    </div>
-
     <div class="setting-group">
       <div class="setting-title">System</div>
       <div class="setting-item">
-        <div><div class="setting-label">Flush Screen</div><div class="setting-desc">Hard clear display artifacts</div></div>
+        <div><div style="font-weight:900">Flush Screen</div></div>
         <button id="flush-btn">Flush</button>
       </div>
     </div>
-    <button style="width:100%; padding:10px; font-weight:900; cursor:pointer;" onclick="document.getElementById('settings-view').style.display='none'">[CLOSE]</button>
+    <button style="width:100%; padding:10px; font-weight:900" onclick="document.getElementById('settings-view').style.display='none'">[CLOSE]</button>
   </div>
 
   <script>
-    // Fixed Flush Logic: Creates a solid black overlay that forces a repaint
-    function executeFlush() {
-      const f = document.createElement('div');
-      f.className = 'flash-overlay';
-      document.body.appendChild(f);
-      setTimeout(() => f.remove(), 100);
-    }
+    // Logic: Username or Guest
+    const username = localStorage.getItem('unreader-username');
+    document.getElementById('user-status').textContent = username ? username : 'Guest Mode';
 
+    // App Database
     const APP_DATABASE = [
-      { name: 'CHAT', url: 'chat.html' },
-      { name: 'TOPICS', url: 'topics.html' },
-      { name: 'NEIGHBOURHOOD', url: 'neighbourhood.html' },
-      { name: 'AI ASSISTANT', url: 'chatai.html' },
-      { name: 'CALCULATOR', url: 'calc.html' },
-      { name: 'MODERATION', url: 'modmenu.html', req: 'mod' }
+      { name: 'CHAT', desc: 'Talk', url: 'chat.html' },
+      { name: 'TOPICS', desc: 'Discuss', url: 'topics.html' },
+      { name: 'NEIGHBOURHOOD', desc: 'Connect', url: 'neighbourhood.html' },
+      { name: 'AI', desc: 'Assistant', url: 'chatai.html' },
+      { name: 'CALC', desc: 'Math', url: 'calc.html' },
+      { name: 'MOD', desc: 'Admin', url: 'modmenu.html', req: 'mod' }
     ];
 
     function buildGrid() {
@@ -83,25 +80,18 @@
         if (app.req === 'mod' && rank !== 'mod') return;
         const div = document.createElement('div');
         div.className = 'app-item';
-        div.innerHTML = app.name;
+        div.innerHTML = `<div class="app-name">${app.name}</div><div class="app-desc">${app.desc}</div>`;
         div.onclick = () => window.location.href = app.url;
         container.appendChild(div);
       });
     }
 
-    // Logic Fixes
-    document.getElementById('flush-btn').onclick = executeFlush;
+    // Handlers
     document.getElementById('settings-trigger').onclick = () => document.getElementById('settings-view').style.display='block';
-    
-    const user = localStorage.getItem('unreader-username');
-    if(user) {
-        document.getElementById('auth-status').textContent = 'User: ' + user;
-        document.getElementById('auth-btn').textContent = 'Log Out';
-        document.getElementById('auth-btn').onclick = () => { localStorage.clear(); location.reload(); };
-    } else {
-        document.getElementById('auth-btn').onclick = () => window.location.href = 'auth.html';
-    }
-
+    document.getElementById('flush-btn').onclick = () => {
+        const f = document.createElement('div'); f.className = 'flash-overlay';
+        document.body.appendChild(f); setTimeout(() => f.remove(), 150);
+    };
     buildGrid();
   </script>
 </body>
