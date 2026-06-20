@@ -69,8 +69,13 @@
   </div>
 
   <div class="featured-box">
-    <div class="featured-title">APPLICATIONS</div>
+    <div class="featured-title">FEATURED APPLICATIONS</div>
     <div class="apps-grid" id="apps-container"></div>
+  </div>
+
+  <div class="featured-box" style="margin-top: 0;">
+    <div class="featured-title">APPLICATIONS</div>
+    <div class="apps-grid" id="platform-apps-container"></div>
   </div>
 
 
@@ -178,8 +183,8 @@
     // Dynamic Header State Management
     document.getElementById('user-status').textContent = myUsername ? "@" + myUsername : 'Guest Mode';
 
-    // Application Master Array
-    const APP_DATABASE = [
+    // Featured Core Applications Array
+    const FEATURED_DATABASE = [
       { name: 'CHAT', desc: 'Real-time conversation feed', url: 'chat.html' },
       { name: 'TOPICS', desc: 'Discuss anything!', url: 'topics.html' },
       { name: 'NEIGHBOURHOOD', desc: 'Post & make connections', url: 'neighbourhood.html' },
@@ -188,20 +193,45 @@
       { name: 'MODERATION', desc: 'Moderation Panel', url: 'modmenu.html', req: 'mod' }
     ];
 
+    // Platform Utilities and Link Aggregations Array
+    const PLATFORM_DATABASE = [
+      { name: 'REKINDLE', desc: 'Rekindle framework dashboard', url: 'rekindle.html' },
+      { name: 'DISCORD', desc: 'Join the official community guild', url: 'https://discord.gg/w8h6ZzZbeX', external: true }
+    ];
+
     // Build functional home UI grid layout
     function buildDashboardGrid() {
-      const container = document.getElementById('apps-container');
+      const featuredContainer = document.getElementById('apps-container');
+      const platformContainer = document.getElementById('platform-apps-container');
       const currentRank = getStorageItem('unreader-rank') || 'user';
-      container.innerHTML = '';
       
-      APP_DATABASE.forEach(app => {
-        if (app.req === 'mod' && currentRank !== 'mod') return;
+      featuredContainer.innerHTML = '';
+      platformContainer.innerHTML = '';
+      
+      // Render Featured Array
+      FEATURED_DATABASE.forEach(app => {
+        if (app.req === 'mod' && currentRank !== 'mod' && currentRank !== 'admin') return;
         
         const div = document.createElement('div');
         div.className = 'app-item';
         div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
         div.onclick = () => { window.location.href = app.url; };
-        container.appendChild(div);
+        featuredContainer.appendChild(div);
+      });
+
+      // Render Platform Extras Array
+      PLATFORM_DATABASE.forEach(app => {
+        const div = document.createElement('div');
+        div.className = 'app-item';
+        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
+        div.onclick = () => {
+            if (app.external) {
+                window.open(app.url, '_blank');
+            } else {
+                window.location.href = app.url;
+            }
+        };
+        platformContainer.appendChild(div);
       });
     }
 
@@ -246,7 +276,6 @@
         
         var url = isRegisterMode ? "/api/register" : "/api/login";
         var xhr = new XMLHttpRequest();
-        // BACKEND_URL variable pulled directly from loaded common.js config context
         xhr.open("POST", BACKEND_URL + url, true);
         xhr.setRequestHeader("Content-Type", "application/json");
         
@@ -255,11 +284,9 @@
                 if (xhr.status === 200) {
                     try {
                         var data = JSON.parse(xhr.responseText);
-                        // Save to storage using exact structural definitions matching chat.html
                         setStorageItem("token", data.token);
                         setStorageItem("username", data.username);
                         
-                        // Default rank safely, apps will auto-elevate this during WebSocket verification
                         setStorageItem("unreader-rank", (data.username.toLowerCase() === 'admin' || data.username.toLowerCase() === 'mod') ? 'mod' : 'user');
                         
                         location.reload();
@@ -286,10 +313,8 @@
         document.getElementById('auth-status').textContent = 'User: ' + myUsername;
         document.getElementById('auth-btn').textContent = 'Log Out';
         document.getElementById('auth-btn').onclick = function () {
-            // MATCHES CORES OF CHAT.HTML: Complete cache purge across all application structures
             localStorage.clear();
             
-            // Wipe standard path cookies to ensure tracking values drop entirely
             document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
             document.cookie = "username=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
             document.cookie = "unreader-rank=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
@@ -298,7 +323,6 @@
         };
     } else {
         document.getElementById('auth-btn').onclick = function () { 
-            // Close settings menu window, open Kindle Safe inline login box
             document.getElementById('settings-view').style.display = 'none';
             document.getElementById('login-modal-view').style.display = 'block';
         };
@@ -309,4 +333,3 @@
   </script>
 </body>
 </html>
-
