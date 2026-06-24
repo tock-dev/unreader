@@ -223,7 +223,7 @@
               <button id="admin-ban-btn" class='paper-btn' style="width: calc(50% - 3px); margin-right: 6px">
                 BAN
               </button>
-              <button id="admin-pardon-btn" class='paper-btn' style="width: calc(50% - 3px); ">
+              <button id="admin-pardon-btn" class='paper-btn' style="width: calc(50% - 3px);">
                 PARDON
               </button>
             </div>
@@ -603,12 +603,6 @@
       }
 
       function appendMessage(data) {
-        // ---- DROP SUGGESTIONS FROM RENDERING ON CHAT CLIENT STREAM ----
-        if (data.content && data.content.indexOf("[APP_SUGGESTION]") !== -1) {
-          return;
-        }
-        // ---------------------------------------------------------------
-
         // --- CLIENT-SIDE INTERCEPTION SPOOFING FLAG ---
         if (data.content && data.content.startsWith("\u200B[SYSTEM_BOT]\u200B")) {
           data.username = "system"; // Forces UI to parse identity as system
@@ -780,11 +774,6 @@
             document.getElementById("page-display-index").textContent =
               "PAGE: " + currentHistoryIndex;
             for (var i = 0; i < data.length; i++) {
-              // ---- PREVENT HISTORICAL APP SUGGESTIONS FROM RENDERING ----
-              if (data[i].content && data[i].content.indexOf("[APP_SUGGESTION]") !== -1) {
-                continue;
-              }
-              // ----------------------------------------------------------
               appendMessage(data[i]);
             }
 
@@ -1343,4 +1332,4 @@
     </script>
 </body>
 
-</html>
+  </html>
