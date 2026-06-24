@@ -57,6 +57,7 @@
     var token = localStorage.getItem("token");
     var myUsername = localStorage.getItem("username");
     var currentHistoryIndex = 0;
+    var socket = null;
 
     if (!token || !myUsername) {
         var statusLog = document.getElementById("status-log");
@@ -65,6 +66,30 @@
         document.getElementById("idea-title").disabled = true;
         document.getElementById("idea-desc").disabled = true;
         document.getElementById("idea-submit").disabled = true;
+    } else {
+        // Initialize WebSocket so we can broadcast/save directly to the database
+        initWebSocket();
+    }
+
+    function initWebSocket() {
+        if (socket) { try { socket.close(); } catch (e) {} }
+        socket = new WebSocket(WS_URL);
+        
+        socket.onopen = function () {
+            socket.send(JSON.stringify({ type: "auth", token: token }));
+        };
+
+        socket.onmessage = function (event) {
+            var data = JSON.parse(event.data);
+            // Refresh feed instantly if someone updates or posts
+            if (data.type === "refresh_feed" && currentHistoryIndex === 0) {
+                loadHistory();
+            }
+        };
+
+        socket.onclose = function () {
+            setTimeout(initWebSocket, 5000);
+        };
     }
 
     function jumpPage(val) {
@@ -72,13 +97,12 @@
         loadHistory();
     }
 
-    // MATCHES CHAT.HTML LOADING RULES
+    // GET HISTORY VIA THE CORRECT chatapp ENDPOINT
     function loadHistory() {
         var container = document.getElementById("feed-container");
         container.innerHTML = '<div style="font-size:12px; font-family:monospace; font-style:italic;">Querying BBS databanks...</div>';
 
         var xhr = new XMLHttpRequest();
-        // Uses the functional history endpoint from chat.html
         xhr.open("GET", BACKEND_URL + "/history?index=" + currentHistoryIndex, true);
         if (token) xhr.setRequestHeader("Authorization", "Bearer " + token);
         
@@ -94,7 +118,6 @@
 
                         for (var i = 0; i < data.length; i++) {
                             var post = data[i];
-                            // Parse message strings containing the custom descriptor tag safely
                             if (post.content && post.content.indexOf("[APP_SUGGESTION]") !== -1 && !post.is_deleted) {
                                 foundAny = true;
                                 
@@ -103,14 +126,14 @@
                                 var title = lines[0] || "Untitled Concept";
                                 var desc = lines.slice(1).join("\n") || "No explanation provided.";
 
-                                var timeStr = typeof formatTimeToken === "function" ? formatTimeToken(post.timestamp) : new Date(post.timestamp).toLocaleDateString();
+                                var dateDisplay = post.timestamp ? new Date(post.timestamp).toLocaleDateString() : "Unknown";
 
                                 var card = document.createElement("div");
                                 card.className = "suggestion-card";
                                 card.innerHTML = `
                                     <div class="card-header">
                                         <div>@${post.username || "anonymous"}</div>
-                                        <div>${timeStr}</div>
+                                        <div>${dateDisplay}</div>
                                     </div>
                                     <div class="card-title">💡 ${title}</div>
                                     <div class="card-desc">${desc}</div>
@@ -126,14 +149,14 @@
                         container.innerHTML = '<div style="font-size:12px; color:red; font-family:monospace;">Data rendering parsing fault.</div>';
                     }
                 } else {
-                    container.innerHTML = '<div style="font-size:12px; color:red; font-family:monospace;">Could not retrieve suggestion tracking system. Status: ' + xhr.status + '</div>';
+                    container.innerHTML = '<div style="font-size:12px; color:red; font-family:monospace;">Could not retrieve stream. Status: ' + xhr.status + '</div>';
                 }
             }
         };
         xhr.send();
     }
 
-    // MATCHES CHAT.HTML AUTH SUBMIT FLOW FOR POSTING
+    // SEND VIA WEBSOCKET INSTEAD OF POST TO PREVENT 404
     document.getElementById("idea-submit").onclick = function () {
         var titleInp = document.getElementById("idea-title");
         var descInp = document.getElementById("idea-desc");
@@ -148,44 +171,30 @@
             return;
         }
 
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            errorLog.textContent = "Error: Connection to system socket offline.";
+            errorLog.style.display = "block";
+            return;
+        }
+
         errorLog.style.display = "none";
-        
-        // Structure the content payload so loadHistory can catch it
         var payload = "[APP_SUGGESTION]" + title + "\n" + desc;
 
-        var xhr = new XMLHttpRequest();
-        // Posts directly into your main live chat endpoint
-        xhr.open("POST", BACKEND_URL + "/api/register" ? BACKEND_URL + "/api/messages" : BACKEND_URL + "/api/message", true); 
+        // Dispatches through the socket exactly like chat.html to trigger internal DB saves
+        socket.send(JSON.stringify({
+            type: "message",
+            content: payload,
+            target: ""
+        }));
+
+        titleInp.value = "";
+        descInp.value = "";
+        errorLog.textContent = "Idea successfully sent!";
+        errorLog.style.display = "block";
         
-        // If your server uses a generic routing table fallback check:
-        if (BACKEND_URL.indexOf("localhost") !== -1 || !BACKEND_URL) {
-            xhr.open("POST", BACKEND_URL + "/api/message", true);
-        }
-        
-        // Re-verify exact endpoint structure if your server routes chat traffic dynamically
-        xhr.open("POST", BACKEND_URL + "/api/message", true);
-        
-        xhr.setRequestHeader("Content-Type", "application/json");
-        xhr.setRequestHeader("Authorization", "Bearer " + token);
-        
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    titleInp.value = "";
-                    descInp.value = "";
-                    errorLog.textContent = "Idea successfully committed!";
-                    errorLog.style.display = "block";
-                    currentHistoryIndex = 0;
-                    loadHistory();
-                } else {
-                    errorLog.textContent = "Transmission failed. Error code: " + xhr.status;
-                    errorLog.style.display = "block";
-                }
-            }
-        };
-        
-        // Matches the standard data JSON structure expected by your WebSocket / Express backend
-        xhr.send(JSON.stringify({ content: payload, channel: "public" }));
+        currentHistoryIndex = 0;
+        // Small delay to let database settle before pulling feed
+        setTimeout(loadHistory, 400);
     };
 
     // Initial feed fetch
