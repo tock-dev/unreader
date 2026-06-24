@@ -1,204 +1,204 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://w3.org">
+<!doctype html>
 <html lang="en">
-
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>un-reader BBS - App Suggestions Board</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>un-reader BBS - Suggestions</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="bbs.css" />
   <style type="text/css">
-    #suggestion-list {
-      max-height: 400px;
-      overflow-y: auto;
-      background: white;
-      padding: 10px;
-      border: var(--border);
-      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.1);
-      margin-bottom: 15px;
-    }
-
-    .suggestion-card {
-      background: #fafafa;
-      border: var(--border);
-      padding: 10px;
-      margin-bottom: 10px;
-      box-shadow: 2px 2px 0px black;
-    }
-
-    .suggestion-meta {
-      font-size: 11px;
-      font-weight: bold;
-      color: #555;
-      text-transform: uppercase;
-      margin-bottom: 5px;
-      border-bottom: 1px dotted #ccc;
-      padding-bottom: 3px;
-    }
-
-    .suggestion-body {
-      font-size: 13px;
-      white-space: pre-wrap;
-      line-height: 1.4;
-      color: black;
-    }
-
-    .empty-board {
-      text-align: center;
-      padding: 30px;
-      color: #777;
-      font-style: italic;
-    }
-
-    #input-box {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+    .form-box { margin: 15px; border: var(--border); padding: 15px; background: white; box-shadow: 2px 2px 0px black; }
+    .kindle-input { width: 100%; border: var(--border); background: white; color: black; padding: 8px; font-family: monospace; font-size: 13px; margin-bottom: 12px; }
+    textarea.kindle-input { resize: vertical; min-height: 80px; }
+    .submit-btn { width: 100%; padding: 10px; font-size: 13px; font-weight: bold; cursor: pointer; }
+    
+    .suggestions-feed { margin: 15px; }
+    .suggestion-card { border: var(--border); padding: 12px; margin-bottom: 12px; background: white; box-shadow: 2px 2px 0px black; }
+    .card-header { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; color: #555; border-bottom: 1px dashed black; padding-bottom: 4px; margin-bottom: 8px; text-transform: uppercase; }
+    .card-title { font-weight: bold; font-size: 14px; margin: 0 0 6px 0; }
+    .card-desc { font-size: 13px; line-height: 1.3; white-space: pre-wrap; color: black; }
+    .status-msg { font-size: 12px; font-weight: bold; text-align: center; margin: 10px 0; display: none; padding: 5px; border: 1px dashed black; }
+    
+    #pagination-bar { display: flex; justify-content: space-between; align-items: center; margin: 15px; }
   </style>
+  <script src="common.js"></script>
 </head>
-
 <body>
-  <div class="window" style="max-width: 800px; margin: 20px auto;">
+
+  <div class="window">
     <div class="title-bar">
       <div class="title-stripes"></div>
-      <button class='paper-btn' onclick="window.location.href = 'chat.html'">
-        ◀ BACK TO CHAT
-      </button>
-      <div class="title-text">App Suggestions Board</div>
-      <span class='paper-btn' id="user-display"></span>
+      <button class='paper-btn' onclick="window.location.href='index.html'">◀ HOME</button>
+      <div class="title-text">SUGGESTIONS</div>
     </div>
 
-    <div style="padding: 12px;">
-      <div class="panel-header">Submitted Concept Streams</div>
-      <div id="suggestion-list">
-        <div class="empty-board">Loading application database layers...</div>
-      </div>
+    <div class="form-box">
+      <div style="font-weight: bold; margin-bottom: 4px; font-size: 11px;">APPLICATION NAME:</div>
+      <input type="text" id="idea-title" class="kindle-input paper-input" placeholder="e.g., Mail Client, Snake Game..." autocomplete="off" />
+      
+      <div style="font-weight: bold; margin-bottom: 4px; font-size: 11px;">CONCEPT DESCRIPTION:</div>
+      <textarea id="idea-desc" class="kindle-input paper-input" placeholder="Explain what this app would do..."></textarea>
+      
+      <button id="idea-submit" class="paper-btn submit-btn">POST SUGGESTION</button>
+      <div id="status-log" class="status-msg"></div>
+    </div>
 
-      <div class="panel-header">Submit New Project Idea</div>
-      <div id="input-box">
-        <textarea class='paper-input' id="suggestion-content" placeholder="Describe your layout, software debloat idea, or target feature here..." rows="4" style="resize: none;"></textarea>
-        <button id="submit-suggestion-btn" class='paper-btn' onclick="submitSuggestion()" style="align-self: flex-end; padding: 6px 15px;">SUBMIT IDEA</button>
+    <div class="suggestions-feed">
+      <div id="pagination-bar">
+        <button class="paper-btn" onclick="jumpPage(-1)">&lt; NEWER</button>
+        <span id="page-display-index" style="font-family: monospace; font-weight: bold;">PAGE: 0</span>
+        <button class="paper-btn" onclick="jumpPage(1)">OLDER &gt;</button>
       </div>
+      <div id="feed-container"></div>
     </div>
   </div>
 
   <script type="text/javascript">
     var token = localStorage.getItem("token");
     var myUsername = localStorage.getItem("username");
+    var currentHistoryIndex = 0;
+    var socket = null;
 
     if (!token || !myUsername) {
-      alert("Session expired. Please log in through the main terminal interface.");
-      window.location.href = "chat.html";
+        var statusLog = document.getElementById("status-log");
+        statusLog.textContent = "Guest Mode: Please log in via Chat/Dashboard to submit ideas.";
+        statusLog.style.display = "block";
+        document.getElementById("idea-title").disabled = true;
+        document.getElementById("idea-desc").disabled = true;
+        document.getElementById("idea-submit").disabled = true;
     } else {
-      document.getElementById("user-display").textContent = "@" + myUsername;
-      loadSuggestions();
+        // Initialize WebSocket so we can broadcast/save directly to the database
+        initWebSocket();
     }
 
-    // Pull database logs and display ONLY app suggestions
-    function loadSuggestions() {
-      var xhr = new XMLHttpRequest();
-      // Hits the standard history tracking endpoint
-      xhr.open("GET", BACKEND_URL + "/history?index=0", true);
-      if (token) xhr.setRequestHeader("Authorization", "Bearer " + token);
-      
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          var container = document.getElementById("suggestion-list");
-          container.innerHTML = "";
+    function initWebSocket() {
+        if (socket) { try { socket.close(); } catch (e) {} }
+        socket = new WebSocket(WS_URL);
+        
+        socket.onopen = function () {
+            socket.send(JSON.stringify({ type: "auth", token: token }));
+        };
 
-          if (xhr.status === 200) {
-            try {
-              var data = JSON.parse(xhr.responseText);
-              var validSuggestionsCount = 0;
-
-              for (var i = 0; i < data.length; i++) {
-                var msg = data[i];
-                
-                // Inverse matching: Check if the custom tag string exists in message
-                if (msg.content && msg.content.indexOf("[APP_SUGGESTION]") !== -1 && !msg.is_deleted) {
-                  validSuggestionsCount++;
-
-                  // Clean up target string block so metadata header doesn't show raw text tags
-                  var cleanText = msg.content.replace("[APP_SUGGESTION]", "").trim();
-
-                  var card = document.createElement("div");
-                  card.className = "suggestion-card";
-
-                  var meta = document.createElement("div");
-                  meta.className = "suggestion-meta";
-                  meta.textContent = "@" + (msg.username || "UNKNOWN_NODE") + " • " + formatTimeToken(msg.timestamp);
-
-                  var body = document.createElement("div");
-                  body.className = "suggestion-body";
-                  body.textContent = cleanText;
-
-                  card.appendChild(meta);
-                  card.appendChild(body);
-                  container.appendChild(card);
-                }
-              }
-
-              if (validSuggestionsCount === 0) {
-                container.innerHTML = "<div class='empty-board'>No active platform suggestions found. System ready for input.</div>";
-              } else {
-                // Keep the list scrolled to the bottom to see new logs
-                container.scrollTop = container.scrollHeight;
-              }
-
-            } catch (e) {
-              log("Parser parsing exception:", e);
-              container.innerHTML = "<div class='empty-board'>Error: Fault structural payload signature received.</div>";
+        socket.onmessage = function (event) {
+            var data = JSON.parse(event.data);
+            // Refresh feed instantly if someone updates or posts
+            if (data.type === "refresh_feed" && currentHistoryIndex === 0) {
+                loadHistory();
             }
-          } else {
-            container.innerHTML = "<div class='empty-board'>Connection down. Failed to map background history stream.</div>";
-          }
+        };
+
+        socket.onclose = function () {
+            setTimeout(initWebSocket, 5000);
+        };
+    }
+
+    function jumpPage(val) {
+        currentHistoryIndex = Math.max(0, currentHistoryIndex + val);
+        loadHistory();
+    }
+
+    // GET HISTORY VIA THE CORRECT chatapp ENDPOINT
+    function loadHistory() {
+        var container = document.getElementById("feed-container");
+        container.innerHTML = '<div style="font-size:12px; font-family:monospace; font-style:italic;">Querying BBS databanks...</div>';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", BACKEND_URL + "/history?index=" + currentHistoryIndex, true);
+        if (token) xhr.setRequestHeader("Authorization", "Bearer " + token);
+        
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        document.getElementById("page-display-index").textContent = "PAGE: " + currentHistoryIndex;
+                        container.innerHTML = "";
+                        
+                        var foundAny = false;
+
+                        for (var i = 0; i < data.length; i++) {
+                            var post = data[i];
+                            if (post.content && post.content.indexOf("[APP_SUGGESTION]") !== -1 && !post.is_deleted) {
+                                foundAny = true;
+                                
+                                var cleanContent = post.content.replace("[APP_SUGGESTION]", "").trim();
+                                var lines = cleanContent.split("\n");
+                                var title = lines[0] || "Untitled Concept";
+                                var desc = lines.slice(1).join("\n") || "No explanation provided.";
+
+                                var dateDisplay = post.timestamp ? new Date(post.timestamp).toLocaleDateString() : "Unknown";
+
+                                var card = document.createElement("div");
+                                card.className = "suggestion-card";
+                                card.innerHTML = `
+                                    <div class="card-header">
+                                        <div>@${post.username || "anonymous"}</div>
+                                        <div>${dateDisplay}</div>
+                                    </div>
+                                    <div class="card-title">💡 ${title}</div>
+                                    <div class="card-desc">${desc}</div>
+                                `;
+                                container.appendChild(card);
+                            }
+                        }
+
+                        if (!foundAny) {
+                            container.innerHTML = '<div style="font-size:12px; font-family:monospace; font-style:italic; text-align:center;">No custom app ideas found on this page.</div>';
+                        }
+                    } catch (e) {
+                        container.innerHTML = '<div style="font-size:12px; color:red; font-family:monospace;">Data rendering parsing fault.</div>';
+                    }
+                } else {
+                    container.innerHTML = '<div style="font-size:12px; color:red; font-family:monospace;">Could not retrieve stream. Status: ' + xhr.status + '</div>';
+                }
+            }
+        };
+        xhr.send();
+    }
+
+    // SEND VIA WEBSOCKET INSTEAD OF POST TO PREVENT 404
+    document.getElementById("idea-submit").onclick = function () {
+        var titleInp = document.getElementById("idea-title");
+        var descInp = document.getElementById("idea-desc");
+        var errorLog = document.getElementById("status-log");
+
+        var title = titleInp.value.trim();
+        var desc = descInp.value.trim();
+
+        if (!title || !desc) {
+            errorLog.textContent = "Error: Input fields cannot be blank.";
+            errorLog.style.display = "block";
+            return;
         }
-      };
-      xhr.send();
-    }
 
-    // Push signature back up using the WebSocket pool or an alternate direct HTTP POST if supported
-    function submitSuggestion() {
-      var input = document.getElementById("suggestion-content");
-      var text = input.value.trim();
-      if (!text) return;
-
-      // Wrap string payload inside your hidden tracking signature
-      var taggedPayload = "[APP_SUGGESTION] " + text;
-
-      // Send to backend stream using standard XHR POST signature
-      var xhr = new XMLHttpRequest();
-      xhr.open("POST", BACKEND_URL + "/api/messages", true); // Double check if your backend route matches this or a custom controller endpoint
-      xhr.setRequestHeader("Content-Type", "application/json");
-      xhr.setRequestHeader("Authorization", "Bearer " + token);
-      
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200 || xhr.status === 201) {
-            input.value = "";
-            loadSuggestions(); // Reload display layout
-          } else {
-            alert("Submission error tracking interface block. Dropping payload data.");
-          }
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            errorLog.textContent = "Error: Connection to system socket offline.";
+            errorLog.style.display = "block";
+            return;
         }
-      };
-      
-      xhr.send(JSON.stringify({
-        channel: "public",
-        content: taggedPayload
-      }));
-    }
 
-    // Helper timestamp utility mimicking common.js parser logic
-    function formatTimeToken(timestamp) {
-      if (!timestamp) return "00:00";
-      var d = new Date(timestamp);
-      var hours = String(d.getHours()).padStart(2, '0');
-      var mins = String(d.getMinutes()).padStart(2, '0');
-      return hours + ":" + mins;
-    }
+        errorLog.style.display = "none";
+        var payload = "[APP_SUGGESTION]" + title + "\n" + desc;
+
+        // Dispatches through the socket exactly like chat.html to trigger internal DB saves
+        socket.send(JSON.stringify({
+            type: "message",
+            content: payload,
+            target: ""
+        }));
+
+        titleInp.value = "";
+        descInp.value = "";
+        errorLog.textContent = "Idea successfully sent!";
+        errorLog.style.display = "block";
+        
+        currentHistoryIndex = 0;
+        // Small delay to let database settle before pulling feed
+        setTimeout(loadHistory, 400);
+    };
+
+    // Initial feed fetch
+    loadHistory();
   </script>
 </body>
-
 </html>
