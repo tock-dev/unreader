@@ -5,7 +5,7 @@ A retro, brutalist, e-ink style Bulletin Board System (BBS) designed for ultra-l
 ---
 ## Usage
 go to: https://unreader-ui.onrender.com
-or alternative url on GitHub pages: https://tock-dev.guthub.io/unreader
+or alternative url on GitHub pages: https://tock-dev.github.io/unreader
 ## Key Features
 
 - **Unified Dashboard Portal**: The central entrypoint that handles authentication, live session tracking, and display preferences.
