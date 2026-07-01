@@ -1,11 +1,13 @@
-# Un-Reader BBS 
+# Un-Reader BBS
 
 A retro, brutalist, e-ink style Bulletin Board System (BBS) designed for ultra-low latency, crisp legibility, and high modularity. Un-Reader provides a classic, text-heavy community experience optimized for standard browsers as well as low-refresh-rate devices like e-readers.
 
 ---
+
 ## Usage
-go to: https://unreader-ui.onrender.com
-or alternative url on GitHub pages: https://tock-dev.guthub.io/unreader
+
+go to: https://unreader-v4yf.onrender.com
+
 ## Key Features
 
 - **Unified Dashboard Portal**: The central entrypoint that handles authentication, live session tracking, and display preferences.
@@ -32,14 +34,14 @@ or alternative url on GitHub pages: https://tock-dev.guthub.io/unreader
 
 Brought to life by the core engineering and design team:
 
-* **[tock-dev](https://github.com/tock-dev)**
-* **[HackerAUG](https://github.com/HackerAUG)**
-* **[KodiGamingYT](https://github.com/KodiGamingYT)** - recently joined our developer team
+- **[tock-dev](https://github.com/tock-dev)**
+- **[HackerAUG](https://github.com/HackerAUG)**
+- **[KodiGamingYT](https://github.com/KodiGamingYT)** - recently joined our developer team
 
 ---
 
 ## Credits
 
 Special thanks and appreciation to:
-* **[KodiGamingYT](https://github.com/KodiGamingYT)** — Designed and developed the updated homepage dashboard (`index.html`), introducing unified styling, preferences, and modular portal cards.
 
+- **[KodiGamingYT](https://github.com/KodiGamingYT)** — Designed and developed the updated homepage dashboard (`index.html`), introducing unified styling, preferences, and modular portal cards.
