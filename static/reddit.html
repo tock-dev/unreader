@@ -6,7 +6,7 @@
         content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
     <meta charset="UTF-8">
 
-    <title>Reddit</title>
+    <title>UN-READER - Weddit</title>
     <style>
         /* SYSTEM 7 AESTHETICS - PRESERVED */
         :root {
@@ -520,43 +520,11 @@
     </div>
 
     <script>
-        // --- FIREBASE CONFIG (Copied from index.html) ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDY7x7vVmlYUyVZNLuCCmIQYa6PWFVfZqQ",
-            authDomain: "rekindle-dd1fa.firebaseapp.com",
-            projectId: "rekindle-dd1fa",
-            storageBucket: "rekindle-dd1fa.firebasestorage.app",
-            messagingSenderId: "748026882518",
-            appId: "1:748026882518:web:6877dd4329318070c11c77"
-        };
+        
 
         let auth, db;
         let currentUser = null;
         let isFirebaseAvailable = false;
-
-        function initFirebase() {
-            try {
-                if (typeof firebase !== 'undefined') {
-                    firebase.initializeApp(firebaseConfig);
-                    auth = firebase.auth();
-                    db = firebase.firestore();
-                    isFirebaseAvailable = true;
-                    console.log("Firebase initialized.");
-
-                    auth.onAuthStateChanged(user => {
-                        currentUser = user;
-                        if (user) {
-                            document.getElementById('sync-status').innerText = "Syncing...";
-                            ui.syncSavedSubs();
-                        } else {
-                            document.getElementById('sync-status').innerText = "Local";
-                        }
-                    });
-                }
-            } catch (e) {
-                console.error("Firebase init failed:", e);
-            }
-        }
 
         // --- PROXY LIST ---
         const PROXIES = [
