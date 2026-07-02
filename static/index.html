@@ -1,61 +1,258 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="google-site-verification" content="w8xH7X5MJ05Wt7haHm86RqiZP3m-6x8YdKRLcyPL6f4" />
   <title>Un-Reader Dashboard</title>
   <style>
     /* --- KINDLE E-INK CORE LAYOUT (Ref: 1781893955316.jpeg) --- */
-    * { box-sizing: border-box; transition: none !important; animation: none !important; border-radius: 0 !important; }
-    
-    :root { 
-      --bg-color: #ffffff; 
-      --text-color: #000000; 
-      --border-color: #000000; 
-      --border-width: 2px; 
-      --body-font: "Courier New", Courier, monospace; 
+    * {
+      box-sizing: border-box;
+      transition: none !important;
+      animation: none !important;
+      border-radius: 0 !important;
     }
-    
-    body.dark-mode { --bg-color: #000000; --text-color: #ffffff; --border-color: #ffffff; }
-    body.dyslexic-font { --body-font: "OpenDyslexic", sans-serif; }
-    
-    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); font-family: var(--body-font); overflow-x: hidden; }
+
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --border-color: #000000;
+      --border-width: 2px;
+      --body-font: "Courier New", Courier, monospace;
+    }
+
+    body.dark-mode {
+      --bg-color: #000000;
+      --text-color: #ffffff;
+      --border-color: #ffffff;
+    }
+
+    body.dyslexic-font {
+      --body-font: "OpenDyslexic", sans-serif;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--body-font);
+      overflow-x: hidden;
+    }
 
     /* Home Layout Frame */
-    .header-container { text-align: center; padding: 20px; border-bottom: var(--border-width) solid var(--border-color); position: relative; width: 100%; }
-    .title { font-size: 24px; font-weight: 900; margin: 0; letter-spacing: 1px; }
-    .subtitle { font-size: 13px; margin-top: 5px; font-weight: bold; }
-    .settings-btn { position: absolute; top: 20px; right: 20px; cursor: pointer; font-weight: 900; font-size: 14px; text-decoration: underline; }
+    .header-container {
+      text-align: center;
+      padding: 20px;
+      border-bottom: var(--border-width) solid var(--border-color);
+      position: relative;
+      width: 100%;
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: 900;
+      margin: 0;
+      letter-spacing: 1px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      margin-top: 5px;
+      font-weight: bold;
+    }
+
+    .settings-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 14px;
+      text-decoration: underline;
+    }
 
     /* Featured App Container Grid */
-    .featured-box { margin: 15px; border: var(--border-width) solid var(--border-color); padding: 15px; background: var(--bg-color); max-width: calc(100% - 30px); }
-    .featured-title { font-weight: 900; font-size: 14px; border-bottom: var(--border-width) solid var(--border-color); padding-bottom: 5px; margin-bottom: 15px; letter-spacing: 1px; }
-    
-    .apps-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; }
-    .app-item { padding: 12px 8px; border: var(--border-width) solid var(--border-color); cursor: pointer; text-align: left; background: var(--bg-color); position: relative; word-wrap: break-word; overflow: hidden; }
-    .app-item:active { background: var(--text-color); color: var(--bg-color); }
-    .app-name { font-weight: 900; font-size: 13px; word-break: break-word; }
-    .app-desc { font-size: 10px; font-style: italic; margin-top: 5px; opacity: 0.8; line-height: 1.2; }
+    .featured-box {
+      margin: 15px;
+      border: var(--border-width) solid var(--border-color);
+      padding: 15px;
+      background: var(--bg-color);
+      max-width: calc(100% - 30px);
+    }
+
+    .featured-title {
+      font-weight: 900;
+      font-size: 14px;
+      border-bottom: var(--border-width) solid var(--border-color);
+      padding-bottom: 5px;
+      margin-bottom: 15px;
+      letter-spacing: 1px;
+    }
+
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      width: 100%;
+    }
+
+    .app-item {
+      padding: 12px 8px;
+      border: var(--border-width) solid var(--border-color);
+      cursor: pointer;
+      text-align: left;
+      background: var(--bg-color);
+      position: relative;
+      word-wrap: break-word;
+      overflow: hidden;
+    }
+
+    .app-item:active {
+      background: var(--text-color);
+      color: var(--bg-color);
+    }
+
+    .app-name {
+      font-weight: 900;
+      font-size: 13px;
+      word-break: break-word;
+    }
+
+    .app-desc {
+      font-size: 10px;
+      font-style: italic;
+      margin-top: 5px;
+      opacity: 0.8;
+      line-height: 1.2;
+    }
 
     /* --- CONTROL PANEL WINDOW (Ref: 32784.jpg) --- */
-    .fullscreen-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 2000; padding: 12px; border: 3px solid var(--border-color); overflow-y: auto; }
-    .control-header { border: 3px solid var(--border-color); padding: 6px; font-weight: 900; text-align: center; margin-bottom: 15px; letter-spacing: 1px; text-transform: uppercase; }
-    .setting-group { margin-bottom: 20px; }
-    .setting-title { font-weight: 900; text-transform: uppercase; border-bottom: 2px solid var(--border-color); margin-bottom: 8px; padding-bottom: 4px; font-size: 13px; letter-spacing: 0.5px; }
-    .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
-    .setting-label { font-size: 14px; font-weight: 900; }
-    .setting-desc { font-size: 11px; opacity: 0.8; margin-top: 2px; }
-    
+    .fullscreen-view {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-color);
+      z-index: 2000;
+      padding: 12px;
+      border: 3px solid var(--border-color);
+      overflow-y: auto;
+    }
+
+    .control-header {
+      border: 3px solid var(--border-color);
+      padding: 6px;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 15px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .setting-group {
+      margin-bottom: 20px;
+    }
+
+    .setting-title {
+      font-weight: 900;
+      text-transform: uppercase;
+      border-bottom: 2px solid var(--border-color);
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .setting-label {
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .setting-desc {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+
     /* Interactive Elements */
-    button { border: var(--border-width) solid var(--text-color); background: var(--bg-color); color: var(--text-color); font-weight: 900; padding: 6px 12px; cursor: pointer; font-family: inherit; }
-    button:active { background: var(--text-color); color: var(--bg-color); }
-    .modal-btn { width: 100%; padding: 12px; font-weight: 900; font-size: 14px; margin-top: 15px; }
-    .flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; pointer-events: none; background: var(--text-color); }
+    button {
+      border: var(--border-width) solid var(--text-color);
+      background: var(--bg-color);
+      color: var(--text-color);
+      font-weight: 900;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    button:active {
+      background: var(--text-color);
+      color: var(--bg-color);
+    }
+
+    .modal-btn {
+      width: 100%;
+      padding: 12px;
+      font-weight: 900;
+      font-size: 14px;
+      margin-top: 15px;
+    }
+
+    .flash-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 9999;
+      pointer-events: none;
+      background: var(--text-color);
+    }
 
     /* Kindle-Safe Auth Modal Layout */
-    .kindle-auth-box { border: 3px solid var(--border-color); padding: 15px; margin-top: 15%; background: var(--bg-color); }
-    .kindle-input { width: 100%; border: 2px solid var(--border-color); background: var(--bg-color); color: var(--text-color); padding: 8px; font-family: inherit; font-size: 14px; margin-bottom: 10px; }
-    .error-msg { color: var(--text-color); font-weight: bold; font-size: 12px; margin-bottom: 10px; border: 1px dashed var(--border-color); padding: 5px; display: none; }
+    .kindle-auth-box {
+      border: 3px solid var(--border-color);
+      padding: 15px;
+      margin-top: 15%;
+      background: var(--bg-color);
+    }
+
+    .kindle-input {
+      width: 100%;
+      border: 2px solid var(--border-color);
+      background: var(--bg-color);
+      color: var(--text-color);
+      padding: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .error-msg {
+      color: var(--text-color);
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 10px;
+      border: 1px dashed var(--border-color);
+      padding: 5px;
+      display: none;
+    }
   </style>
   <script src="common.js"></script>
 </head>
@@ -81,7 +278,7 @@
 
   <div class="fullscreen-view" id="settings-view">
     <div class="control-header">Control Panel</div>
-    
+
     <div class="setting-group">
       <div class="setting-title">Identity Management</div>
       <div class="setting-item">
@@ -126,7 +323,8 @@
       </div>
     </div>
 
-    <button class="modal-btn" onclick="document.getElementById('settings-view').style.display='none'">[CLOSE WINDOW]</button>
+    <button class="modal-btn" onclick="document.getElementById('settings-view').style.display='none'">[CLOSE
+      WINDOW]</button>
   </div>
 
 
@@ -134,20 +332,22 @@
     <div class="kindle-auth-box">
       <div class="control-header" id="modal-auth-title">LOGIN</div>
       <div id="modal-error-log" class="error-msg"></div>
-      
+
       <div style="font-weight: 900; margin-bottom: 4px; font-size: 12px;">USERNAME:</div>
       <input type="text" id="modal-auth-user" class="kindle-input" autocomplete="off" />
-      
+
       <div style="font-weight: 900; margin-bottom: 4px; font-size: 12px;">PASSWORD:</div>
       <input type="password" id="modal-auth-pass" class="kindle-input" />
-      
+
       <button id="modal-auth-submit" style="width: 100%; padding: 10px; margin-top: 5px;">SUBMIT</button>
-      
-      <div id="modal-auth-toggle" style="font-size: 11px; margin-top: 15px; cursor: pointer; text-decoration: underline; text-align: center; font-weight: bold;">
+
+      <div id="modal-auth-toggle"
+        style="font-size: 11px; margin-top: 15px; cursor: pointer; text-decoration: underline; text-align: center; font-weight: bold;">
         Need an account? Register
       </div>
-      
-      <button class="modal-btn" style="margin-top: 15px;" onclick="document.getElementById('login-modal-view').style.display='none'">[CANCEL]</button>
+
+      <button class="modal-btn" style="margin-top: 15px;"
+        onclick="document.getElementById('login-modal-view').style.display='none'">[CANCEL]</button>
     </div>
   </div>
 
@@ -155,20 +355,20 @@
   <script>
     // --- COOKIE STORAGE ENGINE FOR LEGACY HARDWARE ---
     function setStorageItem(key, value) {
-        localStorage.setItem(key, value);
-        document.cookie = key + "=" + encodeURIComponent(value) + "; path=/; max-age=31536000;";
+      localStorage.setItem(key, value);
+      document.cookie = key + "=" + encodeURIComponent(value) + "; path=/; max-age=31536000;";
     }
 
     function getStorageItem(key) {
-        let val = localStorage.getItem(key);
-        if (!val) {
-            const pairs = document.cookie.split('; ');
-            for (let i = 0; i < pairs.length; i++) {
-                const parts = pairs[i].split('=');
-                if (parts[0] === key) return decodeURIComponent(parts[1]);
-            }
+      let val = localStorage.getItem(key);
+      if (!val) {
+        const pairs = document.cookie.split('; ');
+        for (let i = 0; i < pairs.length; i++) {
+          const parts = pairs[i].split('=');
+          if (parts[0] === key) return decodeURIComponent(parts[1]);
         }
-        return val;
+      }
+      return val;
     }
 
     // Load State Parameters immediately
@@ -191,7 +391,7 @@
       { name: 'AI ASSISTANT', desc: 'AI Assistant Beta', url: 'chatai.html' },
       { name: 'CALCULATOR', desc: 'MATH', url: 'calc.html' },
       { name: 'MODERATION', desc: 'Moderation Panel', url: 'modmenu.html', req: 'mod' }
-      ];
+    ];
 
     // Platform Utilities and Link Aggregations Array
     const PLATFORM_DATABASE = [
@@ -206,14 +406,14 @@
       const featuredContainer = document.getElementById('apps-container');
       const platformContainer = document.getElementById('platform-apps-container');
       const currentRank = getStorageItem('unreader-rank') || 'user';
-      
+
       featuredContainer.innerHTML = '';
       platformContainer.innerHTML = '';
-      
+
       // Render Featured Array
       FEATURED_DATABASE.forEach(app => {
         if (app.req === 'mod' && currentRank !== 'mod' && currentRank !== 'admin') return;
-        
+
         const div = document.createElement('div');
         div.className = 'app-item';
         div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
@@ -227,11 +427,11 @@
         div.className = 'app-item';
         div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
         div.onclick = () => {
-            if (app.external) {
-                window.open(app.url, '_blank');
-            } else {
-                window.location.href = app.url;
-            }
+          if (app.external) {
+            window.open(app.url, '_blank');
+          } else {
+            window.location.href = app.url;
+          }
         };
         platformContainer.appendChild(div);
       });
@@ -239,99 +439,100 @@
 
     // Interface Dynamic Handlers
     document.getElementById('settings-trigger').onclick = () => document.getElementById('settings-view').style.display = 'block';
-    
+
     document.getElementById('theme-toggle').onclick = () => {
-        document.body.classList.toggle('dark-mode');
-        setStorageItem('dark-mode', document.body.classList.contains('dark-mode'));
+      document.body.classList.toggle('dark-mode');
+      setStorageItem('dark-mode', document.body.classList.contains('dark-mode'));
     };
-    
+
     document.getElementById('font-toggle').onclick = () => {
-        document.body.classList.toggle('dyslexic-font');
-        setStorageItem('dyslexic-font', document.body.classList.contains('dyslexic-font'));
+      document.body.classList.toggle('dyslexic-font');
+      setStorageItem('dyslexic-font', document.body.classList.contains('dyslexic-font'));
     };
 
     document.getElementById('flush-btn').onclick = () => {
-        const overlay = document.createElement('div');
-        overlay.className = 'flash-overlay';
-        document.body.appendChild(overlay);
-        setTimeout(() => overlay.remove(), 150);
+      const overlay = document.createElement('div');
+      overlay.className = 'flash-overlay';
+      document.body.appendChild(overlay);
+      setTimeout(() => overlay.remove(), 150);
     };
 
     // Modal view authentication mode swapper
     document.getElementById("modal-auth-toggle").onclick = function () {
-        isRegisterMode = !isRegisterMode;
-        document.getElementById("modal-auth-title").textContent = isRegisterMode ? "REGISTER" : "LOGIN";
-        this.textContent = isRegisterMode ? "Already have an account? Login" : "Need an account? Register";
+      isRegisterMode = !isRegisterMode;
+      document.getElementById("modal-auth-title").textContent = isRegisterMode ? "REGISTER" : "LOGIN";
+      this.textContent = isRegisterMode ? "Already have an account? Login" : "Need an account? Register";
     };
 
     // --- LIVE EXPLICIT REPLICATION OF THE CHAT.HTML AUTH PIPELINE ---
     document.getElementById("modal-auth-submit").onclick = function () {
-        var usernameInput = document.getElementById("modal-auth-user").value.trim();
-        var passwordInput = document.getElementById("modal-auth-pass").value;
-        var errorDisplay = document.getElementById("modal-error-log");
-        
-        if (!usernameInput || !passwordInput) {
-            errorDisplay.textContent = "Fill in all log credentials.";
-            errorDisplay.style.display = "block";
-            return;
-        }
-        
-        var url = isRegisterMode ? "/api/register" : "/api/login";
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", BACKEND_URL + url, true);
-        xhr.setRequestHeader("Content-Type", "application/json");
-        
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    try {
-                        var data = JSON.parse(xhr.responseText);
-                        setStorageItem("token", data.token);
-                        setStorageItem("username", data.username);
-                        
-                        setStorageItem("unreader-rank", (data.username.toLowerCase() === 'admin' || data.username.toLowerCase() === 'mod') ? 'mod' : 'user');
-                        
-                        location.reload();
-                    } catch (e) {
-                        errorDisplay.textContent = "Server returned an invalid packet signature.";
-                        errorDisplay.style.display = "block";
-                    }
-                } else {
-                    try {
-                        var errData = JSON.parse(xhr.responseText);
-                        errorDisplay.textContent = "Server error: " + (errData.error || "Access Denied");
-                    } catch (e) {
-                        errorDisplay.textContent = "Structural connection failure.";
-                    }
-                    errorDisplay.style.display = "block";
-                }
+      var usernameInput = document.getElementById("modal-auth-user").value.trim();
+      var passwordInput = document.getElementById("modal-auth-pass").value;
+      var errorDisplay = document.getElementById("modal-error-log");
+
+      if (!usernameInput || !passwordInput) {
+        errorDisplay.textContent = "Fill in all log credentials.";
+        errorDisplay.style.display = "block";
+        return;
+      }
+
+      var url = isRegisterMode ? "/api/register" : "/api/login";
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", BACKEND_URL + url, true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            try {
+              var data = JSON.parse(xhr.responseText);
+              setStorageItem("token", data.token);
+              setStorageItem("username", data.username);
+
+              setStorageItem("unreader-rank", (data.username.toLowerCase() === 'admin' || data.username.toLowerCase() === 'mod') ? 'mod' : 'user');
+
+              location.reload();
+            } catch (e) {
+              errorDisplay.textContent = "Server returned an invalid packet signature.";
+              errorDisplay.style.display = "block";
             }
-        };
-        xhr.send(JSON.stringify({ username: usernameInput, password: passwordInput }));
+          } else {
+            try {
+              var errData = JSON.parse(xhr.responseText);
+              errorDisplay.textContent = "Server error: " + (errData.error || "Access Denied");
+            } catch (e) {
+              errorDisplay.textContent = "Structural connection failure.";
+            }
+            errorDisplay.style.display = "block";
+          }
+        }
+      };
+      xhr.send(JSON.stringify({ username: usernameInput, password: passwordInput }));
     };
 
     // Identity Engine Authentication Check
     if (token && myUsername) {
-        document.getElementById('auth-status').textContent = 'User: ' + myUsername;
-        document.getElementById('auth-btn').textContent = 'Log Out';
-        document.getElementById('auth-btn').onclick = function () {
-            localStorage.clear();
-            
-            document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
-            document.cookie = "username=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
-            document.cookie = "unreader-rank=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
-            
-            location.reload();
-        };
+      document.getElementById('auth-status').textContent = 'User: ' + myUsername;
+      document.getElementById('auth-btn').textContent = 'Log Out';
+      document.getElementById('auth-btn').onclick = function () {
+        localStorage.clear();
+
+        document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
+        document.cookie = "username=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
+        document.cookie = "unreader-rank=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
+
+        location.reload();
+      };
     } else {
-        document.getElementById('auth-btn').onclick = function () { 
-            document.getElementById('settings-view').style.display = 'none';
-            document.getElementById('login-modal-view').style.display = 'block';
-        };
+      document.getElementById('auth-btn').onclick = function () {
+        document.getElementById('settings-view').style.display = 'none';
+        document.getElementById('login-modal-view').style.display = 'block';
+      };
     }
 
     // Run layout deployment logic
     buildDashboardGrid();
   </script>
 </body>
+
 </html>
