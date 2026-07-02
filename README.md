@@ -36,7 +36,7 @@ Brought to life by the core engineering and design team:
 
 - **[tock-dev](https://github.com/tock-dev)**
 - **[HackerAUG](https://github.com/HackerAUG)**
-- **[KodiGamingYT](https://github.com/KodiGamingYT)** - recently joined our developer team
+- **[KodiGamingYT](https://github.com/KodiGamingYT)**
 
 ---
 
