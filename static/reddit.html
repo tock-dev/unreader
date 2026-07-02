@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <meta charset="UTF-8">
+
+    <title>Reddit</title>
+    <style>
+        /* SYSTEM 7 AESTHETICS - PRESERVED */
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --border: 2px solid #000000;
+            --shadow: 4px 4px 0px #000000;
+            --stripe-pattern: repeating-linear-gradient(0deg, transparent, transparent 2px, #000 3px, #000 4px);
+        }
+
+        body {
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            font-family: "Geneva", "Verdana", sans-serif;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #e5e5e5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            box-sizing: border-box;
+        }
+
+        /* WINDOW FRAME */
+        .window {
+            background: white;
+            border: 2px solid black;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            min-height: 90vh;
+            width: 100%;
+            max-width: 900px;
+            position: relative;
+        }
+
+        /* TITLE BAR */
+        .title-bar {
+            height: 35px;
+            border-bottom: 2px solid black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            padding: 0 10px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .title-stripes {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            left: 4px;
+            right: 4px;
+            background-image: var(--stripe-pattern);
+            z-index: 0;
+        }
+
+        .title-text {
+            background: white;
+            padding: 0 15px;
+            font-weight: bold;
+            z-index: 1;
+            font-size: 1.1rem;
+            display: inline-flex;
+            align-items: center;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .close-box {
+            position: absolute;
+            left: 10px;
+            width: 18px;
+            height: 18px;
+            border: 2px solid black;
+            background: white;
+            z-index: 2;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-family: sans-serif;
+            font-size: 0.9rem;
+            line-height: 1;
+            box-shadow: 2px 2px 0 black;
+        }
+
+        .close-box:active {
+            background: black;
+            color: white;
+            transform: translate(1px, 1px);
+            box-shadow: none;
+        }
+
+        .settings-btn {
+            position: absolute;
+            right: 10px;
+            z-index: 2;
+            cursor: pointer;
+            font-weight: bold;
+            background: white;
+            border: 2px solid black;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            box-shadow: 2px 2px 0 black;
+        }
+
+        .settings-btn:active {
+            background: black;
+            color: white;
+            box-shadow: none;
+            transform: translate(1px, 1px);
+        }
+
+        /* APP VIEW (Main Content) */
+        .app-view {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+            flex-direction: row;
+        }
+
+        .app-view.hidden {
+            display: none !important;
+        }
+
+        /* LOGIN VIEW */
+        .login-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            padding: 40px;
+            text-align: center;
+            background: white;
+        }
+
+        .login-view.hidden {
+            display: none !important;
+        }
+
+        .login-card {
+            border: 2px solid black;
+            padding: 20px;
+            max-width: 400px;
+            background: #fafafa;
+            box-shadow: 4px 4px 0 #ccc;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 2px solid black;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        .accent-btn {
+            background: black;
+            color: white;
+            border: 2px solid black;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+
+        .accent-btn:hover {
+            background: #333;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 200px;
+            border-right: 2px solid black;
+            display: flex;
+            flex-direction: column;
+            background: #fafafa;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            font-weight: bold;
+            font-size: 0.9rem;
+            background: #eee;
+            text-align: center;
+        }
+
+        #saved-list {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .sidebar-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .sidebar-item:hover {
+            background: #f0f0f0;
+        }
+
+        .sidebar-item.active {
+            background: black;
+            color: white;
+            font-weight: bold;
+        }
+
+        .del-sub-btn {
+            font-weight: bold;
+            color: #999;
+            padding: 0 5px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+        .del-sub-btn:hover {
+            color: red;
+        }
+
+        .sidebar-item.active .del-sub-btn {
+            color: #ccc;
+        }
+
+        .sidebar-item.active .del-sub-btn:hover {
+            color: white;
+        }
+
+        /* MAIN LIST AREA */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            background: #eee;
+            border-bottom: 2px solid black;
+            flex-shrink: 0;
+        }
+
+        .toolbar>*+* {
+            margin-left: 10px;
+        }
+
+        .nav-btn {
+            background: white;
+            border: 2px solid black;
+            font-weight: bold;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            box-shadow: 2px 2px 0 black;
+        }
+
+        .nav-btn:active {
+            box-shadow: none;
+            transform: translate(1px, 1px);
+        }
+
+        #sub-input {
+            flex-grow: 1;
+            border: 2px solid black;
+            padding: 5px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        #content-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 0;
+            background: white;
+        }
+
+        /* POST ITEM */
+        .post-item {
+            padding: 15px;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+        }
+
+        .post-item:active {
+            background-color: black;
+            color: white;
+        }
+
+        .post-item:active .post-meta {
+            color: #ddd;
+        }
+
+        .post-item:active .post-title {
+            color: white;
+        }
+
+        .post-meta {
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .post-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            line-height: 1.3;
+            color: black;
+            text-decoration: none;
+        }
+
+        .post-stats {
+            font-size: 0.8rem;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+
+        /* THREAD VIEW */
+        .thread-container {
+            padding: 20px;
+        }
+
+        .thread-title {
+            font-size: 1.4rem;
+            font-weight: 900;
+            border-bottom: 4px double black;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .thread-body {
+            font-family: "Georgia", serif;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid black;
+        }
+
+        .comment {
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 2px solid #ccc;
+        }
+
+        .comment-meta {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 4px;
+        }
+
+        .comment-body {
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+
+        /* MODALS */
+        .modal-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-box {
+            background: white;
+            border: 2px solid black;
+            box-shadow: 8px 8px 0 black;
+            padding: 20px;
+            width: 320px;
+            text-align: center;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .modal-buttons > * + * {
+            margin-left: 10px;
+        }
+
+        .sys-btn {
+            background: white;
+            border: 2px solid black;
+            padding: 5px 15px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 2px 2px 0 black;
+            font-size: 0.8rem;
+        }
+
+        .sys-btn:active {
+            box-shadow: none;
+            transform: translate(1px, 1px);
+        }
+
+        /* STATUS BAR */
+        #status-bar {
+            font-size: 0.7rem;
+            text-align: center;
+            padding: 4px;
+            background: #eee;
+            border-top: 2px solid black;
+            flex-shrink: 0;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 600px) {
+            .sidebar {
+                display: none;
+            }
+        }
+
+        .loading {
+            padding: 20px;
+            text-align: center;
+            font-style: italic;
+        }
+    </style>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="theme.js?v=18"></script>
+    <script src="js/i18n.js"></script>
+</head>
+
+<body>
+
+    <div class="window">
+        <div class="title-bar">
+            <div class="title-stripes"></div>
+            <div class="close-box" onclick="window.location.href='index'">X</div>
+            <span class="title-text" data-i18n="reddit.title">Reddit</span>
+            <!-- No settings button needed for Guest Mode only, or strictly for clearing cache? -->
+            <!-- <button class="settings-btn" id="config-btn" onclick="openSettings()" title="Settings">⚙️</button> -->
+        </div>
+
+        <!-- APP VIEW -->
+        <div id="app-view" class="app-view">
+            <!-- SIDEBAR -->
+            <div class="sidebar">
+                <div class="sidebar-header" data-i18n="reddit.sidebar.saved">Saved Subs</div>
+                <div id="saved-list"></div>
+            </div>
+
+            <!-- MAIN -->
+            <div class="main-content">
+                <div class="toolbar">
+                    <button class="nav-btn" id="back-btn" onclick="ui.goBack()" style="display:none;"
+                        data-i18n="rss.btn.back">&lt;</button>
+                    <span style="font-weight:bold; font-size:1rem;">r/</span>
+                    <input type="text" id="sub-input" value="popular" onkeypress="ui.handleEnter(event)">
+                    <button class="nav-btn" onclick="ui.loadCurrentSub()" data-i18n="reddit.btn.go">Go</button>
+                    <button class="nav-btn" id="save-btn" onclick="ui.toggleSave()" title="Save Subreddit">☆</button>
+                    <span id="loading-indicator"
+                        style="display:none; margin-left:10px; font-size:0.8rem;">Loading...</span>
+                </div>
+
+                <div id="content-area"></div>
+            </div>
+        </div>
+
+        <div id="status-bar"><span id="sync-status">Offline</span></div>
+    </div>
+
+    <!-- DELETE SUB MODAL -->
+    <div id="delete-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 data-i18n="reddit.modal.remove">Remove Subreddit?</h3>
+            <p>Remove r/<span id="delete-sub-name" style="font-weight:bold;"></span>?</p>
+            <div class="modal-buttons">
+                <button class="sys-btn" onclick="ui.confirmRemove()" data-i18n="reddit.btn.remove">Remove</button>
+                <button class="sys-btn" onclick="ui.closeModal('delete-modal')"
+                    data-i18n="reddit.btn.cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- FIREBASE CONFIG (Copied from index.html) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDY7x7vVmlYUyVZNLuCCmIQYa6PWFVfZqQ",
+            authDomain: "rekindle-dd1fa.firebaseapp.com",
+            projectId: "rekindle-dd1fa",
+            storageBucket: "rekindle-dd1fa.firebasestorage.app",
+            messagingSenderId: "748026882518",
+            appId: "1:748026882518:web:6877dd4329318070c11c77"
+        };
+
+        let auth, db;
+        let currentUser = null;
+        let isFirebaseAvailable = false;
+
+        function initFirebase() {
+            try {
+                if (typeof firebase !== 'undefined') {
+                    firebase.initializeApp(firebaseConfig);
+                    auth = firebase.auth();
+                    db = firebase.firestore();
+                    isFirebaseAvailable = true;
+                    console.log("Firebase initialized.");
+
+                    auth.onAuthStateChanged(user => {
+                        currentUser = user;
+                        if (user) {
+                            document.getElementById('sync-status').innerText = "Syncing...";
+                            ui.syncSavedSubs();
+                        } else {
+                            document.getElementById('sync-status').innerText = "Local";
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Firebase init failed:", e);
+            }
+        }
+
+        // --- PROXY LIST ---
+        const PROXIES = [
+            "/api/reddit?url=" // Internal Cloudflare Function (Most Reliable)
+        ];
+
+        // --- API CLIENT ---
+        const api = {
+            baseUrl: 'https://www.reddit.com',
+            currentRequestId: 0,
+
+            sleep(ms) {
+                return new Promise(function(resolve) { setTimeout(resolve, ms); });
+            },
+
+            retryDelay(response, attempt) {
+                if (response && response.headers) {
+                    var ra = response.headers.get('Retry-After');
+                    if (ra) {
+                        var seconds = parseInt(ra, 10);
+                        if (!isNaN(seconds) && seconds > 0) {
+                            return Math.min(seconds * 1000, 10000);
+                        }
+                    }
+                }
+                return Math.min(1000 * Math.pow(2, attempt), 8000);
+            },
+
+            showRetryStatus(ms) {
+                var indicator = document.getElementById('loading-indicator');
+                if (indicator) indicator.innerText = 'Retrying in ' + Math.ceil(ms / 1000) + 's...';
+            },
+
+            async request(endpoint) {
+                document.getElementById('loading-indicator').innerText = 'Loading...';
+                const requestId = ++this.currentRequestId;
+                let path = endpoint;
+                let query = "";
+
+                if (endpoint.includes('?')) {
+                    const parts = endpoint.split('?');
+                    path = parts[0];
+                    query = "?" + parts[1];
+                }
+
+                if (!path.endsWith('.rss')) {
+                    path += '.rss';
+                }
+
+                const publicUrl = this.baseUrl + path + query;
+                console.log("Fetching URL:", publicUrl);
+
+                let lastError = null;
+                let lastStatus = null;
+                for (let proxy of PROXIES) {
+                    let lastProxyResponse = null;
+                    for (let attempt = 0; attempt < 3; attempt++) {
+                        if (attempt > 0) {
+                            const delay = this.retryDelay(lastProxyResponse, attempt);
+                            this.showRetryStatus(delay);
+                            await this.sleep(delay);
+                        }
+
+                        try {
+                            const target = proxy + encodeURIComponent(publicUrl);
+
+                            if (requestId !== this.currentRequestId) {
+                                throw new Error('Request superseded');
+                            }
+
+                            document.getElementById('loading-indicator').style.display = 'inline';
+                            const res = await fetch(target);
+                            document.getElementById('loading-indicator').style.display = 'none';
+
+                            if (requestId !== this.currentRequestId) {
+                                throw new Error('Request superseded');
+                            }
+
+                            if (res.ok) {
+                                return await res.text();
+                            }
+
+                            lastProxyResponse = res;
+                            lastStatus = res.status;
+
+                            if (res.status === 429 || res.status >= 500) {
+                                console.warn('Proxy returned ' + res.status + ', retrying...');
+                                continue;
+                            }
+
+                            throw new Error('Status ' + res.status);
+                        } catch (e) {
+                            console.warn('Proxy ' + proxy + ' attempt ' + (attempt + 1) + ' failed:', e);
+                            lastError = e;
+                            if (e.message && e.message.indexOf('superseded') !== -1) {
+                                document.getElementById('loading-indicator').style.display = 'none';
+                                throw e;
+                            }
+                        }
+                    }
+                }
+
+                document.getElementById('loading-indicator').style.display = 'none';
+                let msg = "Connection Failed: All proxies blocked.";
+                if (lastStatus) msg += " (last status " + lastStatus + ")";
+                if (lastError) msg += " - " + lastError.message;
+                throw new Error(msg);
+            },
+
+            async getSubreddit(sub, after) {
+                let url = `/r/${sub}`;
+                if (after) url += `?after=${after}&limit=25`;
+                else url += `?limit=25`;
+                return this.request(url);
+            },
+
+            async getThread(permalink) {
+                const cleanLink = permalink.replace(/\/$/, "");
+                return this.request(cleanLink);
+            }
+        };
+
+        // --- RSS PARSERS ---
+        function parseRssPosts(xmlText) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlText, "application/xml");
+            const entries = doc.querySelectorAll("entry");
+            const posts = [];
+
+            entries.forEach(function(entry) {
+                const titleEl = entry.querySelector("title");
+                const authorEl = entry.querySelector("author name");
+                const catEl = entry.querySelector("category");
+                const linkEl = entry.querySelector("link");
+                const idEl = entry.querySelector("id");
+
+                let permalink = "";
+                if (linkEl) {
+                    try {
+                        permalink = new URL(linkEl.getAttribute("href")).pathname;
+                    } catch (err) {
+                        permalink = linkEl.getAttribute("href") || "";
+                    }
+                }
+
+                posts.push({
+                    title: titleEl ? titleEl.textContent : "",
+                    author: authorEl ? authorEl.textContent.replace("/u/", "") : "",
+                    subreddit: catEl ? catEl.getAttribute("term") : "",
+                    permalink: permalink,
+                    id: idEl ? idEl.textContent : ""
+                });
+            });
+
+            return posts;
+        }
+
+        function parseRssThread(xmlText) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlText, "application/xml");
+            const entries = doc.querySelectorAll("entry");
+
+            if (entries.length === 0) {
+                return { post: null, comments: [] };
+            }
+
+            const first = entries[0];
+            let postPermalink = "";
+            const postLink = first.querySelector("link");
+            if (postLink) {
+                try {
+                    postPermalink = new URL(postLink.getAttribute("href")).pathname;
+                } catch (err) {
+                    postPermalink = postLink.getAttribute("href") || "";
+                }
+            }
+
+            const post = {
+                title: first.querySelector("title") ? first.querySelector("title").textContent : "",
+                author: first.querySelector("author name") ? first.querySelector("author name").textContent.replace("/u/", "") : "",
+                contentHtml: first.querySelector("content") ? first.querySelector("content").textContent : "",
+                permalink: postPermalink
+            };
+
+            const comments = [];
+            for (let i = 1; i < entries.length; i++) {
+                const entry = entries[i];
+                let cPermalink = "";
+                const cLink = entry.querySelector("link");
+                if (cLink) {
+                    try {
+                        cPermalink = new URL(cLink.getAttribute("href")).pathname;
+                    } catch (err) {
+                        cPermalink = cLink.getAttribute("href") || "";
+                    }
+                }
+
+                comments.push({
+                    author: entry.querySelector("author name") ? entry.querySelector("author name").textContent.replace("/u/", "") : "",
+                    bodyHtml: entry.querySelector("content") ? entry.querySelector("content").textContent : "",
+                    permalink: cPermalink
+                });
+            }
+
+            return { post: post, comments: comments };
+        }
+
+        // --- UI MANAGER ---
+        const ui = {
+            currentSub: 'popular',
+            savedSubs: [],
+            subToDelete: null,
+            afterToken: null,
+            isLoadingMore: false,
+            scrollTimeout: null,
+
+            init() {
+                if (window.rekindleApplyWallpaper) window.rekindleApplyWallpaper();
+                initFirebase(); // Start auth listener
+
+                // Load local immediately
+                const localSubs = localStorage.getItem('reddit_saved_subs');
+                if (localSubs) this.savedSubs = JSON.parse(localSubs);
+                else this.savedSubs = ['BestOf', 'News', 'Technology', 'Kindle', 'eInk'];
+
+                this.renderSidebar();
+                this.loadCurrentSub();
+                this.initScrollListener();
+            },
+
+            // SYNC LOGIC
+            syncSavedSubs() {
+                if (!currentUser || !db) return;
+
+                // Pull from Firebase
+                // PATH UPDATE: users/{uid}/apps/reddit
+                const userRef = db.collection('users').doc(currentUser.uid).collection('apps').doc('reddit');
+
+                userRef.get().then(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (data.saved_subs && Array.isArray(data.saved_subs)) {
+                            // Merge or Overwrite? Let's Overwrite local with Server for consistency
+                            this.savedSubs = data.saved_subs;
+                            this.saveLocal();
+                            this.renderSidebar();
+                            document.getElementById('sync-status').innerText = "Synced";
+                        }
+                    } else {
+                        // First time: Push local to server
+                        this.pushSavedSubs();
+                    }
+                }).catch(e => console.error("Sync error:", e));
+            },
+
+            pushSavedSubs() {
+                if (!currentUser || !db) return;
+                document.getElementById('sync-status').innerText = "Saving...";
+
+                const userRef = db.collection('users').doc(currentUser.uid).collection('apps').doc('reddit');
+                userRef.set({
+                    saved_subs: this.savedSubs,
+                    last_updated: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true }).then(() => {
+                    document.getElementById('sync-status').innerText = "Synced";
+                }).catch(e => {
+                    console.error("Push error:", e);
+                    document.getElementById('sync-status').innerText = "Sync Error";
+                });
+            },
+
+            // SIDEBAR
+            renderSidebar() {
+                const list = document.getElementById('saved-list');
+                list.innerHTML = '';
+                const sorted = [...this.savedSubs].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+
+                sorted.forEach(sub => {
+                    const div = document.createElement('div');
+                    div.className = 'sidebar-item';
+                    if (sub.toLowerCase() === this.currentSub.toLowerCase()) div.classList.add('active');
+                    div.innerHTML = `
+                        <span>r/${sub}</span>
+                        <span class="del-sub-btn" onclick="ui.requestRemove('${sub}', event)">×</span>
+                    `;
+                    div.onclick = () => {
+                        document.getElementById('sub-input').value = sub;
+                        this.loadCurrentSub();
+                    };
+                    list.appendChild(div);
+                });
+
+                this.updateSaveBtn();
+            },
+
+            toggleSave() {
+                const sub = this.currentSub;
+                const idx = this.savedSubs.findIndex(s => s.toLowerCase() === sub.toLowerCase());
+                if (idx === -1) this.savedSubs.push(sub);
+                else this.savedSubs.splice(idx, 1);
+
+                this.saveLocal();
+                this.pushSavedSubs(); // Trigger sync
+                this.renderSidebar();
+            },
+
+            saveLocal() {
+                localStorage.setItem('reddit_saved_subs', JSON.stringify(this.savedSubs));
+            },
+
+            updateSaveBtn() {
+                const btn = document.getElementById('save-btn');
+                const isSaved = this.savedSubs.some(s => s.toLowerCase() === this.currentSub.toLowerCase());
+                btn.innerText = isSaved ? "★" : "☆";
+            },
+
+            requestRemove(sub, e) {
+                e.stopPropagation();
+                this.subToDelete = sub;
+                document.getElementById('delete-sub-name').innerText = sub;
+                document.getElementById('delete-modal').style.display = 'flex';
+            },
+
+            confirmRemove() {
+                if (this.subToDelete) {
+                    this.savedSubs = this.savedSubs.filter(s => s !== this.subToDelete);
+                    this.saveLocal();
+                    this.pushSavedSubs();
+                    this.renderSidebar();
+                }
+                this.closeModal('delete-modal');
+            },
+
+            renderPostList(posts, sub, stale) {
+                const content = document.getElementById('content-area');
+                content.innerHTML = '';
+                if (stale) {
+                    content.innerHTML = '<div class="loading" style="color:#a60;">Showing cached posts for r/' + escapeHtml(sub) + ' because Reddit is busy.<br>Pull to refresh or try again shortly.</div>';
+                }
+                if (posts.length === 0) {
+                    if (!stale) content.innerHTML = '<div class="loading">No posts found.</div>';
+                    return;
+                }
+                posts.forEach(function(p) {
+                    const el = document.createElement('div');
+                    el.className = 'post-item';
+                    const safeTitle = escapeHtml(p.title);
+                    el.innerHTML = `
+                        <div class="post-meta">r/${escapeHtml(p.subreddit)} • u/${escapeHtml(p.author)}</div>
+                        <div class="post-title">${safeTitle}</div>
+                    `;
+                    el.onclick = function() { ui.loadThread(p.permalink); };
+                    content.appendChild(el);
+                });
+                this.afterToken = posts[posts.length - 1].id;
+            },
+
+            initScrollListener() {
+                const el = document.getElementById('content-area');
+                el.addEventListener('scroll', function() {
+                    if (ui.scrollTimeout) clearTimeout(ui.scrollTimeout);
+                    ui.scrollTimeout = setTimeout(function() {
+                        ui.scrollTimeout = null;
+                        if (ui.isLoadingMore || !ui.afterToken) return;
+                        const scrollBottom = el.scrollTop + el.clientHeight;
+                        if (scrollBottom >= el.scrollHeight - 300) {
+                            ui.loadMorePosts();
+                        }
+                    }, 200);
+                });
+            },
+
+            async loadMorePosts() {
+                if (this.isLoadingMore || !this.afterToken) return;
+                this.isLoadingMore = true;
+
+                const content = document.getElementById('content-area');
+                const loader = document.createElement('div');
+                loader.className = 'loading';
+                loader.id = 'load-more-loader';
+                loader.innerText = 'Loading more...';
+                content.appendChild(loader);
+
+                try {
+                    const xmlText = await api.getSubreddit(this.currentSub, this.afterToken);
+                    const posts = parseRssPosts(xmlText);
+
+                    if (posts.length > 0) {
+                        posts.forEach(function(p) {
+                            const el = document.createElement('div');
+                            el.className = 'post-item';
+                            const safeTitle = escapeHtml(p.title);
+
+                            el.innerHTML = `
+                                <div class="post-meta">r/${escapeHtml(p.subreddit)} • u/${escapeHtml(p.author)}</div>
+                                <div class="post-title">${safeTitle}</div>
+                            `;
+                            el.onclick = function() { ui.loadThread(p.permalink); };
+                            content.appendChild(el);
+                        });
+                        this.afterToken = posts[posts.length - 1].id;
+                    } else {
+                        this.afterToken = null;
+                    }
+                } catch (e) {
+                    if (e.message && e.message.indexOf('superseded') !== -1) return;
+                    console.error("Load more failed:", e);
+                } finally {
+                    this.isLoadingMore = false;
+                    const existingLoader = document.getElementById('load-more-loader');
+                    if (existingLoader) existingLoader.parentNode.removeChild(existingLoader);
+                }
+            },
+
+            // FEED
+            async loadCurrentSub() {
+                const subInput = document.getElementById('sub-input');
+                let sub = subInput.value.trim() || 'popular';
+                sub = sub.replace(/^r\//, '');
+                this.currentSub = sub;
+                this.afterToken = null;
+
+                document.getElementById('back-btn').style.display = 'none';
+                this.renderSidebar();
+
+                const content = document.getElementById('content-area');
+                content.innerHTML = `<div class="loading">Loading r/${escapeHtml(sub)}...</div>`;
+
+                try {
+                    const xmlText = await api.getSubreddit(sub);
+                    try {
+                        localStorage.setItem('reddit_feed_xml_' + sub, xmlText);
+                    } catch (e) {
+                        console.warn('Failed to cache feed:', e);
+                    }
+                    const posts = parseRssPosts(xmlText);
+                    this.renderPostList(posts, sub, false);
+
+                } catch (e) {
+                    if (e.message && e.message.indexOf('superseded') !== -1) return;
+                    const cached = localStorage.getItem('reddit_feed_xml_' + sub);
+                    if (cached) {
+                        const posts = parseRssPosts(cached);
+                        this.renderPostList(posts, sub, true);
+                    } else {
+                        content.innerHTML = `<div class="loading" style="color:red">Error loading r/${escapeHtml(sub)}<br>${escapeHtml(e.message)}<br><small>If proxy issues persist, try reloading.</small></div>`;
+                    }
+                }
+            },
+
+            async loadThread(permalink) {
+                const content = document.getElementById('content-area');
+                content.innerHTML = `<div class="loading">Loading thread...</div>`;
+                document.getElementById('back-btn').style.display = 'block';
+
+                try {
+                    const xmlText = await api.getThread(permalink);
+                    const data = parseRssThread(xmlText);
+                    const post = data.post;
+                    const comments = data.comments;
+
+                    let html = '<div class="thread-container">';
+                    html += `<div class="thread-title">${escapeHtml(post.title)}</div>`;
+
+                    // Body Parsing
+                    if (post.contentHtml) {
+                        let body = this.decodeHtml(post.contentHtml);
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = body.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+                        // Remove the submission metadata table if present
+                        const table = tempDiv.querySelector('table');
+                        if (table) {
+                            const text = table.innerText || table.textContent;
+                            if (text.indexOf('[link]') !== -1 && text.indexOf('[comments]') !== -1) {
+                                table.parentNode.removeChild(table);
+                            }
+                        }
+
+                        const remainingText = (tempDiv.innerText || tempDiv.textContent).trim();
+                        if (remainingText.length > 0) {
+                            body = this.processCommentHtml(tempDiv.innerHTML);
+                            html += `<div class="thread-body">${body}</div>`;
+                        } else if (post.permalink) {
+                            html += `<div class="thread-body"><a href="https://www.reddit.com${post.permalink}" target="_blank" style="color:blue; text-decoration:underline;">[Open Post on Reddit]</a></div>`;
+                        }
+                    }
+
+                    html += `<h3>Comments</h3>`;
+
+                    comments.forEach(function(c) {
+                        let body = c.bodyHtml ? ui.decodeHtml(c.bodyHtml) : '';
+                        body = ui.processCommentHtml(body);
+
+                        html += `
+                            <div class="comment">
+                                <div class="comment-meta">${escapeHtml(c.author)}</div>
+                                <div class="comment-body">${body}</div>
+                            </div>
+                         `;
+                    });
+
+                    html += '</div>';
+                    content.innerHTML = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+                } catch (e) {
+                    if (e.message && e.message.indexOf('superseded') !== -1) return;
+                    content.innerHTML = `<div class="loading" style="color:red">Error loading thread<br>${e.message}</div>`;
+                }
+            },
+
+            processCommentHtml(html) {
+                const div = document.createElement('div');
+                div.innerHTML = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+                const links = div.querySelectorAll('a');
+
+                links.forEach(a => {
+                    const h = a.href;
+                    // Check for standard image extensions OR reddit preview domains
+                    // preview.redd.it links usually have no extension but have query params, or end in .jpg?width=...
+                    if (h.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i) ||
+                        h.includes('preview.redd.it') ||
+                        h.includes('i.redd.it')) {
+
+                        // Safety: ignore simple domains unless they are explicit files
+                        // e.g. "imgur.com" is a page, "i.imgur.com/xyz.png" is an image
+                        if ((new URL(h).hostname === 'imgur.com' || new URL(h).hostname.endsWith('.imgur.com')) && !h.match(/\.(jpeg|jpg|gif|png|webp)/i)) return;
+
+                        const img = document.createElement('img');
+                        // Proxy the image source!
+                        img.src = "/api/reddit?url=" + encodeURIComponent(h);
+                        img.className = "comment-img"; // for CSS styling if needed
+                        img.style.maxWidth = '100%';
+                        img.style.display = 'block';
+                        img.style.marginTop = '10px';
+                        img.style.borderRadius = '4px';
+                        img.style.border = '2px solid black';
+
+                        // Replace the link text if it's just the URL, otherwise append
+                        if (a.innerText.includes('http') || a.innerText === 'preview.redd.it' || a.innerText.length > 20) {
+                            a.innerHTML = '';
+                            a.appendChild(img);
+                        } else {
+                            a.appendChild(img);
+                        }
+                    }
+                });
+                return div.innerHTML;
+            },
+
+            handleEnter(e) {
+                if (e.key === 'Enter') this.loadCurrentSub();
+            },
+
+            goBack() {
+                this.loadCurrentSub();
+            },
+
+            closeModal(id) {
+                document.getElementById(id).style.display = 'none';
+            },
+
+            decodeHtml(html) {
+                const txt = document.createElement("textarea");
+                txt.innerHTML = html;
+                return txt.value;
+            }
+        };
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Initialize
+        ui.init();
+
+    </script>
+</body>
+
+</html>
