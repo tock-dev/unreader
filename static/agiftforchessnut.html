@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Oregon Trail</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: none !important;
+            animation: none !important;
+            border-radius: 0 !important;
+        }
+
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --border-color: #000000;
+            --border-width: 2px;
+            --shadow: 4px 4px 0px #000000;
+        }
+
+        body {
+            font-family: 'Courier New', 'Courier', monospace;
+            background-color: #d4d4d4;
+            color: var(--text-color);
+            line-height: 1.4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .window {
+            display: flex;
+            flex-direction: column;
+            max-width: 1100px;
+            min-height: calc(100vh - 40px);
+            margin: 0 auto;
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: var(--shadow);
+            background: var(--bg-color);
+        }
+
+        .title-bar {
+            height: 60px;
+            border-bottom: var(--border-width) solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-color);
+            padding: 0 24px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .title-bar .nav-button,
+        .title-bar .nav-placeholder {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            padding: 8px 14px;
+            font-family: 'Courier New', monospace;
+            font-weight: 900;
+            font-size: 12px;
+            box-shadow: 2px 2px 0px var(--border-color);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .title-bar .title-text {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            margin: 0;
+        }
+
+        .paper-btn:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        .title-text {
+            font-weight: 900;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .home-page {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 40px;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            width: 100%;
+            min-height: 100%;
+        }
+
+        .home-copy,
+        .home-actions {
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: var(--shadow);
+            padding: 40px;
+        }
+
+        .home-copy h1 {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            margin-bottom: 24px;
+            text-transform: uppercase;
+        }
+
+        .home-copy p {
+            font-size: 14px;
+            line-height: 1.8;
+            max-width: 540px;
+            margin-bottom: 0;
+        }
+
+        .home-actions {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 24px;
+            min-height: 260px;
+        }
+
+        .home-actions .hero-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 60px;
+            padding: 0 18px;
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: 4px 4px 0px var(--border-color);
+            font-size: 14px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .home-actions .hero-button:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .game-modal {
+            background-color: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 1100px;
+            height: calc(100% - 40px);
+            display: grid;
+            grid-template-rows: 60px minmax(0, 1fr);
+            z-index: 10000;
+        }
+
+        .modal-title-bar {
+            height: 45px;
+            border-bottom: var(--border-width) solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            flex-shrink: 0;
+        }
+
+        .modal-title-text {
+            font-weight: 900;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            flex: 1;
+            text-align: center;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .modal-buttons button {
+            width: auto;
+            padding: 4px 10px;
+            font-size: 10px;
+            margin: 0;
+        }
+
+        .game-container {
+            display: grid;
+            grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .game-output {
+            min-height: 0;
+            overflow-y: auto;
+            padding: 30px;
+            background-color: var(--bg-color);
+            border-right: var(--border-width) solid var(--border-color);
+            font-size: 13px;
+        }
+
+        .game-message {
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        .sidebar {
+            min-height: 0;
+            width: 100%;
+            padding: 30px;
+            background-color: var(--bg-color);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            border-left: var(--border-width) solid var(--border-color);
+        }
+
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-weight: 900;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: var(--border-width) solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .start-button,
+        .home-actions .hero-button {
+            width: auto;
+            padding: 15px 40px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: var(--shadow);
+            font-weight: 900;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-block;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .start-button:active,
+        .home-actions .hero-button:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: 2px 2px 0px var(--border-color);
+            transform: translate(2px, 2px);
+        }
+
+        .input-section {
+            margin-bottom: 15px;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 900;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: var(--border-width) solid var(--border-color);
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            box-shadow: 2px 2px 0px var(--border-color);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            box-shadow: inset 0 0 0 var(--border-width) var(--border-color), 2px 2px 0px var(--border-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: 2px 2px 0px var(--border-color);
+            font-weight: 900;
+            cursor: pointer;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .shoot-button {
+            font-size: 16px;
+            padding: 15px;
+            font-weight: 900;
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 32px;
+            font-weight: 900;
+            margin-bottom: 12px;
+            font-family: 'Courier New', monospace;
+            border: var(--border-width) solid var(--border-color);
+            padding: 12px;
+            box-shadow: 2px 2px 0px var(--border-color);
+        }
+
+        #shootSection {
+            display: none;
+        }
+
+        .stats {
+            background-color: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            padding: 12px;
+            box-shadow: 2px 2px 0px var(--border-color);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .stat-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-label {
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .game-over {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            padding: 15px;
+            text-align: center;
+            margin-top: 15px;
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: 2px 2px 0px var(--border-color);
+            font-weight: 900;
+        }
+
+        .game-over h2 {
+            margin-bottom: 8px;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+
+        .game-over p {
+            font-size: 11px;
+            margin: 0;
+        }
+
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.35);
+            z-index: 10001;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .confirm-overlay.active {
+            display: flex;
+        }
+
+        .confirm-dialog {
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: var(--shadow);
+            padding: 24px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .confirm-dialog p {
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .confirm-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .confirm-actions .paper-btn {
+            width: auto;
+            min-width: 120px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="window">
+        <div class="title-bar">
+            <div class="nav-button" onclick="closeGame()">← Home</div>
+            <div class="title-text">Oregon Trail</div>
+            <div style="width: 108px; visibility: hidden;"></div>
+        </div>
+        <div class="container">
+                <div class="home-page" id="homePage">
+                    <section class="home-copy">
+                        <h1>Oregon Trail</h1>
+                        <p>Travel 2040 miles from Independence, Missouri to Oregon City, Oregon in 1847. Navigate treacherous terrain, manage limited resources, and lead your family to the promise of a new life.</p>
+                    </section>
+                    <section class="home-actions">
+                        <a class="hero-button" onclick="startNewGame()">New Game</a>
+                        <a class="hero-button" href="about.html">About</a>
+                        <a class="hero-button" id="loadBtn" href="#" onclick="loadGame(); return false;" style="display:none;">Load Game</a>
+                    </section>
+        </div>
+
+        <div class="modal-overlay" id="gameModal">
+            <div class="game-modal">
+                <div class="modal-title-bar">
+                    <div class="modal-title-text">Main Game</div>
+                    <div class="modal-buttons">
+                        <button class="paper-btn" onclick="saveGame()">SAVE</button>
+                        <button class="paper-btn" onclick="closeGame()">CLOSE</button>
+                    </div>
+                </div>
+                <div class="game-container">
+                    <div class="game-output" id="output"></div>
+                    <div class="sidebar">
+                        <div class="sidebar-section">
+                            <div class="section-title">Input</div>
+                            <div class="input-section">
+                                <label class="input-label">Your Response:</label>
+                                <input type="text" id="inputField" placeholder="Enter choice..." />
+                                <button onclick="submitInput()">Submit</button>
+                            </div>
+                        </div>
+
+                        <div class="sidebar-section" id="shootSection" style="display: none;">
+                            <div class="section-title">Shoot!</div>
+                            <div class="timer" id="timer">15s</div>
+                            <button class="shoot-button" onclick="handleShoot()">Fire!</button>
+                            <p style="text-align: center; font-size: 10px; margin-top: 6px;">Press SPACE or click to shoot</p>
+                        </div>
+
+                        <div class="sidebar-section">
+                            <div class="section-title">Stats</div>
+                            <div class="stats" id="stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">Mileage:</span>
+                                    <span class="stat-value" id="mileage">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Food:</span>
+                                    <span class="stat-value" id="food">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Bullets:</span>
+                                    <span class="stat-value" id="bullets">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Clothing:</span>
+                                    <span class="stat-value" id="clothing">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Supplies:</span>
+                                    <span class="stat-value" id="supplies">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Cash:</span>
+                                    <span class="stat-value" id="cash">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Animals:</span>
+                                    <span class="stat-value" id="animals">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="gameOverDiv"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirm-overlay" id="confirmCloseModal">
+            <div class="confirm-dialog">
+                <p>Close game without saving? Your current progress will be lost unless saved first.</p>
+                <div class="confirm-actions">
+                    <button class="paper-btn" onclick="confirmClose()">Yes, Close</button>
+                    <button class="paper-btn" onclick="cancelClose()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="oregonTrailGame.js"></script>
+    <script>
+        let game = null;
+        let inputResolver = null;
+        let inputType = null;
+        let shootStartTime = null;
+        let gameSaveData = null;
+        let actionsSinceLastSave = 0;
+
+        // Check if there's a saved game on page load
+        window.addEventListener('load', () => {
+            const saved = localStorage.getItem('oregontrail-save');
+            if (saved) {
+                document.getElementById('loadBtn').style.display = 'inline-block';
+            }
+        });
+
+        function startNewGame() {
+            actionsSinceLastSave = 0;
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('gameModal').classList.add('active');
+            document.getElementById('output').innerHTML = '';
+            document.getElementById('gameOverDiv').innerHTML = '';
+            gameSaveData = null;
+
+            game = new OregonTrailGame({
+                onMessage: log,
+                onInput: handleInput,
+                onStateChange: updateStats,
+                onGameEnd: (result) => {
+                    document.getElementById('shootSection').style.display = 'none';
+                    const div = document.createElement('div');
+                    div.className = 'game-over';
+                    div.innerHTML = `<h2>GAME OVER</h2><p>${result.reason === 'success' ? 'You made it to Oregon!' : 'Better luck next time!'}</p>`;
+                    document.getElementById('gameOverDiv').appendChild(div);
+                    game = null;
+                }
+            });
+
+            game.start().catch((err) => {
+                log('Error: ' + err.message);
+                game = null;
+            });
+        }
+
+        function saveGame() {
+            if (!game || !game.gameVariables) {
+                log('\n> Cannot save: No active game');
+                return;
+            }
+            
+            gameSaveData = {
+                gameVariables: game.gameVariables,
+                savedAt: new Date().toLocaleString()
+            };
+            
+            localStorage.setItem('oregontrail-save', JSON.stringify(gameSaveData));
+            actionsSinceLastSave = 0;
+            log('\n> Game saved successfully!');
+            document.getElementById('loadBtn').style.display = 'inline-block';
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('oregontrail-save');
+            if (!saved) {
+                alert('No saved game found');
+                return;
+            }
+
+            actionsSinceLastSave = 0;
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('gameModal').classList.add('active');
+            document.getElementById('output').innerHTML = '';
+            document.getElementById('gameOverDiv').innerHTML = '';
+
+            gameSaveData = JSON.parse(saved);
+            log('> Game loaded! (from ' + gameSaveData.savedAt + ')\n');
+
+            // Create new game and restore state
+            game = new OregonTrailGame({
+                onMessage: log,
+                onInput: handleInput,
+                onStateChange: updateStats,
+                onGameEnd: (result) => {
+                    document.getElementById('shootSection').style.display = 'none';
+                    const div = document.createElement('div');
+                    div.className = 'game-over';
+                    div.innerHTML = `<h2>GAME OVER</h2><p>${result.reason === 'success' ? 'You made it to Oregon!' : 'Better luck next time!'}</p>`;
+                    document.getElementById('gameOverDiv').appendChild(div);
+                    game = null;
+                }
+            });
+
+            // Restore saved game state and resume
+            game.gameVariables = gameSaveData.gameVariables;
+            updateStats(game.gameVariables);
+            log('> Game loaded! Ready to continue your journey!\n');
+            game.resume().catch((err) => {
+                log('Error: ' + err.message);
+                game = null;
+            });
+        }
+
+        function closeGame() {
+            if (game && actionsSinceLastSave > 3) {
+                document.getElementById('confirmCloseModal').classList.add('active');
+            } else {
+                closeModal();
+            }
+        }
+
+        function confirmClose() {
+            game = null;
+            document.getElementById('confirmCloseModal').classList.remove('active');
+            closeModal();
+        }
+
+        function cancelClose() {
+            document.getElementById('confirmCloseModal').classList.remove('active');
+        }
+
+        function closeModal() {
+            document.getElementById('gameModal').classList.remove('active');
+            document.getElementById('homePage').style.display = 'flex';
+        }
+
+        function log(message) {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = 'game-message';
+            div.textContent = message;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function updateStats(vars) {
+            document.getElementById('mileage').textContent = Math.floor(vars.mileage);
+            document.getElementById('food').textContent = Math.floor(vars.food);
+            document.getElementById('bullets').textContent = Math.floor(vars.ammunition);
+            document.getElementById('clothing').textContent = Math.floor(vars.clothing);
+            document.getElementById('supplies').textContent = Math.floor(vars.supplies);
+            document.getElementById('cash').textContent = Math.floor(vars.cash);
+            document.getElementById('animals').textContent = Math.floor(vars.animals);
+        }
+
+        function handleInput(prompt, type) {
+            return new Promise((resolve) => {
+                inputResolver = resolve;
+                inputType = type;
+
+                document.getElementById('inputField').value = '';
+                document.getElementById('shootSection').style.display = 'none';
+                document.getElementById('gameOverDiv').innerHTML = '';
+
+                if (type === 'shoot') {
+                    document.getElementById('shootSection').style.display = 'block';
+                    shootStartTime = Date.now();
+                    startShootTimer();
+
+                    // Allow spacebar to trigger shoot
+                    const spaceHandler = (e) => {
+                        if (e.code === 'Space') {
+                            e.preventDefault();
+                            handleShoot();
+                            document.removeEventListener('keydown', spaceHandler);
+                        }
+                    };
+                    document.addEventListener('keydown', spaceHandler);
+                } else {
+                    document.getElementById('inputField').focus();
+                }
+
+                log(`\n> ${prompt}`);
+            });
+        }
+
+        function startShootTimer() {
+            let elapsed = 0;
+            const timerEl = document.getElementById('timer');
+            
+            const interval = setInterval(() => {
+                elapsed = Math.floor((Date.now() - shootStartTime) / 1000);
+                const remaining = Math.max(0, 15 - elapsed);
+                timerEl.textContent = remaining + 's';
+
+                if (remaining === 0) {
+                    clearInterval(interval);
+                    if (inputResolver) {
+                        handleShoot();
+                    }
+                }
+            }, 100);
+        }
+
+        function handleShoot() {
+            if (inputResolver && inputType === 'shoot') {
+                actionsSinceLastSave += 1;
+                const elapsed = Date.now() - shootStartTime;
+                document.getElementById('shootSection').style.display = 'none';
+                inputResolver('shoot');
+                inputResolver = null;
+            }
+        }
+
+        function submitInput() {
+            if (!inputResolver) return;
+
+            const input = document.getElementById('inputField').value;
+            actionsSinceLastSave += 1;
+
+            if (inputType === 'number') {
+                const num = parseInt(input, 10);
+                if (isNaN(num)) {
+                    log('Please enter a valid number');
+                    return;
+                }
+                log(num.toString());
+                inputResolver(num.toString());
+            } else {
+                log(input);
+                inputResolver(input);
+            }
+
+            document.getElementById('inputField').value = '';
+            inputResolver = null;
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('inputField').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                submitInput();
+            }
+        });
+    </script>
+</body>
+</html>

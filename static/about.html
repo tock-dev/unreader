@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Oregon Trail - About</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: none !important;
+            animation: none !important;
+            border-radius: 0 !important;
+        }
+
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --border-color: #000000;
+            --border-width: 2px;
+            --shadow: 4px 4px 0px #000000;
+        }
+
+        body {
+            font-family: 'Courier New', 'Courier', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.4;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .window {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: var(--shadow);
+        }
+
+        .title-bar {
+            height: 50px;
+            border-bottom: var(--border-width) solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-color);
+            padding: 0 20px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .title-text {
+            font-weight: 900;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .paper-btn {
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            padding: 6px 12px;
+            font-family: 'Courier New', monospace;
+            font-weight: 900;
+            cursor: pointer;
+            font-size: 11px;
+            box-shadow: 2px 2px 0px var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .paper-btn:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: var(--bg-color);
+        }
+
+        .content-box {
+            background-color: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            padding: 15px;
+            box-shadow: 2px 2px 0px var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-weight: 900;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: var(--border-width) solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .section-text {
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="window">
+        <div class="title-bar">
+            <button class="paper-btn" onclick="window.location.href='index.html'" style="position: absolute; left: 10px;">◀ HOME</button>
+            <div class="title-text">About</div>
+        </div>
+
+        <div class="content-area">
+            <div class="content-box">
+                <div class="section-title">Oregon Trail</div>
+                <div class="section-text">Oregon Trail (1970). Based off the source code at <a href="https://github.com/KeithMFoster/the-oregon-trail" target="_blank" rel="noopener noreferrer">https://github.com/KeithMFoster/the-oregon-trail</a>.
+Special thanks to:
+- <a href="https://github.com/KeithMFoster" target="_blank" rel="noopener noreferrer">Keith Foster</a> for the original source code (Porting was fairly straightfoward, since I did master Python :3)
+- <a href="https://github.com/tock-dev" target="_blank" rel="noopener noreferrer">@tockdev</a> for creating UnReader, and created a small place for me to work this out
+- <a href="https://github.com/KodiGamingYT" target="_blank" rel="noopener noreferrer">@kodigaming</a> for doing the site's UI (something I can literally base on)
+- <a href="https://github.com/HackerAUG" target="_blank" rel="noopener noreferrer">@augustinejames</a> "Cool project, can I join?"
+- <a href="https://rekindle.ink/neighbourhood?uid=VUmWopVm8NZbxnBsPiU3RwbPd8l1" target="_blank" rel="noopener noreferrer">@chessnut</a> Original idea pitched to <a href="https://github.com/ReKindleOS" target="_blank" rel="noopener noreferrer">@ukiyo</a>
+- <a href="https://github.com/ReKindleOS" target="_blank" rel="noopener noreferrer">@ukiyo</a> for not doing it and literally giving me time to work this out
+Made in 2 days. Would've taken me 2 weeks to work this out w/o Claude, I suck at writing UIs from scratch, so it literally made one from the most bs looking sketches before spitting out non-lethal radioactive rocks (aka the UI and a small little JS skeleton that I can work with)
+                </div>
+            </div>
+
+            <div class="content-box">
+                <div class="section-title">How to Play</div>
+                <div class="section-text">1. Start a new game from the main screen
+2. Outfit your wagon with food, ammunition, clothing, and supplies
+3. Each turn, decide whether to hunt, stop at a fort, or continue
+4. Choose your eating rations (affects health and food consumption)
+5. Reach Oregon City before running out of resources
+
+Combat: When you need to use your rifle, respond as quickly as possible to hit your target. Faster responses = better aim!</div>
+            </div>
+
+            <div class="content-box">
+                <div class="section-title">Resources</div>
+                <div class="section-text">ANIMALS: Your oxen team (spend $200-$300 for better animals = faster travel)
+
+FOOD: Essential for survival (more food = less chance of illness)
+
+AMMUNITION: Buy in $1 increments (each = 50 bullets for hunting and defense)
+
+CLOTHING: Important for cold weather in the mountains
+
+SUPPLIES: Includes medicine and emergency repair materials</div>
+            </div>
+
+            <div class="content-box">
+                <div class="section-title">Tips for Success</div>
+                <div class="section-text">- Don't overspend early; save cash for forts
+- Hunt when you have low food (requires bullets)
+- Eat moderately to balance food consumption and health
+- Stock up on supplies before entering the mountains
+- Good hunting accuracy scores give more food
+- Manage your clothing carefully for cold weather events</div>
+            </div>
+
+            <div class="content-box">
+                <div class="section-title">Original Game</div>
+                <div class="section-text">The original Oregon Trail was created by Don Rawitsch, Bill Heinemann, and Paul Dillenberger in 1985. It became one of the most popular educational games of all time.
+
+This JavaScript version maintains the core gameplay while adapting the interface for modern web and e-reader devices.</div>
+            </div>
+            <div class="content-box">
+                <div class="section-title">Version 1.0</div>
+                <div class="section-text">This version of the game is still being ported as faithful as it could possibly to the original Python source code, and the Teletext original back in 1971. I'm looking into trying to replicate the Apple ][ version. But I still have more things to do. Let's just leave it to tock, kodi, or maybe augustine to work on this.</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
