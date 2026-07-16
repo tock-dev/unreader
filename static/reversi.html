@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reversi</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --border-color: #000000;
+            --border-width: 2px;
+            --shadow: 4px 4px 0px #000000;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            min-height: 100%;
+            background: #d4d4d4;
+            color: var(--text-color);
+            font-family: Geneva, Verdana, sans-serif;
+            image-rendering: pixelated;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .window {
+            width: 100%;
+            max-width: 560px;
+            background: #ffffff;
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title-bar {
+            height: 60px;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+        }
+
+        .title-text {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 900;
+            font-size: 18px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .nav-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 14px;
+            background: #ffffff;
+            border: 2px solid var(--border-color);
+            box-shadow: 2px 2px 0px var(--border-color);
+            font-family: Geneva, Verdana, sans-serif;
+            font-weight: 900;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        .content {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .game-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-container > * + * {
+            margin-top: 16px;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .title {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 2px;
+        }
+
+        .score-display {
+            display: flex;
+            justify-content: space-between;
+            border: 2px solid var(--border-color);
+            background: #f5f5f5;
+            padding: 14px 16px;
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .score-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 120px;
+        }
+
+        .score-item > * + * {
+            margin-top: 6px;
+        }
+
+        .score-value {
+            font-size: 20px;
+        }
+
+        .turn-display {
+            text-align: center;
+            font-size: 14px;
+            font-weight: 900;
+            border: 2px solid var(--border-color);
+            padding: 12px;
+            letter-spacing: 1px;
+            background: #f5f5f5;
+        }
+
+        .board-wrap {
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+            padding-top: 100%;
+            background: #2c5c2c;
+            border: 2px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .board {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            display: flex;
+            flex-wrap: wrap;
+            background: transparent;
+            font-size: 0;
+        }
+
+        .cell {
+            width: 12.5%;
+            padding-top: 12.5%;
+            background: #b0cfa0;
+            border: 1px solid #000000;
+            cursor: pointer;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cell:hover {
+            background: #c8e0b0;
+        }
+
+        .piece {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 70%;
+            height: 70%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+        }
+
+        .piece.white {
+            background: #ffffff;
+        }
+
+        .piece.black {
+            background: #000000;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .button-row {
+            display: flex;
+            width: 100%;
+        }
+
+        .button-row button + button {
+            margin-left: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            font-family: Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            font-weight: 900;
+            background: #ffffff;
+            color: #000000;
+            border: 2px solid var(--border-color);
+            box-shadow: 2px 2px 0px var(--border-color);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            z-index: 10000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            width: 100%;
+            max-width: 420px;
+            background: #ffffff;
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .modal-content p {
+            margin: 0 0 18px;
+            font-size: 16px;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+        }
+
+        .modal-buttons > * + * {
+            margin-left: 10px;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            font-family: var(--body-font);
+            font-size: 14px;
+            font-weight: 900;
+            background: #ffffff;
+            color: #000000;
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .game-over-message {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 900;
+            border: 2px solid var(--border-color);
+            padding: 15px;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 600px) {
+            .content {
+                padding: 12px;
+            }
+            .board-wrap {
+                max-width: 100%;
+            }
+            .title {
+                font-size: 18px;
+            }
+            .btn {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="window">
+        <div class="title-bar">
+            <div class="nav-button" onclick="window.location.href = 'index.html'">&larr; Home</div>
+            <div class="title-text">REVERSI</div>
+            <div style="width:108px; visibility:hidden;"></div>
+        </div>
+        <div class="content">
+            <div class="game-container">
+
+                <div class="score-display">
+                    <div class="score-item">
+                        <div>PLAYER</div>
+                        <div class="score-value" id="playerScore">2</div>
+                    </div>
+                    <div class="score-item">
+                        <div>COMPUTER</div>
+                        <div class="score-value" id="computerScore">2</div>
+                    </div>
+                </div>
+
+                <div class="turn-display" id="turnDisplay">YOUR TURN</div>
+
+                <div class="board-wrap">
+                    <div class="board" id="board"></div>
+                </div>
+
+                <div class="controls">
+                    <div class="button-row">
+                        <button class="btn" onclick="newGame()">NEW GAME</button>
+                        <button class="btn" onclick="resetGame()">RESET</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="modal" id="gameOverModal">
+        <div class="modal-content">
+            <div style="font-size: 18px; margin-bottom: 15px; letter-spacing: 2px;">GAME OVER</div>
+            <p id="gameOverMessage"></p>
+            <div class="modal-buttons">
+                <button class="modal-btn" onclick="newGame()">PLAY AGAIN</button>
+                <button class="modal-btn" onclick="resetGame()">MAIN MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Selection Modal -->
+    <div class="modal active" id="playerSelectModal">
+        <div class="modal-content">
+            <p>CHOOSE COLOR</p>
+            <div class="modal-buttons">
+                <button class="modal-btn" onclick="selectPlayerColor('white')">WHITE</button>
+                <button class="modal-btn" onclick="selectPlayerColor('black')">BLACK</button>
+            </div>
+        </div>
+    </div>
+<script>
+        var WHITE_TILE = 'white';
+        var BLACK_TILE = 'black';
+        var EMPTY_SPACE = 'empty';
+
+        var board = [];
+        var playerTile = WHITE_TILE;
+        var computerTile = BLACK_TILE;
+        var currentTurn = 'player';
+        var gameOverFlag = false;
+
+        var boardElement = document.getElementById('board');
+        var playerScoreEl = document.getElementById('playerScore');
+        var computerScoreEl = document.getElementById('computerScore');
+        var turnDisplayEl = document.getElementById('turnDisplay');
+        var gameOverModal = document.getElementById('gameOverModal');
+        var playerSelectModal = document.getElementById('playerSelectModal');
+
+        function initGame() {
+            board = getNewBoard();
+            resetBoard();
+            gameOverFlag = false;
+            var startPlayer = Math.random() < 0.5 ? 'player' : 'computer';
+            currentTurn = startPlayer;
+            drawBoard();
+            updateScore();
+            updateTurnDisplay();
+            if (currentTurn === 'computer') {
+                setTimeout(makeComputerMove, 500);
+            }
+        }
+
+        function getNewBoard() {
+            var newBoard = [];
+            for (var i = 0; i < 8; i++) {
+                newBoard[i] = [];
+                for (var j = 0; j < 8; j++) {
+                    newBoard[i][j] = EMPTY_SPACE;
+                }
+            }
+            return newBoard;
+        }
+
+        function resetBoard() {
+            for (var x = 0; x < 8; x++) {
+                for (var y = 0; y < 8; y++) {
+                    board[x][y] = EMPTY_SPACE;
+                }
+            }
+            board[3][3] = WHITE_TILE;
+            board[3][4] = BLACK_TILE;
+            board[4][3] = BLACK_TILE;
+            board[4][4] = WHITE_TILE;
+        }
+
+        function drawBoard() {
+            boardElement.innerHTML = '';
+            for (var y = 0; y < 8; y++) {
+                for (var x = 0; x < 8; x++) {
+                    var cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.onclick = createCellClickHandler(x, y);
+                    var tile = board[x][y];
+                    if (tile === WHITE_TILE || tile === BLACK_TILE) {
+                        var piece = document.createElement('div');
+                        piece.className = 'piece ' + tile;
+                        cell.appendChild(piece);
+                    }
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        function createCellClickHandler(x, y) {
+            return function() {
+                handleCellClick(x, y);
+            };
+        }
+
+        function handleCellClick(x, y) {
+            if (gameOverFlag || currentTurn !== 'player') {
+                return;
+            }
+            var validMoves = isValidMove(board, playerTile, x, y);
+            if (validMoves === false) {
+                return;
+            }
+            makeMove(board, playerTile, x, y);
+            updateScore();
+            if (getValidMoves(board, computerTile).length === 0) {
+                if (getValidMoves(board, playerTile).length === 0) {
+                    endGame();
+                    return;
+                }
+                currentTurn = 'player';
+            } else {
+                currentTurn = 'computer';
+                setTimeout(makeComputerMove, 500);
+            }
+            updateTurnDisplay();
+        }
+
+        function makeComputerMove() {
+            if (gameOverFlag) {
+                return;
+            }
+            var validMoves = getValidMoves(board, computerTile);
+            if (validMoves.length === 0) {
+                if (getValidMoves(board, playerTile).length === 0) {
+                    endGame();
+                    return;
+                }
+                currentTurn = 'player';
+                updateTurnDisplay();
+                return;
+            }
+            var bestMove = null;
+            var bestScore = -1;
+            for (var i = 0; i < validMoves.length; i++) {
+                var x = validMoves[i][0];
+                var y = validMoves[i][1];
+                if (isOnCorner(x, y)) {
+                    bestMove = [x, y];
+                    break;
+                }
+            }
+            if (bestMove === null) {
+                for (var i = 0; i < validMoves.length; i++) {
+                    var x = validMoves[i][0];
+                    var y = validMoves[i][1];
+                    var dupeBoard = cloneBoard(board);
+                    makeMove(dupeBoard, computerTile, x, y);
+                    var score = getScoreOfBoard(dupeBoard)[computerTile];
+                    if (score > bestScore) {
+                        bestMove = [x, y];
+                        bestScore = score;
+                    }
+                }
+            }
+            if (bestMove === null) {
+                bestMove = validMoves[0];
+            }
+            makeMove(board, computerTile, bestMove[0], bestMove[1]);
+            updateScore();
+            if (getValidMoves(board, playerTile).length === 0) {
+                if (getValidMoves(board, computerTile).length === 0) {
+                    endGame();
+                    return;
+                }
+                setTimeout(makeComputerMove, 500);
+            } else {
+                currentTurn = 'player';
+                updateTurnDisplay();
+            }
+        }
+
+        function makeMove(boardState, tile, x, y) {
+            var tilesToFlip = isValidMove(boardState, tile, x, y);
+            if (tilesToFlip === false) {
+                return;
+            }
+            boardState[x][y] = tile;
+            for (var i = 0; i < tilesToFlip.length; i++) {
+                var flipX = tilesToFlip[i][0];
+                var flipY = tilesToFlip[i][1];
+                boardState[flipX][flipY] = tile;
+            }
+            drawBoard();
+        }
+
+        function isValidMove(boardState, tile, x, y) {
+            if (boardState[x][y] !== EMPTY_SPACE || !isOnBoard(x, y)) {
+                return false;
+            }
+            boardState[x][y] = tile;
+            var otherTile = tile === WHITE_TILE ? BLACK_TILE : WHITE_TILE;
+            var tilesToFlip = [];
+            var directions = [
+                [0, 1], [1, 1], [1, 0], [1, -1],
+                [0, -1], [-1, -1], [-1, 0], [-1, 1]
+            ];
+            for (var i = 0; i < directions.length; i++) {
+                var xDir = directions[i][0];
+                var yDir = directions[i][1];
+                var nx = x + xDir;
+                var ny = y + yDir;
+                if (!isOnBoard(nx, ny) || boardState[nx][ny] !== otherTile) {
+                    continue;
+                }
+                var tempFlips = [];
+                while (isOnBoard(nx, ny) && boardState[nx][ny] === otherTile) {
+                    tempFlips.push([nx, ny]);
+                    nx += xDir;
+                    ny += yDir;
+                }
+                if (isOnBoard(nx, ny) && boardState[nx][ny] === tile) {
+                    for (var j = 0; j < tempFlips.length; j++) {
+                        tilesToFlip.push(tempFlips[j]);
+                    }
+                }
+            }
+            boardState[x][y] = EMPTY_SPACE;
+            if (tilesToFlip.length === 0) {
+                return false;
+            }
+            return tilesToFlip;
+        }
+
+        function isOnBoard(x, y) {
+            return x >= 0 && x < 8 && y >= 0 && y < 8;
+        }
+
+        function isOnCorner(x, y) {
+            return (x === 0 && y === 0) || (x === 7 && y === 0) || (x === 0 && y === 7) || (x === 7 && y === 7);
+        }
+
+        function getValidMoves(boardState, tile) {
+            var validMoves = [];
+            for (var x = 0; x < 8; x++) {
+                for (var y = 0; y < 8; y++) {
+                    if (isValidMove(boardState, tile, x, y) !== false) {
+                        validMoves.push([x, y]);
+                    }
+                }
+            }
+            return validMoves;
+        }
+
+        function getScoreOfBoard(boardState) {
+            var whiteCount = 0;
+            var blackCount = 0;
+            for (var x = 0; x < 8; x++) {
+                for (var y = 0; y < 8; y++) {
+                    if (boardState[x][y] === WHITE_TILE) {
+                        whiteCount++;
+                    } else if (boardState[x][y] === BLACK_TILE) {
+                        blackCount++;
+                    }
+                }
+            }
+            var result = {};
+            result[WHITE_TILE] = whiteCount;
+            result[BLACK_TILE] = blackCount;
+            return result;
+        }
+
+        function updateScore() {
+            var scores = getScoreOfBoard(board);
+            playerScoreEl.textContent = scores[playerTile];
+            computerScoreEl.textContent = scores[computerTile];
+        }
+
+        function updateTurnDisplay() {
+            if (gameOverFlag) {
+                turnDisplayEl.textContent = 'GAME OVER';
+            } else if (currentTurn === 'player') {
+                turnDisplayEl.textContent = 'YOUR TURN';
+            } else {
+                turnDisplayEl.textContent = 'COMPUTER THINKING...';
+            }
+        }
+
+        function endGame() {
+            gameOverFlag = true;
+            updateTurnDisplay();
+            var scores = getScoreOfBoard(board);
+            var playerScore = scores[playerTile];
+            var computerScore = scores[computerTile];
+            var message = '';
+            if (playerScore > computerScore) {
+                message = 'YOU WIN! You: ' + playerScore + '  Computer: ' + computerScore;
+            } else if (playerScore < computerScore) {
+                message = 'YOU LOST! You: ' + playerScore + '  Computer: ' + computerScore;
+            } else {
+                message = 'TIE GAME! Both: ' + playerScore;
+            }
+            document.getElementById('gameOverMessage').textContent = message;
+            gameOverModal.className = 'modal active';
+        }
+
+        function selectPlayerColor(color) {
+            playerTile = color;
+            computerTile = color === WHITE_TILE ? BLACK_TILE : WHITE_TILE;
+            playerSelectModal.className = 'modal';
+            initGame();
+        }
+
+        function newGame() {
+            gameOverModal.className = 'modal';
+            playerSelectModal.className = 'modal active';
+        }
+
+        function resetGame() {
+            gameOverModal.className = 'modal';
+            playerSelectModal.className = 'modal';
+            initGame();
+        }
+
+        function cloneBoard(src) {
+            var dst = [];
+            for (var x = 0; x < 8; x++) {
+                dst[x] = [];
+                for (var y = 0; y < 8; y++) {
+                    dst[x][y] = src[x][y];
+                }
+            }
+            return dst;
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
