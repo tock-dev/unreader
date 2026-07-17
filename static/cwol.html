@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Conway's Game of Life</title>
+
+<style>
+  /* ============================================================
+     DESIGN TOKENS — matches the site's default (light) look.
+     ============================================================ */
+  :root {
+    --bg-color: #e5e5e5;
+    --text-color: #000000;
+    --panel-bg: #ffffff;
+    --header-bg: #eeeeee;
+    --border: 2px solid #000000;
+    --shadow: 4px 4px 0px #000000;
+    --shadow-sm: 2px 2px 0px #000000;
+  --stripe-pattern: repeating-linear-gradient(
+    180deg, #000000 0px, #000000 2px, transparent 2px, transparent 4px
+  );
+  }
+
+  /* ============================================================
+     COMPATIBILITY (Chromium 75, JIT-less, e-ink)
+     ============================================================ */
+  * {
+    box-sizing: border-box;
+    transition: none !important;
+    animation: none !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: "Geneva", "Verdana", sans-serif;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 12px;
+  }
+
+  img, svg, canvas { image-rendering: pixelated; }
+
+  /* ============================================================
+     WINDOW SHELL (same tokens as topics.html / chat.html)
+     ============================================================ */
+  .app-frame {
+    position: relative; /* modal anchors here — no fixed positioning */
+    width: 100%;
+    max-width: 640px;
+  }
+
+  .window {
+    background: var(--panel-bg);
+    border: var(--border);
+    box-shadow: var(--shadow);
+  }
+
+  .title-bar {
+    position: relative;
+    height: 35px;
+    overflow: hidden;
+    border-bottom: var(--border);
+  }
+
+  .title-stripes {
+    position: absolute;
+    top: 3px;
+    bottom: 2px;
+    left: 4px;
+    right: 4px;
+    background-image: var(--stripe-pattern);
+    z-index: 0;
+  }
+
+  .title-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    background: var(--panel-bg);
+    color: var(--text-color);
+    padding: 0 10px;
+    font-weight: bold;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  #back-btn {
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    margin: 0;
+    padding: 3px 8px;
+  }
+
+  /* ---- Shared paper button / input, matches bbs.css ---- */
+  .paper-btn {
+    background: var(--panel-bg);
+    color: var(--text-color);
+    border: var(--border);
+    box-shadow: var(--shadow-sm);
+    font-family: monospace;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 11px;
+    padding: 5px 6px;
+    cursor: pointer;
+  }
+  .paper-btn:active,
+  .paper-btn.is-active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+  .paper-btn.icon-btn {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .paper-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  select.paper-input {
+    width: 100%;
+    background: var(--panel-bg);
+    color: var(--text-color);
+    border: var(--border);
+    box-shadow: var(--shadow-sm);
+    font-family: monospace;
+    font-size: 11px;
+    padding: 5px 4px;
+  }
+
+  /* ---- Panel headers (sidebar-style section labels) ---- */
+  .panel-header {
+    font-weight: bold;
+    padding: 6px 8px;
+    text-transform: uppercase;
+    border-bottom: var(--border);
+    border-top: var(--border);
+    background: var(--header-bg);
+    color: var(--text-color);
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .panel-header:first-child { border-top: none; }
+
+  .content { padding: 0; }
+
+  .panel-body { padding: 12px; }
+
+  .toolbar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .toolbar-secondary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .field-label {
+    font-size: 10px;
+    margin-bottom: 3px;
+    display: block;
+    font-family: monospace;
+    text-transform: uppercase;
+  }
+
+  .board-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  #board {
+    border: var(--border);
+    background: #ffffff;
+    cursor: crosshair;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .status-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    padding: 10px 12px 12px 12px;
+    font-size: 11px;
+  }
+  .status-item .field-label { margin-bottom: 1px; }
+  .status-value { font-weight: bold; font-family: monospace; }
+
+  /* ---- Modal (matches #modal-overlay / .info-window) ---- */
+  .modal-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.2);
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.is-open { display: flex; }
+
+  .info-window {
+    width: 82%;
+    max-width: 320px;
+    background: var(--panel-bg);
+    border: var(--border);
+    box-shadow: var(--shadow);
+  }
+
+  .info-window .title-bar { border-bottom: var(--border); }
+
+  .modal-close-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 3.2ex;
+    height: 3.2ex;
+    padding: 0;
+    box-shadow: 1px 1px 0px var(--text-color);
+  }
+
+  .info-body {
+    padding: 14px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 0 14px 14px 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-frame">
+  <div class="window">
+
+    <div class="title-bar">
+      <div class="title-stripes"></div>
+      <button class="paper-btn" id="back-btn" type="button" data-i18n="backHome">&lt; HOME</button>
+      <div class="title-text" data-i18n="windowTitle">Game of Life</div>
+    </div>
+
+    <div class="content">
+
+      <div class="panel-header" data-i18n="panelControls">Controls</div>
+      <div class="panel-body">
+        <div class="toolbar">
+          <button class="paper-btn icon-btn" id="btnPlay" type="button">
+            <svg id="iconPlayPause" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+              <polygon points="9,6 26,16 9,26" fill="currentColor"></polygon>
+            </svg>
+            <span data-i18n="play">Play</span>
+          </button>
+          <button class="paper-btn icon-btn" id="btnStep" type="button">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+              <line x1="7" y1="6" x2="7" y2="26"></line>
+              <polygon points="12,6 24,16 12,26" fill="currentColor"></polygon>
+            </svg>
+            <span data-i18n="step">Step</span>
+          </button>
+          <button class="paper-btn icon-btn" id="btnRandom" type="button">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+              <rect x="6" y="6" width="20" height="20" rx="2"></rect>
+              <circle cx="12" cy="12" r="1.6" fill="currentColor"></circle>
+              <circle cx="20" cy="20" r="1.6" fill="currentColor"></circle>
+              <circle cx="20" cy="12" r="1.6" fill="currentColor"></circle>
+              <circle cx="12" cy="20" r="1.6" fill="currentColor"></circle>
+            </svg>
+            <span data-i18n="random">Random</span>
+          </button>
+        </div>
+
+        <div class="toolbar-secondary">
+          <button class="paper-btn icon-btn" id="btnClear" type="button">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+              <line x1="8" y1="10" x2="24" y2="10"></line>
+              <path d="M11 10 L12 26 H20 L21 10"></path>
+              <line x1="14" y1="6" x2="18" y2="6"></line>
+            </svg>
+            <span data-i18n="clear">Clear</span>
+          </button>
+          <div>
+            <label class="field-label" for="speedSelect" data-i18n="speedLabel">Speed</label>
+            <select class="paper-input" id="speedSelect">
+              <option value="600" data-i18n="speedSlow">Slow</option>
+              <option value="300" selected data-i18n="speedNormal">Normal</option>
+              <option value="120" data-i18n="speedFast">Fast</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-header" data-i18n="panelBoard">Board</div>
+      <div class="board-wrap">
+        <canvas id="board" width="540" height="390"></canvas>
+      </div>
+
+      <div class="panel-header" data-i18n="panelStatus">Status</div>
+      <div class="status-bar">
+        <div class="status-item">
+          <span class="field-label" data-i18n="generationLabel">Gen</span>
+          <span class="status-value" id="genValue">0</span>
+        </div>
+        <div class="status-item">
+          <span class="field-label" data-i18n="populationLabel">Pop</span>
+          <span class="status-value" id="popValue">0</span>
+        </div>
+        <div class="status-item">
+          <span class="field-label" data-i18n="statusLabel">Status</span>
+          <span class="status-value" id="statusValue">:|</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="info-window">
+      <div class="title-bar">
+        <div class="title-stripes"></div>
+        <div class="title-text" data-i18n="modalClearTitle">Clear Grid</div>
+        <button class="paper-btn modal-close-btn" id="modalCancel" type="button">X</button>
+      </div>
+      <div class="info-body" data-i18n="modalClearBody">
+        This will erase every live cell on the board. Continue?
+      </div>
+      <div class="modal-actions">
+        <button class="paper-btn" id="modalCancelBtn" type="button">
+          <span data-i18n="modalCancel">Cancel</span>
+        </button>
+        <button class="paper-btn" id="modalConfirm" type="button">
+          <span data-i18n="modalConfirm">Clear</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     i18n
+     ============================================================ */
+  var STRINGS = {
+    en: {
+      backHome: '< HOME',
+      windowTitle: 'Game of Life',
+      panelControls: 'Controls',
+      panelBoard: 'Board',
+      panelStatus: 'Status',
+      play: 'Play',
+      pause: 'Pause',
+      step: 'Step',
+      random: 'Random',
+      clear: 'Clear',
+      speedLabel: 'Speed',
+      speedSlow: 'Slow',
+      speedNormal: 'Normal',
+      speedFast: 'Fast',
+      generationLabel: 'Gen',
+      populationLabel: 'Pop',
+      statusLabel: 'Status',
+      modalClearTitle: 'Clear Grid',
+      modalClearBody: 'This will erase every live cell on the board. Continue?',
+      modalCancel: 'Cancel',
+      modalConfirm: 'Clear',
+      statusIdle: ':|',
+      statusRunning: ':)',
+      statusPaused: ':|',
+      statusExtinct: 'T_T'
+    }
+  };
+
+  var locale = 'en';
+  var dict = STRINGS[locale] || STRINGS.en;
+
+  function t(key) {
+    return dict[key] !== undefined ? dict[key] : key;
+  }
+
+  function applyI18n(root) {
+    var scope = root || document;
+    var textNodes = scope.querySelectorAll('[data-i18n]');
+    for (var i = 0; i < textNodes.length; i++) {
+      var el = textNodes[i];
+      var key = el.getAttribute('data-i18n');
+      el.textContent = t(key);
+    }
+    var placeholderNodes = scope.querySelectorAll('[data-i18n-placeholder]');
+    for (var j = 0; j < placeholderNodes.length; j++) {
+      var pEl = placeholderNodes[j];
+      var pKey = pEl.getAttribute('data-i18n-placeholder');
+      pEl.setAttribute('placeholder', t(pKey));
+    }
+  }
+
+  applyI18n(document);
+
+  /* ============================================================
+     GAME OF LIFE ENGINE
+     Typed-array double buffering to keep per-tick cost cheap
+     under the JIT-less runtime.
+     ============================================================ */
+  var CELL = 15;
+  var COLS = 36;
+  var ROWS = 26;
+
+  var canvas = document.getElementById('board');
+  var ctx = canvas.getContext('2d');
+
+  var current = new Uint8Array(COLS * ROWS);
+  var next = new Uint8Array(COLS * ROWS);
+
+  var generation = 0;
+  var population = 0;
+  var running = false;
+  var timerId = null;
+  var speedMs = 300;
+
+  function idx(x, y) {
+    return y * COLS + x;
+  }
+
+  function wrap(v, max) {
+    if (v < 0) return max - 1;
+    if (v >= max) return 0;
+    return v;
+  }
+
+  function countNeighbors(grid, x, y) {
+    var count = 0;
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var nx = wrap(x + dx, COLS);
+        var ny = wrap(y + dy, ROWS);
+        count += grid[idx(nx, ny)];
+      }
+    }
+    return count;
+  }
+
+  function step() {
+    var pop = 0;
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        var i = idx(x, y);
+        var alive = current[i] === 1;
+        var n = countNeighbors(current, x, y);
+        var willLive = alive ? (n === 2 || n === 3) : (n === 3);
+        next[i] = willLive ? 1 : 0;
+        if (willLive) pop++;
+      }
+    }
+    var tmp = current;
+    current = next;
+    next = tmp;
+
+    generation++;
+    population = pop;
+    render();
+    updateStatusBar();
+
+    if (population === 0 && running) {
+      stopLoop();
+      setStatus('statusExtinct');
+    }
+  }
+
+  function render() {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1;
+    for (var gx = 0; gx <= COLS; gx++) {
+      ctx.beginPath();
+      ctx.moveTo(gx * CELL + 0.5, 0);
+      ctx.lineTo(gx * CELL + 0.5, ROWS * CELL);
+      ctx.stroke();
+    }
+    for (var gy = 0; gy <= ROWS; gy++) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy * CELL + 0.5);
+      ctx.lineTo(COLS * CELL, gy * CELL + 0.5);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#000000';
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        if (current[idx(x, y)] === 1) {
+          ctx.fillRect(x * CELL + 1, y * CELL + 1, CELL - 1, CELL - 1);
+        }
+      }
+    }
+  }
+
+  function updateStatusBar() {
+    document.getElementById('genValue').textContent = String(generation);
+    document.getElementById('popValue').textContent = String(population);
+  }
+
+  function setStatus(key) {
+    document.getElementById('statusValue').textContent = t(key);
+  }
+
+  function randomize() {
+    for (var i = 0; i < current.length; i++) {
+      current[i] = Math.random() < 0.25 ? 1 : 0;
+    }
+    generation = 0;
+    population = 0;
+    for (var j = 0; j < current.length; j++) population += current[j];
+    render();
+    updateStatusBar();
+    setStatus(running ? 'statusRunning' : 'statusPaused');
+  }
+
+  function clearBoard() {
+    current.fill(0);
+    next.fill(0);
+    generation = 0;
+    population = 0;
+    render();
+    updateStatusBar();
+    setStatus('statusIdle');
+  }
+
+  function toggleCellAt(clientX, clientY) {
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = canvas.width / rect.width;
+    var scaleY = canvas.height / rect.height;
+    var cx = (clientX - rect.left) * scaleX;
+    var cy = (clientY - rect.top) * scaleY;
+    var gx = Math.floor(cx / CELL);
+    var gy = Math.floor(cy / CELL);
+    if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) return;
+    var i = idx(gx, gy);
+    current[i] = current[i] === 1 ? 0 : 1;
+    population += current[i] === 1 ? 1 : -1;
+    render();
+    updateStatusBar();
+  }
+
+  /* ---- Play / pause loop (setInterval, not requestAnimationFrame —
+     e-ink refresh is irregular; per-tick cost is O(COLS*ROWS),
+     cheap even at 5-10x slower JIT-less execution) ---- */
+  function startLoop() {
+    if (running) return;
+    running = true;
+    updatePlayButton();
+    setStatus('statusRunning');
+    timerId = setInterval(step, speedMs);
+  }
+
+  function stopLoop() {
+    running = false;
+    updatePlayButton();
+    if (population > 0) setStatus('statusPaused');
+    if (timerId !== null) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+  }
+
+  function updatePlayButton() {
+    var label = btnPlay.querySelector('span');
+    var icon = document.getElementById('iconPlayPause');
+    if (running) {
+      label.textContent = t('pause');
+      icon.innerHTML = '<rect x="9" y="6" width="5" height="20" fill="currentColor"></rect><rect x="18" y="6" width="5" height="20" fill="currentColor"></rect>';
+      btnPlay.classList.add('is-active');
+    } else {
+      label.textContent = t('play');
+      icon.innerHTML = '<polygon points="9,6 26,16 9,26" fill="currentColor"></polygon>';
+      btnPlay.classList.remove('is-active');
+    }
+  }
+
+  /* ============================================================
+     WIRING
+     ============================================================ */
+  var btnPlay = document.getElementById('btnPlay');
+  var btnStep = document.getElementById('btnStep');
+  var btnRandom = document.getElementById('btnRandom');
+  var btnClear = document.getElementById('btnClear');
+  var speedSelect = document.getElementById('speedSelect');
+  var modalOverlay = document.getElementById('modalOverlay');
+  var modalCancel = document.getElementById('modalCancel');
+  var modalCancelBtn = document.getElementById('modalCancelBtn');
+  var modalConfirm = document.getElementById('modalConfirm');
+  var backBtn = document.getElementById('back-btn');
+
+  btnPlay.addEventListener('click', function () {
+    if (running) {
+      stopLoop();
+    } else {
+      if (population === 0) return;
+      startLoop();
+    }
+  });
+
+  btnStep.addEventListener('click', function () {
+    if (running) stopLoop();
+    step();
+    setStatus('statusPaused');
+  });
+
+  btnRandom.addEventListener('click', function () {
+    if (running) stopLoop();
+    randomize();
+  });
+
+  btnClear.addEventListener('click', function () {
+    modalOverlay.classList.add('is-open');
+  });
+
+  function closeClearModal() {
+    modalOverlay.classList.remove('is-open');
+  }
+  modalCancel.addEventListener('click', closeClearModal);
+  modalCancelBtn.addEventListener('click', closeClearModal);
+
+  modalConfirm.addEventListener('click', function () {
+    if (running) stopLoop();
+    clearBoard();
+    closeClearModal();
+  });
+
+  speedSelect.addEventListener('change', function () {
+    speedMs = parseInt(speedSelect.value, 10);
+    if (running) {
+      stopLoop();
+      startLoop();
+    }
+  });
+
+  canvas.addEventListener('click', function (evt) {
+    if (running) stopLoop();
+    toggleCellAt(evt.clientX, evt.clientY);
+    setStatus('statusPaused');
+  });
+
+  backBtn.addEventListener('click', function () {
+    if (running) stopLoop();
+    window.location.href = 'index.html';
+  });
+
+  /* ---- Boot: seed a small random pattern ---- */
+  randomize();
+  setStatus('statusIdle');
+})();
+</script>
+</body>
+</html>
