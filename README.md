@@ -16,7 +16,7 @@ go to: https://unreader-v4yf.onrender.com
 - **Neighbourhood Forum**: Classic message board for structured posts and nested comment trees.
 - **Moderation Console**: Admin search tools, system bans, timeouts, and live auditor activity logs.
 - **Inline Mod Mode**: Dedicated float controls across Chat, Topics, and Neighbourhood allowing authorized moderators to purge/restore posts inline.
-- **Display Adaptability**: Direct theme synchronization including Dark Mode, Bold High-Contrast, and Monospace Typography.
+- **Display Adaptability**: Direct theme synchronization including ~~Dark Mode, Bold High-Contrast~~, and Monospace Typography. (Both of these are currently disabled by Kodi, unknown reasons)
 
 ---
 
