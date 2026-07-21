@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Akinator</title>
+    <script src="https://louisabraham.github.io/nekojs/neko.js" data-autostart></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: none !important;
+            animation: none !important;
+            border-radius: 0 !important;
+        }
+
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --border-color: #000000;
+            --border-width: 2px;
+            --shadow: 4px 4px 0px #000000;
+        }
+
+        body {
+            font-family: 'Courier New', 'Courier', monospace;
+            background-color: #d4d4d4;
+            color: var(--text-color);
+            line-height: 1.4;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .window {
+            display: flex;
+            flex-direction: column;
+            max-width: 1100px;
+            width: 100%;
+            min-height: calc(100vh - 40px);
+            margin: 0 auto;
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: var(--shadow);
+            background: var(--bg-color);
+        }
+
+        .title-bar {
+            height: 60px;
+            border-bottom: var(--border-width) solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-color);
+            padding: 0 24px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .title-bar .nav-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            padding: 8px 14px;
+            font-family: 'Courier New', monospace;
+            font-weight: 900;
+            font-size: 12px;
+            box-shadow: 2px 2px 0px var(--border-color);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .title-bar .nav-button:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        .title-text {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 900;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .title-bar .nav-placeholder {
+            width: 108px;
+            visibility: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .home-page {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 40px;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 40px 40px 40px;
+            width: 100%;
+            min-height: 100%;
+        }
+
+        .home-copy,
+        .home-actions {
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: var(--shadow);
+            padding: 40px;
+        }
+
+        .home-copy h1 {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            margin-bottom: 24px;
+            text-transform: uppercase;
+        }
+
+        .home-copy p {
+            font-size: 14px;
+            line-height: 1.8;
+            max-width: 540px;
+            margin-bottom: 0;
+        }
+
+        .home-actions {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 24px;
+            min-height: 260px;
+        }
+
+        .hero-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 60px;
+            padding: 0 18px;
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: 4px 4px 0px var(--border-color);
+            font-size: 14px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            cursor: pointer;
+            text-decoration: none;
+            font-family: 'Courier New', monospace;
+        }
+
+        .hero-button:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .game-modal {
+            background-color: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 1100px;
+            height: calc(100% - 40px);
+            display: grid;
+            grid-template-rows: 60px minmax(0, 1fr);
+            z-index: 10000;
+        }
+
+        .modal-title-bar {
+            height: 45px;
+            border-bottom: var(--border-width) solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            flex-shrink: 0;
+        }
+
+        .modal-title-text {
+            font-weight: 900;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            flex: 1;
+            text-align: center;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .modal-buttons button {
+            width: auto;
+            padding: 4px 10px;
+            font-size: 10px;
+            margin: 0;
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: 2px 2px 0px var(--border-color);
+            font-weight: 900;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-buttons button:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        .game-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            min-height: 0;
+            width: 100%;
+            padding: 30px;
+            background-color: var(--bg-color);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            border-left: none;
+        }
+
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-weight: 900;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: var(--border-width) solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .answer-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .answer-grid button {
+            flex: 1 0 auto;
+            min-width: 80px;
+            padding: 10px 8px;
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: 2px 2px 0px var(--border-color);
+            font-weight: 900;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .answer-grid button:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        .action-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .action-row button {
+            flex: 1;
+            padding: 12px;
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: 2px 2px 0px var(--border-color);
+            font-weight: 900;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .action-row button:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        .stats {
+            background-color: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            padding: 12px;
+            box-shadow: 2px 2px 0px var(--border-color);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .stat-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-label {
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .guess-card {
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: var(--shadow);
+            padding: 18px;
+            margin-top: 8px;
+        }
+
+        .guess-card h3 {
+            font-size: 18px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .guess-card img {
+            max-width: 140px;
+            width: auto;
+            height: auto;
+            max-height: 140px;
+            border: var(--border-width) solid var(--border-color);
+            margin: 10px 0;
+            display: block;
+        }
+
+        .guess-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .guess-actions button {
+            flex: 1;
+            padding: 12px;
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            box-shadow: 2px 2px 0px var(--border-color);
+            font-weight: 900;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .guess-actions button:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        .status-badge {
+            background: var(--bg-color);
+            border: var(--border-width) solid var(--border-color);
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 2px 2px 0px var(--border-color);
+        }
+
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        @media (max-width: 720px) {
+            .home-page {
+                grid-template-columns: 1fr;
+                padding: 20px;
+            }
+            .game-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                border-left: none;
+            }
+            .guess-card img {
+                max-width: 100px;
+                max-height: 100px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .guess-card img {
+                max-width: 80px;
+                max-height: 80px;
+            }
+            .title-text {
+                font-size: 14px;
+                letter-spacing: 1px;
+            }
+            .title-bar .nav-button {
+                font-size: 10px;
+                padding: 6px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="window">
+    <div class="title-bar">
+        <div class="nav-button" onclick="window.location.href='index.html'">← Home</div>
+        <div class="title-text">Akinator</div>
+        <div class="nav-placeholder"></div>
+    </div>
+
+    <div class="container">
+        <div class="home-page" id="homePage">
+            <section class="home-copy">
+                <h1>Akinator</h1>
+                <p>Think of a character, object, or animal. The genie will guess it by asking questions. Answer with Yes, No, Probably, or Don't know.</p>
+                <p style="margin-top:12px; font-size:13px; color:#222;">Powered by the rekindle-akinator API.</p>
+            </section>
+            <section class="home-actions">
+                <div class="hero-button" onclick="startNewGame()">✦ New Game</div>
+            </section>
+        </div>
+
+        <div class="modal-overlay" id="gameModal">
+            <div class="game-modal">
+                <div class="modal-title-bar">
+                    <div class="modal-title-text">🧙 Akinator</div>
+                    <div class="modal-buttons">
+                        <button onclick="closeGame()">CLOSE</button>
+                    </div>
+                </div>
+                <div class="game-container">
+                    <div class="sidebar">
+                        <div class="sidebar-section">
+                            <div class="section-title">Status</div>
+                            <div class="status-badge" id="statusDisplay">Ready</div>
+                        </div>
+
+                        <div class="sidebar-section">
+                            <div class="section-title">Question</div>
+                            <div id="questionDisplay" style="font-size:1.2em; font-weight:700; min-height:60px; margin-bottom:12px;">—</div>
+                        </div>
+
+                        <div class="sidebar-section">
+                            <div class="section-title">Answers</div>
+                            <div id="answersContainer" class="answer-grid"></div>
+                        </div>
+
+                        <div class="sidebar-section">
+                            <div class="section-title">Progress</div>
+                            <div id="progressDisplay" class="stat-item"><span class="stat-label">Step</span><span class="stat-value" id="stepValue">0</span></div>
+                            <div class="stat-item"><span class="stat-label">Confidence</span><span class="stat-value" id="confidenceValue">0%</span></div>
+                        </div>
+
+                        <div class="sidebar-section">
+                            <div class="action-row">
+                                <button id="backBtn">⬅ Back</button>
+                                <button id="restartBtn">🔄 Restart</button>
+                            </div>
+                        </div>
+
+                        <div id="guessContainer" hidden>
+                            <div class="section-title">✨ Guess</div>
+                            <div class="guess-card">
+                                <h3 id="guessName">—</h3>
+                                <p id="guessDescription" style="font-size:14px;">—</p>
+                                <img id="guessImage" src="" alt="guess">
+                                <div class="guess-actions">
+                                    <button id="guessYes">✅ Yes</button>
+                                    <button id="guessNo">❌ No</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="errorDisplay" style="color:red; margin-top:10px; font-weight:bold;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ─── HTML entity decoder ──────────────────────────────────────────────
+    function decodeHtmlEntities(text) {
+        if (!text) return text;
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = text;
+        return textarea.value;
+    }
+
+    // ─── Akinator API & state ────────────────────────────────────────────────
+    const API = "https://rekindle-akinator.timjarnott.workers.dev";
+    const ANSWERS = ["Yes", "No", "Don't know", "Probably", "Probably not"];
+    const THINKING = ["Thinking...", "Consulting the genie...", "Reading your mind...", "Searching memories..."];
+
+    const state = {
+        region: "en",
+        childMode: false,
+        session: "",
+        signature: "",
+        step: 0,
+        progression: 0,
+        stepLast: ""
+    };
+
+    let currentGuessData = null;
+
+    // ─── DOM refs ─────────────────────────────────────────────────────────────
+    const statusDisplay = document.getElementById('statusDisplay');
+    const questionDisplay = document.getElementById('questionDisplay');
+    const answersContainer = document.getElementById('answersContainer');
+    const stepValue = document.getElementById('stepValue');
+    const confidenceValue = document.getElementById('confidenceValue');
+    const guessContainer = document.getElementById('guessContainer');
+    const guessName = document.getElementById('guessName');
+    const guessDescription = document.getElementById('guessDescription');
+    const guessImage = document.getElementById('guessImage');
+    const errorDisplay = document.getElementById('errorDisplay');
+    const homePage = document.getElementById('homePage');
+    const gameModal = document.getElementById('gameModal');
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+    function setStatus(text) {
+        statusDisplay.textContent = text;
+    }
+
+    function setLoading(loading) {
+        if (loading) {
+            setStatus('⏳ ' + THINKING[Math.floor(Math.random() * THINKING.length)]);
+        } else {
+            setStatus('Ready');
+        }
+        document.querySelectorAll('#answersContainer button, .action-row button, .guess-actions button').forEach(b => b.disabled = loading);
+    }
+
+    function updateProgress() {
+        stepValue.textContent = state.step + 1;
+        confidenceValue.textContent = state.progression.toFixed(1) + '%';
+    }
+
+    function showError(msg) {
+        errorDisplay.textContent = '⚠ ' + msg;
+    }
+
+    function clearError() {
+        errorDisplay.textContent = '';
+    }
+
+    // ─── API calls ──────────────────────────────────────────────────────────
+    async function api(endpoint, data) {
+        setLoading(true);
+        clearError();
+        try {
+            const r = await fetch(API + '/' + endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!r.ok) throw new Error(await r.text());
+            return await r.json();
+        } catch (e) {
+            showError(e.message);
+            throw e;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function updateState(data) {
+        if (data.step !== undefined) state.step = Number(data.step);
+        if (data.progression !== undefined) state.progression = Number(data.progression);
+        if (data.stepLast !== undefined) state.stepLast = data.stepLast;
+        updateProgress();
+    }
+
+    // ─── UI renderers ──────────────────────────────────────────────────────
+    function showQuestion(data) {
+        guessContainer.hidden = true;
+        // Decode HTML entities in the question
+        const decodedQuestion = decodeHtmlEntities(data.question || '—');
+        questionDisplay.textContent = decodedQuestion;
+        setStatus('Answer the question.');
+
+        answersContainer.innerHTML = '';
+        ANSWERS.forEach((text, idx) => {
+            const btn = document.createElement('button');
+            btn.textContent = text;
+            btn.onclick = () => answer(idx);
+            answersContainer.appendChild(btn);
+        });
+        document.querySelectorAll('#answersContainer button, .action-row button, .guess-actions button').forEach(b => b.disabled = false);
+    }
+
+    function showGuess(data) {
+        questionDisplay.textContent = '';
+        answersContainer.innerHTML = '';
+        guessContainer.hidden = false;
+        // Decode HTML entities in name and description
+        guessName.textContent = decodeHtmlEntities(data.name_proposition || 'Unknown');
+        guessDescription.textContent = decodeHtmlEntities(data.description_proposition || '');
+        if (data.photo) {
+            guessImage.src = data.photo;
+            guessImage.alt = decodeHtmlEntities(data.name_proposition || 'guess');
+        } else {
+            guessImage.src = '';
+            guessImage.alt = 'no image';
+        }
+        setStatus('I made my guess!');
+        document.querySelectorAll('.guess-actions button').forEach(b => b.disabled = false);
+    }
+
+    // ─── Game actions ──────────────────────────────────────────────────────
+    async function startNewGame() {
+        homePage.style.display = 'none';
+        gameModal.classList.add('active');
+        guessContainer.hidden = true;
+        answersContainer.innerHTML = '';
+        questionDisplay.textContent = '—';
+        state.step = 0;
+        state.progression = 0;
+        state.stepLast = '';
+        state.session = '';
+        state.signature = '';
+        updateProgress();
+
+        try {
+            const res = await api('start', {
+                region: state.region,
+                childMode: state.childMode
+            });
+            Object.assign(state, res);
+            updateProgress();
+            showQuestion(res);
+        } catch (e) {
+            showError('Failed to start: ' + e.message);
+        }
+    }
+
+    async function answer(choice) {
+        try {
+            const res = await api('answer', {
+                region: state.region,
+                childMode: state.childMode,
+                step: state.step,
+                progression: state.progression,
+                stepLast: state.stepLast,
+                answer: choice,
+                session: state.session,
+                signature: state.signature
+            });
+            updateState(res);
+            if (res.name_proposition) {
+                currentGuessData = res;
+                showGuess(res);
+            } else {
+                showQuestion(res);
+            }
+        } catch (e) {
+            showError(e.message);
+        }
+    }
+
+    async function back() {
+        try {
+            const res = await api('back', {
+                region: state.region,
+                childMode: state.childMode,
+                step: state.step,
+                progression: state.progression,
+                session: state.session,
+                signature: state.signature
+            });
+            updateState(res);
+            showQuestion(res);
+        } catch (e) {
+            showError(e.message);
+        }
+    }
+
+    async function continueAfterGuess() {
+        try {
+            const res = await api('continue', {
+                region: state.region,
+                childMode: state.childMode,
+                step: state.step,
+                progression: state.progression,
+                stepLast: state.stepLast,
+                session: state.session,
+                signature: state.signature
+            });
+            updateState(res);
+            showQuestion(res);
+        } catch (e) {
+            showError(e.message);
+        }
+    }
+
+    function closeGame() {
+        gameModal.classList.remove('active');
+        homePage.style.display = 'grid';
+    }
+
+    function aboutAkinator() {
+        alert('Akinator is a genie that guesses what you are thinking of by asking questions. This version uses the rekindle-akinator API.');
+    }
+
+    // ─── Wire buttons ─────────────────────────────────────────────────────
+    document.getElementById('backBtn').onclick = back;
+    document.getElementById('restartBtn').onclick = startNewGame;
+    document.getElementById('guessYes').onclick = () => {
+        setStatus('✅ Correct! The genie wins.');
+        guessContainer.hidden = true;
+    };
+    document.getElementById('guessNo').onclick = continueAfterGuess;
+
+    window.addEventListener('load', () => {
+        homePage.style.display = 'grid';
+        gameModal.classList.remove('active');
+    });
+
+    window.startNewGame = startNewGame;
+    window.closeGame = closeGame;
+    window.aboutAkinator = aboutAkinator;
+</script>
+</body>
+</html>
