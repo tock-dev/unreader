@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>js-dos with On-Screen Keyboard</title>
+
+  <!-- js-dos v7 CSS & JS -->
+  <script src="https://v7.js-dos.com/latest/js-dos.js"></script>
+  <link href="https://v7.js-dos.com/latest/js-dos.css" rel="stylesheet" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #121212;
+      color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    #dos-container {
+      width: 640px;
+      height: 400px;
+      max-width: 100%;
+      background: #000;
+      border: 2px solid #333;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Virtual Keyboard Styling */
+    .keyboard-container {
+      margin-top: 1.5rem;
+      width: 100%;
+      max-width: 640px;
+      background: #1e1e1e;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .keyboard-row {
+      display: flex;
+      justify-content: center;
+      gap: 0.35rem;
+      width: 100%;
+    }
+
+    .key {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 0.6rem 0;
+      flex: 1;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.1s, transform 0.05s;
+    }
+
+    .key:hover {
+      background: #3a3a3a;
+    }
+
+    .key:active {
+      background: #007acc;
+      transform: translateY(1px);
+    }
+
+    .key-wide { flex: 1.5; }
+    .key-extra-wide { flex: 2; }
+    .key-space { flex: 5; }
+  </style>
+</head>
+<body>
+
+  <!-- DOS Canvas Container -->
+  <div id="dos-container"></div>
+
+  <!-- Built-in Virtual Keyboard -->
+  <div class="keyboard-container">
+    <!-- Row 1: Function Keys & Esc -->
+    <div class="keyboard-row">
+      <button class="key" data-key="Escape">ESC</button>
+      <button class="key" data-key="F1">F1</button>
+      <button class="key" data-key="F2">F2</button>
+      <button class="key" data-key="F3">F3</button>
+      <button class="key" data-key="F4">F4</button>
+      <button class="key" data-key="F5">F5</button>
+      <button class="key" data-key="Enter" data-code="Enter" class="key-wide">ENTER</button>
+    </div>
+
+    <!-- Row 2: Numbers -->
+    <div class="keyboard-row">
+      <button class="key" data-key="1">1</button>
+      <button class="key" data-key="2">2</button>
+      <button class="key" data-key="3">3</button>
+      <button class="key" data-key="4">4</button>
+      <button class="key" data-key="5">5</button>
+      <button class="key" data-key="6">6</button>
+      <button class="key" data-key="7">7</button>
+      <button class="key" data-key="8">8</button>
+      <button class="key" data-key="9">9</button>
+      <button class="key" data-key="0">0</button>
+      <button class="key key-wide" data-key="Backspace">BKSP</button>
+    </div>
+
+    <!-- Row 3: Navigation & Common Actions -->
+    <div class="keyboard-row">
+      <button class="key key-wide" data-key="Tab">TAB</button>
+      <button class="key" data-key="ArrowUp">▲</button>
+      <button class="key" data-key="ArrowDown">▼</button>
+      <button class="key" data-key="ArrowLeft">◄</button>
+      <button class="key" data-key="ArrowRight">►</button>
+      <button class="key key-wide" data-key=" " data-code="Space">SPACE</button>
+    </div>
+
+    <!-- Row 4: Common DOS Letters -->
+    <div class="keyboard-row">
+      <button class="key" data-key="y">Y</button>
+      <button class="key" data-key="n">N</button>
+      <button class="key" data-key="c">C</button>
+      <button class="key" data-key="d">D</button>
+      <button class="key" data-key="dir" data-type="macro">DIR</button>
+      <button class="key" data-key="cls" data-type="macro">CLS</button>
+    </div>
+  </div>
+
+  <script>
+    let ciInstance = null;
+
+    // Initialize js-dos session (loads default FreeDOS bundle)
+    Dos(document.getElementById("dos-container"), {
+      url: "https://cdn.dos.zone/original/2X/2/24127406f9f30e2f5f19c991319c50c02162a5b2.jsdos",
+    }).then((ci) => {
+      ciInstance = ci;
+    });
+
+    // Helper to send keystrokes to the emulator
+    function sendKey(key, code) {
+      if (!ciInstance) return;
+
+      const keyCode = code || (key.length === 1 ? `Key${key.toUpperCase()}` : key);
+      
+      // Dispatch keydown followed immediately by keyup
+      ciInstance.sendKeyEvent(keyCode, true);
+      setTimeout(() => {
+        ciInstance.sendKeyEvent(keyCode, false);
+      }, 50);
+    }
+
+    // Attach click events to the custom key buttons
+    document.querySelectorAll(".key").forEach((button) => {
+      button.addEventListener("click", () => {
+        const key = button.getAttribute("data-key");
+        const code = button.getAttribute("data-code");
+        const type = button.getAttribute("data-type");
+
+        if (type === "macro") {
+          // Macro support: sends a sequence of characters followed by Enter
+          for (let char of key) {
+            sendKey(char, `Key${char.toUpperCase()}`);
+          }
+          sendKey("Enter", "Enter");
+        } else {
+          sendKey(key, code);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
