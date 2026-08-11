@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>js-dos with Virtual Keyboard</title>
+  <title>js-dos with On-Screen Keyboard</title>
 
-  <!-- js-dos v7 CDN Assets -->
-  <script src="https://v7.js-dos.com/latest/js-dos.js"></script>
-  <link href="https://v7.js-dos.com/latest/js-dos.css" rel="stylesheet" />
+  <!-- Load js-dos 6.22 scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/js-dos@6.22.10/dist/js-dos.js"></script>
 
   <style>
     * {
@@ -28,16 +27,24 @@
       padding: 1rem;
     }
 
-    #dos-container {
+    #dos-wrapper {
       width: 640px;
       height: 400px;
       max-width: 100%;
       background: #000;
       border: 2px solid #333;
       border-radius: 8px;
-      overflow: hidden;
+      position: relative;
     }
 
+    /* DOS Canvas element */
+    #dos {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Virtual Keyboard Container */
     .keyboard-container {
       margin-top: 1rem;
       width: 100%;
@@ -81,93 +88,102 @@
 </head>
 <body>
 
-  <!-- Container for js-dos v7 -->
-  <div id="dos-container"></div>
+  <!-- Screen Container -->
+  <div id="dos-wrapper">
+    <canvas id="dos"></canvas>
+  </div>
 
   <!-- On-Screen Keyboard -->
   <div class="keyboard-container">
     <div class="keyboard-row">
-      <button class="key" data-code="Escape">ESC</button>
-      <button class="key" data-code="F1">F1</button>
-      <button class="key" data-code="F2">F2</button>
-      <button class="key" data-code="F3">F3</button>
-      <button class="key" data-code="F4">F4</button>
-      <button class="key key-wide" data-code="Enter">ENTER</button>
+      <button class="key" data-key="27">ESC</button>
+      <button class="key" data-key="112">F1</button>
+      <button class="key" data-key="113">F2</button>
+      <button class="key" data-key="114">F3</button>
+      <button class="key" data-key="115">F4</button>
+      <button class="key key-wide" data-key="13">ENTER</button>
     </div>
 
     <div class="keyboard-row">
-      <button class="key" data-code="Digit1">1</button>
-      <button class="key" data-code="Digit2">2</button>
-      <button class="key" data-code="Digit3">3</button>
-      <button class="key" data-code="Digit4">4</button>
-      <button class="key" data-code="Digit5">5</button>
-      <button class="key" data-code="Digit6">6</button>
-      <button class="key" data-code="Digit7">7</button>
-      <button class="key" data-code="Digit8">8</button>
-      <button class="key" data-code="Digit9">9</button>
-      <button class="key" data-code="Digit0">0</button>
-      <button class="key key-wide" data-code="Backspace">BKSP</button>
+      <button class="key" data-key="49">1</button>
+      <button class="key" data-key="50">2</button>
+      <button class="key" data-key="51">3</button>
+      <button class="key" data-key="52">4</button>
+      <button class="key" data-key="53">5</button>
+      <button class="key" data-key="54">6</button>
+      <button class="key" data-key="55">7</button>
+      <button class="key" data-key="56">8</button>
+      <button class="key" data-key="57">9</button>
+      <button class="key" data-key="48">0</button>
+      <button class="key key-wide" data-key="8">BKSP</button>
     </div>
 
     <div class="keyboard-row">
-      <button class="key key-wide" data-code="Tab">TAB</button>
-      <button class="key" data-code="ArrowUp">▲</button>
-      <button class="key" data-code="ArrowDown">▼</button>
-      <button class="key" data-code="ArrowLeft">◄</button>
-      <button class="key" data-code="ArrowRight">►</button>
-      <button class="key key-space" data-code="Space">SPACE</button>
+      <button class="key key-wide" data-key="9">TAB</button>
+      <button class="key" data-key="38">▲</button>
+      <button class="key" data-key="40">▼</button>
+      <button class="key" data-key="37">◄</button>
+      <button class="key" data-key="39">►</button>
+      <button class="key key-space" data-key="32">SPACE</button>
     </div>
 
     <div class="keyboard-row">
-      <button class="key" data-code="KeyY">Y</button>
-      <button class="key" data-code="KeyN">N</button>
-      <button class="key" data-code="KeyC">C</button>
-      <button class="key" data-code="KeyD">D</button>
+      <button class="key" data-key="89">Y</button>
+      <button class="key" data-key="78">N</button>
+      <button class="key" data-key="67">C</button>
+      <button class="key" data-key="68">D</button>
       <button class="key" data-macro="DIR">DIR</button>
       <button class="key" data-macro="CLS">CLS</button>
     </div>
   </div>
 
   <script>
-    // 1. Tell js-dos explicitly where to load WebAssembly modules from
-    emulators.pathPrefix = "https://v7.js-dos.com/latest/emulators/";
+    const canvas = document.getElementById("dos");
 
-    let ciInstance = null;
+    // Minimal valid zip payload in base64 (empty ZIP file) to avoid remote file loading
+    const emptyZipData = "UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==";
 
-    // 2. Start DOS using a verified working test bundle
-    Dos(document.getElementById("dos-container"))
-      .run("https://v7.js-dos.com/latest/digger.jsdos")
-      .then((ci) => {
-        ciInstance = ci;
-      });
+    function base64ToUint8Array(base64) {
+      const binaryString = window.atob(base64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
 
-    // 3. Dispatch keyboard strokes directly to the WASM runtime
-    function sendKeyCode(code) {
-      if (!ciInstance) return;
-      
-      // js-dos v7 accepts standard KeyboardEvent.code strings
-      ciInstance.sendKeyEvent(code, true);
+    // Initialize DOS instance using local wdosbox binaries from jsDelivr CDN
+    Dos(canvas, {
+      wdosboxUrl: "https://cdn.jsdelivr.net/npm/js-dos@6.22.10/dist/wdosbox.js"
+    }).ready((dos, val) => {
+      // Run DOS environment using empty zip array buffer
+      dos.run(base64ToUint8Array(emptyZipData));
+    });
+
+    // Fire key events into canvas element
+    function pressKeyCode(keyCode) {
+      canvas.dispatchEvent(new KeyboardEvent("keydown", { keyCode: keyCode, bubbles: true }));
       setTimeout(() => {
-        ciInstance.sendKeyEvent(code, false);
+        canvas.dispatchEvent(new KeyboardEvent("keyup", { keyCode: keyCode, bubbles: true }));
       }, 50);
     }
 
-    // 4. Attach event handlers to virtual key buttons
+    // Attach click listeners to virtual buttons
     document.querySelectorAll(".key").forEach((button) => {
       button.addEventListener("click", () => {
-        const code = button.getAttribute("data-code");
+        const key = button.getAttribute("data-key");
         const macro = button.getAttribute("data-macro");
 
         if (macro) {
-          // Send macro letters one by one followed by Enter
           for (let i = 0; i < macro.length; i++) {
             setTimeout(() => {
-              sendKeyCode(`Key${macro[i].toUpperCase()}`);
+              pressKeyCode(macro.charCodeAt(i));
             }, i * 100);
           }
-          setTimeout(() => sendKeyCode("Enter"), macro.length * 100);
-        } else if (code) {
-          sendKeyCode(code);
+          setTimeout(() => pressKeyCode(13), macro.length * 100);
+        } else if (key) {
+          pressKeyCode(parseInt(key, 10));
         }
       });
     });
