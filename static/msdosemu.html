@@ -1,192 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>js-dos with On-Screen Keyboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>js-dos Shell with Virtual Keyboard</title>
 
-  <!-- Load js-dos 6.22 scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/js-dos@6.22.10/dist/js-dos.js"></script>
+    <!-- js-dos style sheet -->
+    <link rel="stylesheet" href="https://v8.js-dos.com/latest/js-dos.css">
 
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    <!-- js-dos script -->
+    <script src="https://v8.js-dos.com/latest/js-dos.js"></script>
 
-    body {
-      background-color: #121212;
-      color: #fff;
-      font-family: system-ui, -apple-system, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 1rem;
-    }
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-    #dos-wrapper {
-      width: 640px;
-      height: 400px;
-      max-width: 100%;
-      background: #000;
-      border: 2px solid #333;
-      border-radius: 8px;
-      position: relative;
-    }
+        body {
+            background-color: #121212;
+            color: #fff;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 10px;
+        }
 
-    /* DOS Canvas element */
-    #dos {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
+        /* Container wrapper for the emulator */
+        #dos-wrapper {
+            width: 100%;
+            max-width: 640px;
+            height: 400px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #333;
+        }
 
-    /* Virtual Keyboard Container */
-    .keyboard-container {
-      margin-top: 1rem;
-      width: 100%;
-      max-width: 640px;
-      background: #1e1e1e;
-      padding: 0.75rem;
-      border-radius: 8px;
-      border: 1px solid #333;
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
+        #dos {
+            width: 100%;
+            height: 100%;
+        }
 
-    .keyboard-row {
-      display: flex;
-      justify-content: center;
-      gap: 0.3rem;
-    }
+        /* Virtual Keyboard Layout */
+        .keyboard-container {
+            margin-top: 12px;
+            width: 100%;
+            max-width: 640px;
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
 
-    .key {
-      background: #2a2a2a;
-      border: 1px solid #444;
-      border-radius: 4px;
-      color: #fff;
-      font-weight: 600;
-      font-size: 0.8rem;
-      padding: 0.6rem 0;
-      flex: 1;
-      text-align: center;
-      cursor: pointer;
-      user-select: none;
-    }
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+        }
 
-    .key:active {
-      background: #007acc;
-    }
+        .key {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 10px 0;
+            flex: 1;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            touch-action: manipulation;
+        }
 
-    .key-wide { flex: 1.5; }
-    .key-space { flex: 4; }
-  </style>
+        .key:active {
+            background: #007acc;
+        }
+
+        .key-wide { flex: 1.5; }
+        .key-space { flex: 4; }
+    </style>
 </head>
 <body>
 
-  <!-- Screen Container -->
-  <div id="dos-wrapper">
-    <canvas id="dos"></canvas>
-  </div>
-
-  <!-- On-Screen Keyboard -->
-  <div class="keyboard-container">
-    <div class="keyboard-row">
-      <button class="key" data-key="27">ESC</button>
-      <button class="key" data-key="112">F1</button>
-      <button class="key" data-key="113">F2</button>
-      <button class="key" data-key="114">F3</button>
-      <button class="key" data-key="115">F4</button>
-      <button class="key key-wide" data-key="13">ENTER</button>
+    <div id="dos-wrapper">
+        <div id="dos"></div>
     </div>
 
-    <div class="keyboard-row">
-      <button class="key" data-key="49">1</button>
-      <button class="key" data-key="50">2</button>
-      <button class="key" data-key="51">3</button>
-      <button class="key" data-key="52">4</button>
-      <button class="key" data-key="53">5</button>
-      <button class="key" data-key="54">6</button>
-      <button class="key" data-key="55">7</button>
-      <button class="key" data-key="56">8</button>
-      <button class="key" data-key="57">9</button>
-      <button class="key" data-key="48">0</button>
-      <button class="key key-wide" data-key="8">BKSP</button>
+    <!-- Built-in Virtual Keyboard -->
+    <div class="keyboard-container">
+        <!-- Row 1: Function Keys -->
+        <div class="keyboard-row">
+            <button class="key" data-code="Escape">ESC</button>
+            <button class="key" data-code="F1">F1</button>
+            <button class="key" data-code="F2">F2</button>
+            <button class="key" data-code="F3">F3</button>
+            <button class="key" data-code="F4">F4</button>
+            <button class="key key-wide" data-code="Enter">ENTER</button>
+        </div>
+
+        <!-- Row 2: Numbers -->
+        <div class="keyboard-row">
+            <button class="key" data-code="Digit1">1</button>
+            <button class="key" data-code="Digit2">2</button>
+            <button class="key" data-code="Digit3">3</button>
+            <button class="key" data-code="Digit4">4</button>
+            <button class="key" data-code="Digit5">5</button>
+            <button class="key" data-code="Digit6">6</button>
+            <button class="key" data-code="Digit7">7</button>
+            <button class="key" data-code="Digit8">8</button>
+            <button class="key" data-code="Digit9">9</button>
+            <button class="key" data-code="Digit0">0</button>
+            <button class="key key-wide" data-code="Backspace">BKSP</button>
+        </div>
+
+        <!-- Row 3: Arrows & Space -->
+        <div class="keyboard-row">
+            <button class="key key-wide" data-code="Tab">TAB</button>
+            <button class="key" data-code="ArrowUp">▲</button>
+            <button class="key" data-code="ArrowDown">▼</button>
+            <button class="key" data-code="ArrowLeft">◄</button>
+            <button class="key" data-code="ArrowRight">►</button>
+            <button class="key key-space" data-code="Space">SPACE</button>
+        </div>
+
+        <!-- Row 4: Common Commands & Letters -->
+        <div class="keyboard-row">
+            <button class="key" data-code="KeyY">Y</button>
+            <button class="key" data-code="KeyN">N</button>
+            <button class="key" data-code="KeyC">C</button>
+            <button class="key" data-code="KeyD">D</button>
+            <button class="key" data-macro="DIR">DIR</button>
+            <button class="key" data-macro="CLS">CLS</button>
+        </div>
     </div>
 
-    <div class="keyboard-row">
-      <button class="key key-wide" data-key="9">TAB</button>
-      <button class="key" data-key="38">▲</button>
-      <button class="key" data-key="40">▼</button>
-      <button class="key" data-key="37">◄</button>
-      <button class="key" data-key="39">►</button>
-      <button class="key key-space" data-key="32">SPACE</button>
-    </div>
+    <script>
+        let dosInterface = null;
 
-    <div class="keyboard-row">
-      <button class="key" data-key="89">Y</button>
-      <button class="key" data-key="78">N</button>
-      <button class="key" data-key="67">C</button>
-      <button class="key" data-key="68">D</button>
-      <button class="key" data-macro="DIR">DIR</button>
-      <button class="key" data-macro="CLS">CLS</button>
-    </div>
-  </div>
+        // Initialize js-dos v8 without passing a game bundle.
+        // Calling Dos() with no bundle URL automatically boots pure FreeDOS.
+        Dos(document.getElementById("dos")).then((ci) => {
+            dosInterface = ci;
+        });
 
-  <script>
-    const canvas = document.getElementById("dos");
+        // Helper function to send key events into js-dos
+        function pressKey(code) {
+            if (!dosInterface) return;
 
-    // Minimal valid zip payload in base64 (empty ZIP file) to avoid remote file loading
-    const emptyZipData = "UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==";
-
-    function base64ToUint8Array(base64) {
-      const binaryString = window.atob(base64);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      return bytes.buffer;
-    }
-
-    // Initialize DOS instance using local wdosbox binaries from jsDelivr CDN
-    Dos(canvas, {
-      wdosboxUrl: "https://cdn.jsdelivr.net/npm/js-dos@6.22.10/dist/wdosbox.js"
-    }).ready((dos, val) => {
-      // Run DOS environment using empty zip array buffer
-      dos.run(base64ToUint8Array(emptyZipData));
-    });
-
-    // Fire key events into canvas element
-    function pressKeyCode(keyCode) {
-      canvas.dispatchEvent(new KeyboardEvent("keydown", { keyCode: keyCode, bubbles: true }));
-      setTimeout(() => {
-        canvas.dispatchEvent(new KeyboardEvent("keyup", { keyCode: keyCode, bubbles: true }));
-      }, 50);
-    }
-
-    // Attach click listeners to virtual buttons
-    document.querySelectorAll(".key").forEach((button) => {
-      button.addEventListener("click", () => {
-        const key = button.getAttribute("data-key");
-        const macro = button.getAttribute("data-macro");
-
-        if (macro) {
-          for (let i = 0; i < macro.length; i++) {
+            dosInterface.sendKeyEvent(code, true);
             setTimeout(() => {
-              pressKeyCode(macro.charCodeAt(i));
-            }, i * 100);
-          }
-          setTimeout(() => pressKeyCode(13), macro.length * 100);
-        } else if (key) {
-          pressKeyCode(parseInt(key, 10));
+                dosInterface.sendKeyEvent(code, false);
+            }, 50);
         }
-      });
-    });
-  </script>
+
+        // Attach event listeners to all virtual key buttons
+        document.querySelectorAll(".key").forEach((button) => {
+            button.addEventListener("click", () => {
+                const code = button.getAttribute("data-code");
+                const macro = button.getAttribute("data-macro");
+
+                if (macro) {
+                    for (let i = 0; i < macro.length; i++) {
+                        setTimeout(() => {
+                            pressKey(`Key${macro[i].toUpperCase()}`);
+                        }, i * 100);
+                    }
+                    setTimeout(() => pressKey("Enter"), macro.length * 100);
+                } else if (code) {
+                    pressKey(code);
+                }
+            });
+        });
+    </script>
 </body>
 </html>
