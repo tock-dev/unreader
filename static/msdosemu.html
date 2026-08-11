@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>js-dos Shell with Virtual Keyboard</title>
+    <title>js-dos Shell - MS-DOS 7.10</title>
 
     <!-- js-dos style sheet -->
     <link rel="stylesheet" href="https://v8.js-dos.com/latest/js-dos.css">
@@ -146,9 +146,10 @@
     <script>
         let dosInterface = null;
 
-        // Initialize js-dos v8 without passing a game bundle.
-        // Calling Dos() with no bundle URL automatically boots pure FreeDOS.
-        Dos(document.getElementById("dos")).then((ci) => {
+        // Initialize js-dos v8 loading your custom MS-DOS bundle
+        Dos(document.getElementById("dos"), {
+            url: "system-dos7.1-v1.jsdos"
+        }).then((ci) => {
             dosInterface = ci;
         });
 
