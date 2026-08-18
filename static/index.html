@@ -388,22 +388,22 @@
 
     // Featured Core Applications Array
     const FEATURED_DATABASE = [
-      { name: 'CHAT', desc: 'Real-time conversation feed', url: 'chat.html' },
+      { name: 'CHAT', desc: 'Now with... less pixels? *tock when are we gonna implement pfps and custom drawings/pics system?', url: 'chat.html' },
       { name: 'TOPICS', desc: 'Discuss anything!', url: 'topics.html' },
-      { name: 'NEIGHBOURHOOD', desc: 'Post & make connections', url: 'neighbourhood.html' },
-      { name: 'AI ASSISTANT', desc: 'AI Assistant Beta', url: 'chatai.html' },
-      { name: 'MODERATION', desc: 'Moderation Panel', url: 'modmenu.html', req: 'mod' }
+      { name: 'NEIGHBOURHOOD', desc: 'Posts! (Still janky and broken, sorry!)', url: 'neighbourhood.html' },
+      { name: 'AI ASSISTANT', desc: 'AI Assistant (Beta)', url: 'chatai.html' },
+      { name: 'MODERATION', desc: 'Moderation Dashboard.', url: 'modmenu.html', req: 'mod' }
     ];
 
     const PLATFORM_DATABASE = [
       { name: 'REKINDLE', desc: 'Shortcut to what made this all possible in the first place!', url: 'rekindle.html' },
-      { name: 'DISCORD', desc: 'Join the official community guild', url: 'https://discord.gg/wGpdg3ND7T', external: true },
-      { name: 'SUGGESTIONS', desc: 'Suggest your app idea!', url: 'suggestions.html' },
-      { name: 'CALCULATOR', desc: 'MATH', url: 'calc.html' },
+      { name: 'DISCORD', desc: 'The Official unreader Discord Server.', url: 'https://discord.gg/wGpdg3ND7T', external: true },
+      { name: 'SUGGESTIONS', desc: "Suggestions! Just please don't suggest things like... uhhh... *reads list of things that are impossible to be on a Kindle* well that's a lot. At least I can cross off Geometry Dash.", url: 'suggestions.html' },
+      { name: 'CALCULATOR', desc: 'A simple calculator, what did you expect?', url: 'calc.html' },
       { name: 'POKEDEX', desc: "Gotta catch 'em all! (Optimized!)", url: 'pokedex.html', },
       { name: 'OREGON TRAIL', desc: "Play the original 1970 teletext version on your E-reader! I just cheaped out by porting this text version, and say that this is just faithful to the BBS experience.", url: 'agiftforchessnut.html', },
-      { name: "REVERSI", desc: `Ported from a fricking ms-dos`,url: "reversi.html"},
-      { name: 'GAME OF LIFE', desc: 'Easiest thing ever', url: 'cwol.html' }
+      { name: "REVERSI", desc: `A remake of Reversi.`,url: "reversi.html"},
+      { name: 'GAME OF LIFE', desc: 'Easiest thing ever, wow.', url: 'cwol.html' }
     ];
 
     // Build functional home UI grid layout
@@ -476,7 +476,7 @@
       var errorDisplay = document.getElementById("modal-error-log");
 
       if (!usernameInput || !passwordInput) {
-        errorDisplay.textContent = "Fill in all log credentials.";
+        errorDisplay.textContent = "Please fill in all login credentials.";
         errorDisplay.style.display = "block";
         return;
       }
@@ -498,15 +498,15 @@
 
               location.reload();
             } catch (e) {
-              errorDisplay.textContent = "Server returned an invalid packet signature.";
+              errorDisplay.textContent = "Whoops! Server returned an unexpected response!";
               errorDisplay.style.display = "block";
             }
           } else {
             try {
               var errData = JSON.parse(xhr.responseText);
-              errorDisplay.textContent = "Server error: " + (errData.error || "Access Denied");
+              errorDisplay.textContent = "Internal error: " + (errData.error || "Access Denied");
             } catch (e) {
-              errorDisplay.textContent = "Structural connection failure.";
+              errorDisplay.textContent = "Connection Failed. Either the server is down or your device is offline.";
             }
             errorDisplay.style.display = "block";
           }
