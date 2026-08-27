@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kindle Remote Phone Control</title>
+    <style>
+        body { margin: 0; padding: 0; background: black; text-align: center; color: white; font-family: sans-serif; }
+        img { max-width: 100%; height: auto; cursor: pointer; border: 1px solid #333; }
+        #setup { padding: 20px; }
+        input { padding: 8px; width: 250px; }
+        button { padding: 8px; }
+    </style>
+    <script>
+        let serverUrl = "";
+
+        function connectServer() {
+            // Get the public ngrok URL entered by the user
+            let inputUrl = document.getElementById("urlInput").value.trim();
+            if (!inputUrl.startsWith("http")) {
+                inputUrl = "https://" + inputUrl;
+            }
+            serverUrl = inputUrl;
+            
+            // Set the stream image source to your local PC via ngrok
+            document.getElementById("screen").src = serverUrl + "/video_feed";
+            document.getElementById("setup").style.display = "none";
+            document.getElementById("screen").style.display = "inline-block";
+        }
+
+        function sendClick(event) {
+            if (!serverUrl) return;
+
+            var img = document.getElementById("screen");
+            var rect = img.getBoundingClientRect();
+            
+            var relX = (event.clientX - rect.left) / rect.width;
+            var relY = (event.clientY - rect.top) / rect.height;
+            
+            // Send coordinates to the local python server via the ngrok URL
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", serverUrl + "/click?x=" + relX + "&y=" + relY, true);
+            xhr.send();
+        }
+    </script>
+</head>
+<body>
+
+    <!-- Simple UI to link your GitHub page to your temporary local PC stream -->
+    <div id="setup">
+        <h3>Enter your Ngrok Server URL:</h3>
+        <input type="text" id="urlInput" placeholder="e.g., https://ngrok-free.app">
+        <button onclick="connectServer()">Connect</button>
+    </div>
+
+    <img id="screen" src="" onclick="sendClick(event)" style="display:none;">
+
+</body>
+</html>
