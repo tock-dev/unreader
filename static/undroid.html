@@ -9,7 +9,6 @@
         #control-panel { position: absolute; z-index: 100; background: rgba(0,0,0,0.95); padding: 25px; border-radius: 8px; color: white; border: 1px solid #333; text-align: center; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
         input { padding: 10px; width: 220px; background: #222; border: 1px solid #444; color: white; margin-bottom: 15px; display: block; border-radius: 4px; text-align: center; font-size: 14px; }
         button { padding: 12px 20px; background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; border-radius: 4px; font-size: 14px; text-transform: uppercase; }
-        button:hover { background: #218838; }
         #loading-panel { position: absolute; z-index: 150; text-align: center; color: #aaa; font-size: 18px; letter-spacing: 1px; display: none; }
         #error-panel { position: absolute; z-index: 200; background: #2a0808; padding: 30px; border-radius: 8px; color: #ff6b6b; border: 2px solid #5a1818; text-align: center; max-width: 350px; display: none; box-shadow: 0 0 20px rgba(255,0,0,0.3); }
         #error-panel h3 { margin: 0 0 10px 0; font-size: 20px; }
@@ -42,8 +41,8 @@
         var connectionTimeout;
 
         function launchVNC() {
-            // WBITE NA SZTYWNO: Twój unikalny link z tunelu Cloudflare
-            var cloudflareUrl = "sources-continental-objectives-corresponding.trycloudflare.com"; 
+            // TUTAJ WKLEJASZ NOWY SUBDOMENĘ CLOUDFLARE (Z KROKU 1)
+            var cloudflareUrl = "potato-ambassador-dramatically-dining.trycloudflare.com"; 
             
             var password = document.getElementById("vncPassword").value.trim();
             
@@ -55,10 +54,9 @@
             document.getElementById("control-panel").style.display = "none";
             document.getElementById("loading-panel").style.display = "block";
 
-            // Łączymy się przez wss:// (Szyfrowany, bezpieczny WebSocket z tunelu Cloudflare)
+            // Szyfrowany i bezpieczny protokół wss:// (Cloudflare automatycznie przepuści go jako upgrade WebSocketu)
             var wsUrl = "wss://" + cloudflareUrl + "/";
 
-            // Timer bezpieczeństwa (9 sekund, żeby dać czas na trasę z Paragwaju)
             connectionTimeout = setTimeout(showOfflineError, 9000); 
 
             try {
