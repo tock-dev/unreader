@@ -42,8 +42,8 @@
         var connectionTimeout;
 
         function launchVNC() {
-            // Adres z Twojego zrzutu ekranu wklejony na stałe
-            var ltUrl = "fresh-cameras-peel.loca.lt"; 
+            // TUTAJ WPISZ SWOJĄ AKTUALNĄ SUBDOMENĘ Z NGROKA Z KROKU 1:
+            var ngrokUrl = "TWÓJ_LOSOWY_KOD.ngrok-free.app"; 
             
             var password = document.getElementById("vncPassword").value.trim();
             if (!password) {
@@ -54,16 +54,19 @@
             document.getElementById("control-panel").style.display = "none";
             document.getElementById("loading-panel").style.display = "block";
 
-            var wsUrl = "wss://" + ltUrl + "/";
+            // Łączymy się przez bezpieczne, szyfrowane gniazdo wss:// ngroka
+            var wsUrl = "wss://" + ngrokUrl + "/";
 
             connectionTimeout = setTimeout(showOfflineError, 9000); 
 
             try {
-                // Konfiguracja noVNC z automatycznym wstrzyknięciem protokołu omijającego blokadę LocalTunnel
+                // Konfiguracja oficjalnego wstrzykiwania nagłówka dla darmowego konta ngrok
                 rfb = new window.NoVNC.RFB(document.getElementById('vnc-target'), wsUrl, {
-                    credentials: { password: password },
-                    wsProtocols: ['bypass-tunnel-reminder'] // <--- To automatycznie niszczy ekran blokady ze zrzutu ekranu!
+                    credentials: { password: password }
                 });
+
+                // Ręcznie forsujemy nagłówek pominięcia ekranu ostrzegawczego w obiekcie RFB
+                rfb._wsCredentials = { "ngrok-skip-browser-warning": "true" };
 
                 rfb.scaleViewport = true;
 
