@@ -42,10 +42,9 @@
         var connectionTimeout;
 
         function launchVNC() {
-            // WBITY NA SZTYWNO: Twój bezpieczny adres wygenerowany przez Serveo
-            var serveoHost = "8fd83d81a3dad38a-93-159-12-2.serveousercontent.com"; 
-            
+            var serveoHost = "://serveousercontent.com"; 
             var password = document.getElementById("vncPassword").value.trim();
+            
             if (!password) {
                 alert("Please enter the password.");
                 return;
@@ -54,13 +53,25 @@
             document.getElementById("control-panel").style.display = "none";
             document.getElementById("loading-panel").style.display = "block";
 
-            // Łączymy się przez bezpieczne, szyfrowane gniazdo wss:// Serveo
-            var wsUrl = "wss://" + serveoHost + "/";
+            // WYJAŚNIENIE: Przed otwarciem WebSocketu 'pukamy' do serwera przez zwykłe tło HTTP (Fetch)
+            // z nagłówkiem ignorującym ostrzeżenia, aby zapisać ciasteczko sesji w przeglądarce (PC i Kindle)
+            fetch("https://" + serveoHost, {
+                mode: 'no-cors',
+                headers: { "X-Forwarded-Proto": "https" }
+            }).then(function() {
+                // Gdy przeglądarka przetworzy sesję, odpalamy właściwy proces VNC
+                startVncConnection(serveoHost, password);
+            }).catch(function() {
+                // Awaryjne przejście jeśli fetch został zablokowany lokalnie
+                startVncConnection(serveoHost, password);
+            });
+        }
 
+        function startVncConnection(host, password) {
+            var wsUrl = "wss://" + host + "/";
             connectionTimeout = setTimeout(showOfflineError, 9000); 
 
             try {
-                // Inicjalizacja biblioteki w standardzie uniwersalnym
                 rfb = new window.NoVNC.RFB(document.getElementById('vnc-target'), wsUrl, {
                     credentials: { password: password }
                 });
