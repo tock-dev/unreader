@@ -15,7 +15,7 @@
         function connectServer() {
             let inputUrl = document.getElementById("urlInput").value.trim();
             
-            // Wymuszenie protokołu HTTPS w celu uniknięcia błędu Mixed Content
+            // Wymuszenie protokołu HTTPS w celu uniknięcia błędu
             if (inputUrl.startsWith("http://")) {
                 inputUrl = inputUrl.replace("http://", "https://");
             }
