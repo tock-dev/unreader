@@ -5,6 +5,7 @@
     <style>
         body { margin: 0; padding: 0; background: black; overflow: hidden; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
         
+        /* Kontener na ekran telefonu/komputera */
         #vnc-target { width: 100vw; height: 100vh; display: none; }
         #vnc-target canvas { width: 100% !important; height: 100% !important; object-fit: contain; }
         
@@ -19,6 +20,9 @@
         #error-panel h3 { margin: 0 0 10px 0; font-size: 20px; }
         #error-panel p { margin: 0; font-size: 14px; line-height: 1.4; color: #ffb3b3; }
     </style>
+
+    <!-- ROZWIĄZANIE: Ładujemy pełną bibliotekę noVNC tradycyjną metodą akceptowaną przez PC oraz starego Kindle -->
+    <script src="https://jsdelivr.net"></script>
 </head>
 <body>
 
@@ -40,48 +44,44 @@
 
     <div id="vnc-target"></div>
 
-    <script type="module">
-        import RFB from 'https://jsdelivr.net';
-
-        let rfb;
-        let connectionTimeout;
+    <script>
+        var rfb;
+        var connectionTimeout;
 
         window.launchVNC = function() {
-            const host = "frp.freefrp.net";
-            const port = "38452";
-            const password = document.getElementById("vncPassword").value.trim();
+            var host = "frp.freefrp.net";
+            var port = "38452";
+            var password = document.getElementById("vncPassword").value.trim();
             
             if (!password) {
                 alert("Please enter the password.");
                 return;
             }
 
+            // Ukrywamy panel logowania i pokazujemy komunikat o łączeniu
             document.getElementById("control-panel").style.display = "none";
             document.getElementById("loading-panel").style.display = "block";
 
-            // Łączymy się BEZPOŚREDNIO do Twojego komputera przez nieszyfrowany WebSocket (ws://), 
-            // ponieważ darmowe serwery frp przesyłają ruch 1:1 bez certyfikatów SSL
-            const wsUrl = `ws://${host}:${port}/`;
+            // Łączymy się przez czysty, nieszyfrowany WebSocket (ws://) bezpośrednio do Twojego websockify
+            var wsUrl = "ws://" + host + ":" + port + "/";
 
             try {
-                rfb = new RFB(document.getElementById('vnc-target'), wsUrl, {
+                // Wywołanie za pomocą globalnego obiektu NoVNC zapobiega błędom na PC i Kindle
+                rfb = new window.NoVNC.RFB(document.getElementById('vnc-target'), wsUrl, {
                     credentials: { password: password }
                 });
 
                 rfb.scaleViewport = true;
-                rfb.resizeSession = false;
 
-                rfb.addEventListener('connect', () => {
+                rfb.addEventListener('connect', function() {
                     clearTimeout(connectionTimeout);
                     document.getElementById("loading-panel").style.display = "none";
                     document.getElementById("vnc-target").style.display = "block";
                 });
 
-                rfb.addEventListener('disconnect', (e) => {
+                rfb.addEventListener('disconnect', function() {
                     clearTimeout(connectionTimeout);
-                    document.getElementById("loading-panel").style.display = "none";
-                    document.getElementById("vnc-target").style.display = "none";
-                    document.getElementById("error-panel").style.display = "block";
+                    showOfflineError();
                 });
 
             } catch (err) {
@@ -89,6 +89,7 @@
                 showOfflineError();
             }
 
+            // Odliczanie 7 sekund do wywołania błędu offline
             connectionTimeout = setTimeout(showOfflineError, 7000);
         };
 
