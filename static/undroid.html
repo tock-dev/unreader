@@ -1,108 +1,86 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Un-Droid - EXPERIMENTAL - by Cody</title>
+    <title>Un-Droid - REMOTE SYSTEM</title>
     <style>
-        body { margin: 0; padding: 0; background: black; overflow: hidden; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        #vnc-target { width: 100vw; height: 100vh; display: none; }
-        #vnc-target canvas { width: 100% !important; height: 100% !important; object-fit: contain; }
-        #control-panel { position: absolute; z-index: 100; background: rgba(0,0,0,0.95); padding: 25px; border-radius: 8px; color: white; border: 1px solid #333; text-align: center; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
-        input { padding: 10px; width: 220px; background: #222; border: 1px solid #444; color: white; margin-bottom: 15px; display: block; border-radius: 4px; text-align: center; font-size: 14px; }
+        body { margin: 0; padding: 0; background: black; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        
+        #phone-screen { 
+            position: relative; 
+            height: 100vh; 
+            aspect-ratio: 9 / 16; 
+            background: #000;
+        }
+
+        img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: contain; 
+            cursor: pointer; 
+        }
+
+        #setup-screen { position: absolute; z-index: 100; background: rgba(0,0,0,0.95); padding: 25px; border-radius: 8px; color: white; border: 1px solid #333; text-align: center; }
+        input { padding: 10px; width: 240px; background: #222; border: 1px solid #444; color: white; margin-bottom: 15px; display: block; border-radius: 4px; text-align: center; font-size: 14px; }
         button { padding: 12px 20px; background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; border-radius: 4px; font-size: 14px; text-transform: uppercase; }
-        button:hover { background: #218838; }
-        #loading-panel { position: absolute; z-index: 150; text-align: center; color: #aaa; font-size: 18px; letter-spacing: 1px; display: none; }
-        #error-panel { position: absolute; z-index: 200; background: #2a0808; padding: 30px; border-radius: 8px; color: #ff6b6b; border: 2px solid #5a1818; text-align: center; max-width: 350px; display: none; box-shadow: 0 0 20px rgba(255,0,0,0.3); }
-        #error-panel h3 { margin: 0 0 10px 0; font-size: 20px; }
-        #error-panel p { margin: 0; font-size: 14px; line-height: 1.4; color: #ffb3b3; }
     </style>
-    <script src="https://jsdelivr.net"></script>
-</head>
-<body>
-
-    <div id="control-panel">
-        <h3 style="margin: 0 0 10px 0; font-size: 18px;">Remote Control Access</h3>
-        <p style="font-size: 12px; color: #aaa; margin: 0 0 20px 0;">Please enter the security password to connect:</p>
-        <input type="password" id="vncPassword" placeholder="Enter VNC Password">
-        <button onclick="launchVNC()">Connect Screen</button>
-    </div>
-
-    <div id="loading-panel">
-        Connecting to cody-poland_server2...
-    </div>
-
-    <div id="error-panel">
-        <h3>Connection Failed</h3>
-        <p>Uh, oh! It looks like Cody's server is offline! For more information ask him on chat.</p>
-    </div>
-
-    <div id="vnc-target"></div>
-
     <script>
-        var rfb;
-        var connectionTimeout;
+        let globalServerUrl = "";
 
-        function launchVNC() {
-            var serveoHost = "://serveousercontent.com"; 
-            var password = document.getElementById("vncPassword").value.trim();
+        function connectToCodyServer() {
+            let inputUrl = document.getElementById("serverUrlInput").value.trim();
             
-            if (!password) {
-                alert("Please enter the password.");
-                return;
+            if (inputUrl.startsWith("http://")) {
+                inputUrl = inputUrl.replace("http://", "https://");
             }
-
-            document.getElementById("control-panel").style.display = "none";
-            document.getElementById("loading-panel").style.display = "block";
-
-            // WYJAŚNIENIE: Przed otwarciem WebSocketu 'pukamy' do serwera przez zwykłe tło HTTP (Fetch)
-            // z nagłówkiem ignorującym ostrzeżenia, aby zapisać ciasteczko sesji w przeglądarce (PC i Kindle)
-            fetch("https://" + serveoHost, {
-                mode: 'no-cors',
-                headers: { "X-Forwarded-Proto": "https" }
-            }).then(function() {
-                // Gdy przeglądarka przetworzy sesję, odpalamy właściwy proces VNC
-                startVncConnection(serveoHost, password);
+            if (!inputUrl.startsWith("https://")) {
+                inputUrl = "https://" + inputUrl;
+            }
+            if (inputUrl.endsWith("/")) {
+                inputUrl = inputUrl.slice(0, -1);
+            }
+            
+            globalServerUrl = inputUrl;
+            
+            // Jednorazowe 'puknięcie' HTTP w tle, aby zapisać ciasteczko autoryzacji tunelu dla Kindle i Paragwaju
+            fetch(globalServerUrl, { mode: 'no-cors' }).then(function() {
+                // Po zapisaniu sesji wczytujemy płynny strumień klatek z telefonu
+                document.getElementById("live-stream-img").src = globalServerUrl + "/video_feed";
+                document.getElementById("setup-screen").style.display = "none";
             }).catch(function() {
-                // Awaryjne przejście jeśli fetch został zablokowany lokalnie
-                startVncConnection(serveoHost, password);
+                document.getElementById("live-stream-img").src = globalServerUrl + "/video_feed";
+                document.getElementById("setup-screen").style.display = "none";
             });
         }
 
-        function startVncConnection(host, password) {
-            var wsUrl = "wss://" + host + "/";
-            connectionTimeout = setTimeout(showOfflineError, 9000); 
+        function handleScreenClick(event) {
+            if (!globalServerUrl) return;
 
-            try {
-                rfb = new window.NoVNC.RFB(document.getElementById('vnc-target'), wsUrl, {
-                    credentials: { password: password }
-                });
-
-                rfb.scaleViewport = true;
-
-                rfb.addEventListener('connect', function() {
-                    clearTimeout(connectionTimeout);
-                    document.getElementById("loading-panel").style.display = "none";
-                    document.getElementById("vnc-target").style.display = "block";
-                });
-
-                rfb.addEventListener('disconnect', function() {
-                    clearTimeout(connectionTimeout);
-                    showOfflineError();
-                });
-
-            } catch (err) {
-                showOfflineError();
-            }
-        }
-
-        function showOfflineError() {
-            clearTimeout(connectionTimeout);
-            if (rfb) {
-                try { rfb.disconnect(); } catch(e){}
-            }
-            document.getElementById("loading-panel").style.display = "none";
-            document.getElementById("vnc-target").style.display = "none";
-            document.getElementById("error-panel").style.display = "block";
+            var imageElement = document.getElementById("live-stream-img");
+            var rect = imageElement.getBoundingClientRect();
+            
+            var relativeX = (event.clientX - rect.left) / rect.width;
+            var relativeY = (event.clientY - rect.top) / rect.height;
+            
+            if (relativeX < 0 || relativeX > 1 || relativeY < 0 || relativeY > 1) return;
+            
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", globalServerUrl + "/click?x=" + relativeX + "&y=" + relativeY, true);
+            xhr.send();
         }
     </script>
+</head>
+<body>
+
+    <div id="setup-screen">
+        <h3 style="margin: 0 0 10px 0; font-size: 18px;">Remote Phone Access</h3>
+        <p style="font-size: 12px; color: #aaa; margin: 0 0 20px 0;">Please enter your active server link:</p>
+        <input type="text" id="serverUrlInput" placeholder="e.g., cody-test.serveo.net">
+        <button onclick="connectToCodyServer()">Connect</button>
+    </div>
+
+    <div id="phone-screen">
+        <img id="live-stream-img" src="" onclick="handleScreenClick(event)">
+    </div>
+
 </body>
 </html>
