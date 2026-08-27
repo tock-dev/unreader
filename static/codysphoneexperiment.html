@@ -13,14 +13,24 @@
         let serverUrl = "";
 
         function connectServer() {
-            // Get the public ngrok URL entered by the user
             let inputUrl = document.getElementById("urlInput").value.trim();
-            if (!inputUrl.startsWith("http")) {
+            
+            // Wymuszenie protokołu HTTPS w celu uniknięcia błędu Mixed Content
+            if (inputUrl.startsWith("http://")) {
+                inputUrl = inputUrl.replace("http://", "https://");
+            }
+            if (!inputUrl.startsWith("https://")) {
                 inputUrl = "https://" + inputUrl;
             }
+            
+            // Usunięcie ukośnika z końca, jeśli istnieje
+            if (inputUrl.endsWith("/")) {
+                inputUrl = inputUrl.slice(0, -1);
+            }
+            
             serverUrl = inputUrl;
             
-            // Set the stream image source to your local PC via ngrok
+            // Ładowanie bezpiecznego strumienia wideo
             document.getElementById("screen").src = serverUrl + "/video_feed";
             document.getElementById("setup").style.display = "none";
             document.getElementById("screen").style.display = "inline-block";
@@ -32,10 +42,11 @@
             var img = document.getElementById("screen");
             var rect = img.getBoundingClientRect();
             
+            // Obliczanie procentowych współrzędnych miejsca kliknięcia
             var relX = (event.clientX - rect.left) / rect.width;
             var relY = (event.clientY - rect.top) / rect.height;
             
-            // Send coordinates to the local python server via the ngrok URL
+            // Wysłanie współrzędnych do serwera lokalnego
             var xhr = new XMLHttpRequest();
             xhr.open("GET", serverUrl + "/click?x=" + relX + "&y=" + relY, true);
             xhr.send();
@@ -44,10 +55,9 @@
 </head>
 <body>
 
-    <!-- Simple UI to link your GitHub page to your temporary local PC stream -->
     <div id="setup">
         <h3>Enter your Ngrok Server URL:</h3>
-        <input type="text" id="urlInput" placeholder="e.g., https://ngrok-free.app">
+        <input type="text" id="urlInput" placeholder="e.g., cb8e-93-159-12-2.ngrok-free.app">
         <button onclick="connectServer()">Connect</button>
     </div>
 
