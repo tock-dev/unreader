@@ -4,24 +4,17 @@
     <title>Un-Droid - EXPERIMENTAL - by Cody</title>
     <style>
         body { margin: 0; padding: 0; background: black; overflow: hidden; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        
-        /* Kontener na ekran telefonu/komputera */
         #vnc-target { width: 100vw; height: 100vh; display: none; }
         #vnc-target canvas { width: 100% !important; height: 100% !important; object-fit: contain; }
-        
         #control-panel { position: absolute; z-index: 100; background: rgba(0,0,0,0.95); padding: 25px; border-radius: 8px; color: white; border: 1px solid #333; text-align: center; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
         input { padding: 10px; width: 220px; background: #222; border: 1px solid #444; color: white; margin-bottom: 15px; display: block; border-radius: 4px; text-align: center; font-size: 14px; }
         button { padding: 12px 20px; background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; border-radius: 4px; font-size: 14px; text-transform: uppercase; }
         button:hover { background: #218838; }
-
         #loading-panel { position: absolute; z-index: 150; text-align: center; color: #aaa; font-size: 18px; letter-spacing: 1px; display: none; }
-
         #error-panel { position: absolute; z-index: 200; background: #2a0808; padding: 30px; border-radius: 8px; color: #ff6b6b; border: 2px solid #5a1818; text-align: center; max-width: 350px; display: none; box-shadow: 0 0 20px rgba(255,0,0,0.3); }
         #error-panel h3 { margin: 0 0 10px 0; font-size: 20px; }
         #error-panel p { margin: 0; font-size: 14px; line-height: 1.4; color: #ffb3b3; }
     </style>
-
-    <!-- ROZWIĄZANIE: Ładujemy pełną bibliotekę noVNC tradycyjną metodą akceptowaną przez PC oraz starego Kindle -->
     <script src="https://jsdelivr.net"></script>
 </head>
 <body>
@@ -30,7 +23,7 @@
         <h3 style="margin: 0 0 10px 0; font-size: 18px;">Remote Control Access</h3>
         <p style="font-size: 12px; color: #aaa; margin: 0 0 20px 0;">Please enter the security password to connect:</p>
         <input type="password" id="vncPassword" placeholder="Enter VNC Password">
-        <button onclick="window.launchVNC()">Connect Screen</button>
+        <button onclick="launchVNC()">Connect Screen</button>
     </div>
 
     <div id="loading-panel">
@@ -48,9 +41,11 @@
         var rfb;
         var connectionTimeout;
 
-        window.launchVNC = function() {
-            var host = "frp.freefrp.net";
-            var port = "38452";
+        function launchVNC() {
+            // KROK 2A: TUTAJ WPISZ SWÓJ NOWY ADRES HOST I PORT Z NGROKA Z KROKU 1:
+            var host = "4.tcp.ngrok.io"; 
+            var port = "12345"; 
+            
             var password = document.getElementById("vncPassword").value.trim();
             
             if (!password) {
@@ -58,15 +53,15 @@
                 return;
             }
 
-            // Ukrywamy panel logowania i pokazujemy komunikat o łączeniu
             document.getElementById("control-panel").style.display = "none";
             document.getElementById("loading-panel").style.display = "block";
 
-            // Łączymy się przez czysty, nieszyfrowany WebSocket (ws://) bezpośrednio do Twojego websockify
-            var wsUrl = "ws://" + host + ":" + port + "/";
+            // Używamy bezpiecznego wss:// połączonego ze specjalną darmową bramką Ngrok
+            var wsUrl = "wss://" + host + ":" + port + "/";
+
+            connectionTimeout = setTimeout(showOfflineError, 9000); // Zwiększamy czas do 9s dla Paragwaju
 
             try {
-                // Wywołanie za pomocą globalnego obiektu NoVNC zapobiega błędom na PC i Kindle
                 rfb = new window.NoVNC.RFB(document.getElementById('vnc-target'), wsUrl, {
                     credentials: { password: password }
                 });
@@ -85,15 +80,12 @@
                 });
 
             } catch (err) {
-                clearTimeout(connectionTimeout);
                 showOfflineError();
             }
-
-            // Odliczanie 7 sekund do wywołania błędu offline
-            connectionTimeout = setTimeout(showOfflineError, 7000);
-        };
+        }
 
         function showOfflineError() {
+            clearTimeout(connectionTimeout);
             if (rfb) {
                 try { rfb.disconnect(); } catch(e){}
             }
