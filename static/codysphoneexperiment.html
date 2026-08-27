@@ -1,42 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Experiment! VNC Android onto Kindle</title>
+    <title>Masowe Sterowanie VNC (Bez Limitów)</title>
     <style>
         body { margin: 0; padding: 0; background: black; overflow: hidden; font-family: sans-serif; }
-        #setup { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.9); padding: 15px; border-radius: 5px; color: white; border: 1px solid #333; }
-        input { padding: 8px; width: 220px; background: #222; border: 1px solid #444; color: white; }
-        button { padding: 8px 12px; background: #007acc; color: white; border: none; cursor: pointer; }
-        /* Kontener na pełny ekran z VNC */
-        #vnc-screen { width: 100vw; height: 100vh; border: none; }
+        #vnc-container { width: 100vw; height: 100vh; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; }
+        #control-panel { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 6px; color: white; border: 1px solid #444; }
+        input { padding: 8px; width: 220px; background: #222; border: 1px solid #555; color: white; margin-bottom: 10px; display: block; }
+        button { padding: 8px 15px; background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; }
+        button:hover { background: #218838; }
     </style>
     <script>
-        function connectVNC() {
-            let inputUrl = document.getElementById("urlInput").value.trim();
+        function launchVNC() {
+            const host = document.getElementById("vncHost").value.trim();
+            const port = document.getElementById("vncPort").value.trim();
+            const password = document.getElementById("vncPassword").value.trim();
             
-            // Czyszczenie adresu z protokołów
-            inputUrl = inputUrl.replace("https://", "").replace("http://", "").replace("://", "");
-            if (inputUrl.endsWith("/")) inputUrl = inputUrl.slice(0, -1);
+            // Konfiguracja oficjalnej e-papierowej ramki noVNC z optymalizacją dla 50 osób
+            // Parametry: autoconnect=true (szybkie łączenie), resize=scale (skalowanie do ekranu użytkownika)
+            let noVncUrl = "https://novnc.com?" + 
+                           "host=" + host + 
+                           "&port=" + port + 
+                           "&autoconnect=true" + 
+                           "&resize=scale" + 
+                           "&reconnect=true";
             
-            // noVNC potrzebuje oficjalnej e-papierowej ramki do wyświetlenia obrazu i obsługi dotyku
-            // Łączymy się przez darmowy web-klient noVNC podając Twój tunel
-            const noVncUrl = "https://novnc.com" + inputUrl + "&port=443&autoconnect=true&encrypt=true";
+            if (password) {
+                noVncUrl += "&password=" + encodeURIComponent(password);
+            }
             
-            document.getElementById("vnc-screen").src = noVncUrl;
-            document.getElementById("setup").style.display = "none";
+            // Wstrzyknięcie zoptymalizowanego widoku do ramki
+            document.getElementById("vnc-frame").src = noVncUrl;
+            document.getElementById("control-panel").style.display = "none";
         }
     </script>
 </head>
 <body>
 
-    <div id="setup">
-        <h4 style="margin: 0 0 10px 0;">Połączenie VNC (50 osób)</h4>
-        <input type="text" id="urlInput" placeholder="Wklej link z Pinggy (np. xxxx.pgyer.link)">
-        <button onclick="connectVNC()">Połącz system</button>
+    <div id="control-panel">
+        <h3 style="margin: 0 0 12px 0; font-size: 16px;">Konfiguracja VNC Global</h3>
+        <input type="text" id="vncHost" placeholder="Adres serwera (np. vnc-proxy.freecluster.eu)">
+        <input type="text" id="vncPort" placeholder="Port (np. 25900)" value="25900">
+        <input type="password" id="vncPassword" placeholder="Hasło do UltraVNC">
+        <button onclick="launchVNC()">Uruchom transmisję i dotyk</button>
     </div>
 
-    <!-- Ramka, która automatycznie obsłuży wideo oraz kliknięcia użytkowników -->
-    <iframe id="vnc-screen" src=""></iframe>
+    <div id="vnc-container">
+        <iframe id="vnc-frame" src=""></iframe>
+    </div>
 
 </body>
 </html>
