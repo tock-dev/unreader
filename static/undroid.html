@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Un-Reader Android On Kindle Experiment - by Cody</title>
+    <style>
+        body { margin: 0; padding: 0; background: black; overflow: hidden; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #vnc-container { width: 100vw; height: 100vh; position: relative; display: none; }
+        iframe { width: 100%; height: 100%; border: none; }
+        
+        #control-panel { position: absolute; z-index: 100; background: rgba(0,0,0,0.95); padding: 25px; border-radius: 8px; color: white; border: 1px solid #333; text-align: center; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        input { padding: 10px; width: 220px; background: #222; border: 1px solid #444; color: white; margin-bottom: 15px; display: block; border-radius: 4px; text-align: center; font-size: 14px; }
+        button { padding: 12px 20px; background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; border-radius: 4px; font-size: 14px; text-transform: uppercase; }
+        button:hover { background: #218838; }
+
+        /* Styl dla komunikatu o błędzie offline */
+        #error-panel { position: absolute; z-index: 200; background: #2a0808; padding: 30px; border-radius: 8px; color: #ff6b6b; border: 2px solid #5a1818; text-align: center; max-width: 350px; display: none; box-shadow: 0 0 20px rgba(255,0,0,0.3); }
+        #error-panel h3 { margin: 0 0 10px 0; font-size: 20px; }
+        #error-panel p { margin: 0; font-size: 14px; line-height: 1.4; color: #ffb3b3; }
+    </style>
+</head>
+<body>
+
+    <!-- Panel logowania użytkownika -->
+    <div id="control-panel">
+        <h3 style="margin: 0 0 10px 0; font-size: 18px;">Remote Control Access</h3>
+        <p style="font-size: 12px; color: #aaa; margin: 0 0 20px 0;">Please enter the security password to connect:</p>
+        <input type="password" id="vncPassword" placeholder="Enter VNC Password">
+        <button onclick="launchVNC()">Connect Screen</button>
+    </div>
+
+    <!-- Własny komunikat o błędzie serwera offline -->
+    <div id="error-panel">
+        <h3>Connection Failed</h3>
+        <p>Uh, oh! It looks like Cody's server is offline! For more information ask him on chat.</p>
+    </div>
+
+    <!-- Ukryty kontener z ramką wideo i dotykiem -->
+    <div id="vnc-container">
+        <iframe id="vnc-frame" src=""></iframe>
+    </div>
+
+    <script>
+        let connectionTimeout;
+
+        function launchVNC() {
+            const host = "frp.freefrp.net";
+            const port = "38452";
+            const password = document.getElementById("vncPassword").value.trim();
+            
+            if (!password) {
+                alert("Please enter the password.");
+                return;
+            }
+
+            // noVNC parametry: chowamy UI, włączamy autoconnect i skalowanie
+            // Dodajemy parametry ukrywające domyślne ekrany ładowania noVNC
+            let noVncUrl = "https://novnc.com?" + 
+                           "host=" + host + 
+                           "&port=" + port + 
+                           "&autoconnect=true" + 
+                           "&resize=scale" + 
+                           "&reconnect=false" + // Wyłączamy ciągłe pętle rekonkcji, aby wyłapać błąd offline
+                           "&password=" + encodeURIComponent(password) +
+                           "&view_only=false";
+            
+            // Ukrywamy panel logowania i przygotowujemy ramkę
+            document.getElementById("control-panel").style.display = "none";
+            const container = document.getElementById("vnc-container");
+            const frame = document.getElementById("vnc-frame");
+            
+            frame.src = noVncUrl;
+            container.style.display = "block";
+
+            // Uruchamiamy timer (7 sekund) - jeśli serwer nie odpowie w tym czasie, wywalamy Twój błąd offline
+            connectionTimeout = setTimeout(function() {
+                // Sprawdzamy czy strona noVNC nie rzuciła błędu lub wciąż wisi na ekranie ładowania
+                container.style.display = "none";
+                document.getElementById("error-panel").style.display = "block";
+            }, 7000); 
+
+            // Nasłuchiwanie komunikatów z ramki (jeśli noVNC zgłosi udane połączenie przed upływem czasu, kasujemy błąd offline)
+            window.addEventListener('message', function(e) {
+                if (e.data && (e.data.disconnected || e.data.error)) {
+                    clearTimeout(connectionTimeout);
+                    container.style.display = "none";
+                    document.getElementById("error-panel").style.display = "block";
+                } else {
+                    // W przypadku braku błędów i poprawnego załadowania interfejsu czyścimy zabezpieczenie czasowe
+                    clearTimeout(connectionTimeout);
+                }
+            });
+        }
+
+        // Automatyczny start przy wejściu (jeśli przeglądarka zapamiętała hasło i automatycznie je uzupełni)
+        window.onload = function() {
+            setTimeout(function() {
+                const passField = document.getElementById("vncPassword");
+                if (passField.value.length > 0) {
+                    launchVNC();
+                }
+            }, 500); // Małe opóźnienie, aby dać czas przeglądarce na auto-uzupełnienie pola tekstowego
+        };
+    </script>
+</body>
+</html>
