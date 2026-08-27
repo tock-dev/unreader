@@ -1,76 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Experimental! - Android Phone through scrcpy onto Kindle</title>
+    <title>Experiment! VNC Android onto Kindle</title>
     <style>
-        body { margin: 0; padding: 0; background: black; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        
-        /* Kontener dopasowuje się do pionowego ekranu telefonu (proporcje 9:16) */
-        #phone-wrapper { 
-            position: relative; 
-            height: 100vh; 
-            aspect-ratio: 9 / 16; 
-            background: #111;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
-        }
-
-        /* VDO.ninja wypełnia tylko obszar telefonu i reaguje na kliknięcia */
-        iframe { 
-            width: 100%; 
-            height: 100%; 
-            border: none; 
-            cursor: pointer;
-        }
-
-        #setup { position: absolute; top: 10px; left: 10px; z-index: 20; background: rgba(0,0,0,0.9); padding: 15px; border-radius: 5px; color: white; border: 1px solid #333; }
-        input { padding: 8px; width: 200px; background: #222; border: 1px solid #444; color: white; }
+        body { margin: 0; padding: 0; background: black; overflow: hidden; font-family: sans-serif; }
+        #setup { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.9); padding: 15px; border-radius: 5px; color: white; border: 1px solid #333; }
+        input { padding: 8px; width: 220px; background: #222; border: 1px solid #444; color: white; }
         button { padding: 8px 12px; background: #007acc; color: white; border: none; cursor: pointer; }
+        /* Kontener na pełny ekran z VNC */
+        #vnc-screen { width: 100vw; height: 100vh; border: none; }
     </style>
     <script>
-        let serverUrl = "";
-
-        function connectServer() {
+        function connectVNC() {
             let inputUrl = document.getElementById("urlInput").value.trim();
-            if (!inputUrl.startsWith("https://") && !inputUrl.startsWith("http://")) {
-                inputUrl = "https://" + inputUrl;
-            }
+            
+            // Czyszczenie adresu z protokołów
+            inputUrl = inputUrl.replace("https://", "").replace("http://", "").replace("://", "");
             if (inputUrl.endsWith("/")) inputUrl = inputUrl.slice(0, -1);
-            serverUrl = inputUrl;
+            
+            // noVNC potrzebuje oficjalnej e-papierowej ramki do wyświetlenia obrazu i obsługi dotyku
+            // Łączymy się przez darmowy web-klient noVNC podając Twój tunel
+            const noVncUrl = "https://novnc.com" + inputUrl + "&port=443&autoconnect=true&encrypt=true";
+            
+            document.getElementById("vnc-screen").src = noVncUrl;
             document.getElementById("setup").style.display = "none";
-        }
-
-        function sendClick(event) {
-            if (!serverUrl) return;
-
-            // Kliknięcie łapiemy bezpośrednio z ramki wideo telefonu, ignorując czarne pasy z boku monitora
-            var frame = document.getElementById("video-frame");
-            var rect = frame.getBoundingClientRect();
-            
-            var relX = (event.clientX - rect.left) / rect.width;
-            var relY = (event.clientY - rect.top) / rect.height;
-
-            // Zabezpieczenie przed kliknięciami minimalnie poza obszarem
-            if (relX < 0 || relX > 1 || relY < 0 || relY > 1) return;
-            
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", serverUrl + "/click?x=" + relX + "&y=" + relY, true);
-            xhr.send();
         }
     </script>
 </head>
 <body>
 
     <div id="setup">
-        <h4 style="margin: 0 0 10px 0;">Sterowanie dla 50 osób</h4>
-        <input type="text" id="urlInput" placeholder="Wklej link z Pinggy (pgyer.link)">
-        <button onclick="connectServer()">Połącz</button>
+        <h4 style="margin: 0 0 10px 0;">Połączenie VNC (50 osób)</h4>
+        <input type="text" id="urlInput" placeholder="Wklej link z Pinggy (np. xxxx.pgyer.link)">
+        <button onclick="connectVNC()">Połącz system</button>
     </div>
 
-    <!-- Kontener trzymający idealne proporcje smartfona -->
-    <div id="phone-wrapper">
-        <!-- ZAMIEŃ PONIŻSZY URL NA SWÓJ LINK Z VDO.NINJA -->
-        <iframe id="video-frame" src="https://vdo.ninja" onclick="sendClick(event)"></iframe>
-    </div>
+    <!-- Ramka, która automatycznie obsłuży wideo oraz kliknięcia użytkowników -->
+    <iframe id="vnc-screen" src=""></iframe>
 
 </body>
 </html>
