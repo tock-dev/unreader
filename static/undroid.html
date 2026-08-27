@@ -42,9 +42,8 @@
         var connectionTimeout;
 
         function launchVNC() {
-            // KROK 2A: TUTAJ WPISZ SWÓJ NOWY ADRES HOST I PORT Z NGROKA Z KROKU 1:
-            var host = "4.tcp.ngrok.io"; 
-            var port = "12345"; 
+            // WBITE NA SZTYWNO: Twój unikalny link z tunelu Cloudflare
+            var cloudflareUrl = "sources-continental-objectives-corresponding.trycloudflare.com"; 
             
             var password = document.getElementById("vncPassword").value.trim();
             
@@ -56,10 +55,11 @@
             document.getElementById("control-panel").style.display = "none";
             document.getElementById("loading-panel").style.display = "block";
 
-            // Używamy bezpiecznego wss:// połączonego ze specjalną darmową bramką Ngrok
-            var wsUrl = "wss://" + host + ":" + port + "/";
+            // Łączymy się przez wss:// (Szyfrowany, bezpieczny WebSocket z tunelu Cloudflare)
+            var wsUrl = "wss://" + cloudflareUrl + "/";
 
-            connectionTimeout = setTimeout(showOfflineError, 9000); // Zwiększamy czas do 9s dla Paragwaju
+            // Timer bezpieczeństwa (9 sekund, żeby dać czas na trasę z Paragwaju)
+            connectionTimeout = setTimeout(showOfflineError, 9000); 
 
             try {
                 rfb = new window.NoVNC.RFB(document.getElementById('vnc-target'), wsUrl, {
