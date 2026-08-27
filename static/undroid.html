@@ -1,48 +1,40 @@
-const express = require('express');
-const app = express();
-const path = require('path');
-const PORT = process.env.PORT || 10000;
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Un-Droid - P2P SYSTEM</title>
+    <style>
+        body { margin: 0; padding: 0; background: black; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #phone-screen { height: 100vh; aspect-ratio: 9 / 16; background: #000; position: relative; }
+        img { width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
+    </style>
+    <script>
+        // Automatyczne odświeżanie obrazu bez używania strumieni multipart, których Kindle nie lubi
+        setInterval(function() {
+            var img = document.getElementById("live-stream-img");
+            img.src = "/video_feed?t=" + new Date().getTime();
+        }, 70);
 
-let latestFrame = null;
-let pendingClicks = [];
+        function handleScreenClick(event) {
+            var imageElement = document.getElementById("live-stream-img");
+            var rect = imageElement.getBoundingClientRect();
+            
+            var relativeX = (event.clientX - rect.left) / rect.width;
+            var relativeY = (event.clientY - rect.top) / rect.height;
+            
+            if (relativeX < 0 || relativeX > 1 || relativeY < 0 || relativeY > 1) return;
+            
+            // Wysłanie kliknięcia na serwer Render
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "/click?x=" + relativeX + "&y=" + relativeY, true);
+            xhr.send();
+        }
+    </script>
+</head>
+<body>
 
-app.use(express.raw({ type: 'image/jpeg', limit: '10mb' }));
-app.use(express.json());
+    <div id="phone-screen">
+        <img id="live-stream-img" src="/video_feed" onclick="handleScreenClick(event)">
+    </div>
 
-// Odbieranie klatek wideo wysyłanych z Twojego komputera
-app.post('/upload_frame', (req, res) => {
-    latestFrame = req.body;
-    res.send("OK");
-});
-
-// Wyświetlanie aktualnego obrazu użytkownikom na Kindle i PC
-app.get('/video_feed', (req, res) => {
-    if (!latestFrame) {
-        res.status(404).send("No frame available");
-        return;
-    }
-    res.writeHead(200, {
-        'Content-Type': 'image/jpeg',
-        'Content-Length': latestFrame.length
-    });
-    res.end(latestFrame);
-});
-
-// Zapisywanie kliknięć od użytkowników ze strony
-app.get('/click', (req, res) => {
-    pendingClicks.push({ x: req.query.x, y: req.query.y });
-    res.send("OK");
-});
-
-// Oddawanie zgromadzonych kliknięć do Twojego skryptu Pythona
-app.get('/get_clicks', (req, res) => {
-    res.json(pendingClicks);
-    pendingClicks = []; // Czyszczenie kolejki
-});
-
-// Serwowanie głównego pliku strony
-app.get('/droid', (req, res) => {
-    res.sendFile(path.join(__dirname, 'undroid.html'));
-});
-
-app.listen(PORT, () => console.log(`Server streaming on port ${PORT}`));
+</body>
+</html>
