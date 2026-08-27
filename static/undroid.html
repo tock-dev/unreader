@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>VNC Remote Control System</title>
+    <title>Un-Droid - EXPERIMENTAL - by Cody</title>
     <style>
         body { margin: 0; padding: 0; background: black; overflow: hidden; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
         
@@ -59,9 +59,9 @@
             document.getElementById("control-panel").style.display = "none";
             document.getElementById("loading-panel").style.display = "block";
 
-            // WYJAŚNIENIE: Ponieważ Render blokuje zwykły ruch TCP, przepuszczamy sygnał przez 
-            // darmowy, publiczny mostek websockify (wsgate), który bez problemu obsługuje protokół bezpieczny wss://
-            const wsUrl = `wss://wsgate.ecw.cloud/?host=${host}&port=${port}`;
+            // Łączymy się BEZPOŚREDNIO do Twojego komputera przez nieszyfrowany WebSocket (ws://), 
+            // ponieważ darmowe serwery frp przesyłają ruch 1:1 bez certyfikatów SSL
+            const wsUrl = `ws://${host}:${port}/`;
 
             try {
                 rfb = new RFB(document.getElementById('vnc-target'), wsUrl, {
@@ -89,7 +89,6 @@
                 showOfflineError();
             }
 
-            // Oczekiwanie na połączenie (7 sekund)
             connectionTimeout = setTimeout(showOfflineError, 7000);
         };
 
@@ -101,15 +100,6 @@
             document.getElementById("vnc-target").style.display = "none";
             document.getElementById("error-panel").style.display = "block";
         }
-
-        window.onload = function() {
-            setTimeout(function() {
-                const passField = document.getElementById("vncPassword");
-                if (passField && passField.value.length > 0) {
-                    window.launchVNC();
-                }
-            }, 500); 
-        };
     </script>
 </body>
 </html>
