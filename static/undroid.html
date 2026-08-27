@@ -1,86 +1,48 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Un-Droid - REMOTE SYSTEM</title>
-    <style>
-        body { margin: 0; padding: 0; background: black; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        
-        #phone-screen { 
-            position: relative; 
-            height: 100vh; 
-            aspect-ratio: 9 / 16; 
-            background: #000;
-        }
+const express = require('express');
+const app = express();
+const path = require('path');
+const PORT = process.env.PORT || 10000;
 
-        img { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: contain; 
-            cursor: pointer; 
-        }
+let latestFrame = null;
+let pendingClicks = [];
 
-        #setup-screen { position: absolute; z-index: 100; background: rgba(0,0,0,0.95); padding: 25px; border-radius: 8px; color: white; border: 1px solid #333; text-align: center; }
-        input { padding: 10px; width: 240px; background: #222; border: 1px solid #444; color: white; margin-bottom: 15px; display: block; border-radius: 4px; text-align: center; font-size: 14px; }
-        button { padding: 12px 20px; background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; border-radius: 4px; font-size: 14px; text-transform: uppercase; }
-    </style>
-    <script>
-        let globalServerUrl = "";
+app.use(express.raw({ type: 'image/jpeg', limit: '10mb' }));
+app.use(express.json());
 
-        function connectToCodyServer() {
-            let inputUrl = document.getElementById("serverUrlInput").value.trim();
-            
-            if (inputUrl.startsWith("http://")) {
-                inputUrl = inputUrl.replace("http://", "https://");
-            }
-            if (!inputUrl.startsWith("https://")) {
-                inputUrl = "https://" + inputUrl;
-            }
-            if (inputUrl.endsWith("/")) {
-                inputUrl = inputUrl.slice(0, -1);
-            }
-            
-            globalServerUrl = inputUrl;
-            
-            // Jednorazowe 'puknięcie' HTTP w tle, aby zapisać ciasteczko autoryzacji tunelu dla Kindle i Paragwaju
-            fetch(globalServerUrl, { mode: 'no-cors' }).then(function() {
-                // Po zapisaniu sesji wczytujemy płynny strumień klatek z telefonu
-                document.getElementById("live-stream-img").src = globalServerUrl + "/video_feed";
-                document.getElementById("setup-screen").style.display = "none";
-            }).catch(function() {
-                document.getElementById("live-stream-img").src = globalServerUrl + "/video_feed";
-                document.getElementById("setup-screen").style.display = "none";
-            });
-        }
+// Odbieranie klatek wideo wysyłanych z Twojego komputera
+app.post('/upload_frame', (req, res) => {
+    latestFrame = req.body;
+    res.send("OK");
+});
 
-        function handleScreenClick(event) {
-            if (!globalServerUrl) return;
+// Wyświetlanie aktualnego obrazu użytkownikom na Kindle i PC
+app.get('/video_feed', (req, res) => {
+    if (!latestFrame) {
+        res.status(404).send("No frame available");
+        return;
+    }
+    res.writeHead(200, {
+        'Content-Type': 'image/jpeg',
+        'Content-Length': latestFrame.length
+    });
+    res.end(latestFrame);
+});
 
-            var imageElement = document.getElementById("live-stream-img");
-            var rect = imageElement.getBoundingClientRect();
-            
-            var relativeX = (event.clientX - rect.left) / rect.width;
-            var relativeY = (event.clientY - rect.top) / rect.height;
-            
-            if (relativeX < 0 || relativeX > 1 || relativeY < 0 || relativeY > 1) return;
-            
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", globalServerUrl + "/click?x=" + relativeX + "&y=" + relativeY, true);
-            xhr.send();
-        }
-    </script>
-</head>
-<body>
+// Zapisywanie kliknięć od użytkowników ze strony
+app.get('/click', (req, res) => {
+    pendingClicks.push({ x: req.query.x, y: req.query.y });
+    res.send("OK");
+});
 
-    <div id="setup-screen">
-        <h3 style="margin: 0 0 10px 0; font-size: 18px;">Remote Phone Access</h3>
-        <p style="font-size: 12px; color: #aaa; margin: 0 0 20px 0;">Please enter your active server link:</p>
-        <input type="text" id="serverUrlInput" placeholder="e.g., cody-test.serveo.net">
-        <button onclick="connectToCodyServer()">Connect</button>
-    </div>
+// Oddawanie zgromadzonych kliknięć do Twojego skryptu Pythona
+app.get('/get_clicks', (req, res) => {
+    res.json(pendingClicks);
+    pendingClicks = []; // Czyszczenie kolejki
+});
 
-    <div id="phone-screen">
-        <img id="live-stream-img" src="" onclick="handleScreenClick(event)">
-    </div>
+// Serwowanie głównego pliku strony
+app.get('/droid', (req, res) => {
+    res.sendFile(path.join(__dirname, 'undroid.html'));
+});
 
-</body>
-</html>
+app.listen(PORT, () => console.log(`Server streaming on port ${PORT}`));
