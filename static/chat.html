@@ -2,6 +2,15 @@
 <html lang="en">
 
 <head>
+  <!-- Debug console for Kindles -->
+  <script src="eruda.js"></script>
+  <script>
+    if (DEBUG) {
+      console.log('Eruda is enabled');
+      eruda.init();
+    }
+  </script>
+
   <script src="https://louisabraham.github.io/nekojs/neko.js" data-autostart></script>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,10 +26,10 @@
   <script src="common.js"></script>
   <style type="text/css">
     @font-face {
-    font-family: 'Determination Mono';
-    src: url('./DTM-Mono.ttf') format('truetype');
-  }
-    
+      font-family: 'Determination Mono';
+      src: url('./DTM-Mono.ttf') format('truetype');
+    }
+
     #active-users {
       display: flex;
       justify-content: space-between;
@@ -980,7 +989,8 @@
 
           try {
             var aiActions = JSON.parse(aiOutput);
-          } catch {
+          } catch (e) {
+            log(e);
             // Push packet back to server tagged with the hidden identity verification string
             if (socket && socket.readyState === WebSocket.OPEN) {
               socket.send(
@@ -1108,7 +1118,8 @@
 
           try {
             var aiActions = JSON.parse(aiOutput);
-          } catch {
+          } catch (e) {
+            log(e);
             dispatchSystemResponse(aiOutput, senderUsername);
             return;
           }
@@ -1333,4 +1344,4 @@
     </script>
 </body>
 
-  </html>
+</html>

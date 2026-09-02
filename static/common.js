@@ -6,7 +6,7 @@ var BACKEND_URL = DEBUG
   : window.location.origin;
 var WS_URL = DEBUG
   ? 'ws://192.168.100.64:80'
-  : window.location.origin;
+  : window.location.origin.replace('https', 'wss').replace('http', 'ws');
 
 function log(...args) {
   if (DO_LOGGING) console.log(`[CLIENT]`, ...args);

@@ -145,7 +145,7 @@ initDatabase();
 
 const app = express();
 app.set('trust proxy', true);
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.static('./static/'));
 
@@ -738,7 +738,7 @@ wss.on('connection', (ws, req) => {
             : data.type === 'dm'
               ? 'dm'
               : data.type === 'neighborhood_post' ||
-                  data.type === 'neighborhood_comment'
+                data.type === 'neighborhood_comment'
                 ? 'neighborhood'
                 : 'public';
         const target = data.target || data.slug || '';
