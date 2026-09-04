@@ -44,6 +44,6 @@ Brought to life by the core engineering and design team:
 
 Special thanks and appreciation to:
 
-- **[KodiGamingYT](https://github.com/KodiGamingYT)** — Designed and developed the updated homepage dashboard (`index.html`), introducing unified styling, preferences, and modular portal cards.
+- **[KodiGamingYT](https://github.com/KodiGamingYT)** — Designed and developed the updated homepage dashboard (`index.html`), introducing unified styling, preferences, and modular portal cards and creating un-droid vm streaming cloud for un-reader.
 
 - **[SuprUsr124](https://github.com/SuprUsr123)** — Beta Tester, Maintainer (tock almost left the site 4 dead, at least he got his mac back and fixed bugs), Oregon Trail (Kindle Web Port), Reversi (Kindle Web Port), Rewrote Pokedex, and very minor additions.
