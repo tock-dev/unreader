@@ -44,6 +44,10 @@ Brought to life by the core engineering and design team:
 
 Special thanks and appreciation to:
 
-- **[KodiGamingYT](https://github.com/KodiGamingYT)** — Designed and developed the updated homepage dashboard (`index.html`), introducing unified styling, preferences, and modular portal cards and un-droid cloud streaming (it's his device lmaooooo)
+- **[KodiGamingYT](https://github.com/KodiGamingYT)** — Designed and developed the updated homepage dashboard (`index.html`), introducing unified styling, preferences, and modular portal cards.
+On another note, he added a streaming system. It's not in use right now, and probably never will. Just like the dark mode.
 
 - **[SuprUsr124](https://github.com/SuprUsr123)** — Beta Tester, Maintainer (tock almost left the site 4 dead, at least he got his mac back and fixed bugs), Oregon Trail (Kindle Web Port), Reversi (Kindle Web Port), Rewrote Pokedex, and very minor additions.
+
+
+## Also when can we recruit more this is might put some stress on full time maintenance later (hinting at @blockwobble and @snipecut13 and their RK fork)
