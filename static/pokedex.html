@@ -290,7 +290,7 @@
 
     <script>
         // ---- Config ----
-        const CACHE_KEY = 'pokedex-national-dex-v1';
+        const CACHE_KEY = 'pokedex-national-dex-v2'; //there's your goat clodsire @jadeleaf, along with other fan favourites from... why the hell are the later gens so mid
         const PAGE_SIZE = 60;        // how many rows we build at once
         const SEARCH_DEBOUNCE_MS = 200;
         const STAT_MAX = 200;        // scale for the base-stat bars
@@ -332,8 +332,9 @@
             }
 
             try {
-                // Fetch first 898 canonical National Pokédex entries (Generations 1-8)
-                const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=898');
+                // Upped the limits, @jadeleaf can finally get what he wanted.
+                // but like, what the fuck were Nintendo and Game Freak on to make these games so bland
+                const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025');
                 if (!response.ok) throw new Error("Network issue");
                 const data = await response.json();
 
