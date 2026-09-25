@@ -35,7 +35,7 @@ go to: https://unreader-v4yf.onrender.com
 Brought to life by the core engineering and design team:
 
 - **[tock-dev](https://github.com/tock-dev)**
-- **[HackerAUG](https://github.com/HackerAUG)**
+- ~**[HackerAUG](https://github.com/HackerAUG)**~ Removed from dev team after some drama. He kinda just threatened us to delete the entire project.
 - **[KodiGamingYT](https://github.com/KodiGamingYT)**
 
 ---
