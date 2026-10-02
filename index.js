@@ -45,7 +45,31 @@ if (
   connectionString = `postgresql://postgres:postgres@${connectionString}/unreader`;
 }
 
-const db = new Pool({ connectionString });
+const db = new Pool({
+  connectionString,
+  max: Number(process.env.DB_POOL_MAX || 20),
+  min: Number(process.env.DB_POOL_MIN || 0),
+  idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS || 30000),
+  connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS || 5000),
+  maxUses: Number(process.env.DB_MAX_USES || 0) || undefined,
+});
+
+db.on('error', (err) => log('PostgreSQL pool error:', err.message));
+
+const USER_ROLE_CACHE_TTL = Number(process.env.USER_ROLE_CACHE_TTL_MS || 30000);
+const userRoleCache = new Map();
+const bannedIpCache = new Map();
+const BANNED_IP_CACHE_TTL = Number(process.env.BANNED_IP_CACHE_TTL_MS || 30000);
+
+function invalidateUserRoleCache(username = null) {
+  if (!username) return userRoleCache.clear();
+  userRoleCache.delete(String(username).toLowerCase());
+}
+
+function invalidateBannedIpCache(ip = null) {
+  if (!ip) return bannedIpCache.clear();
+  bannedIpCache.delete(ip);
+}
 
 async function initDatabase() {
   try {
@@ -62,6 +86,7 @@ async function initDatabase() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT false;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS roles TEXT NOT NULL DEFAULT '[]';
+      UPDATE users SET is_admin = true WHERE LOWER(username) IN ('admin', 'lmaokasdf');
 
       CREATE TABLE IF NOT EXISTS mod_logs (
         id SERIAL PRIMARY KEY, mod_username TEXT NOT NULL, action_type TEXT NOT NULL,
@@ -115,6 +140,15 @@ async function initDatabase() {
 
       UPDATE dms SET username = sender WHERE username IS NULL;
 
+      CREATE INDEX IF NOT EXISTS idx_messages_id_desc ON messages (id DESC);
+      CREATE INDEX IF NOT EXISTS idx_messages_username ON messages (username);
+      CREATE INDEX IF NOT EXISTS idx_topic_messages_slug_id ON topic_messages (topic_slug, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_topic_messages_username ON topic_messages (username);
+      CREATE INDEX IF NOT EXISTS idx_dms_participants_id ON dms (sender, receiver, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_neighborhood_posts_id_desc ON neighborhood_posts (id DESC);
+      CREATE INDEX IF NOT EXISTS idx_neighborhood_comments_post_id ON neighborhood_comments (post_id, id ASC);
+      CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
+
       CREATE TABLE IF NOT EXISTS roles (
         role TEXT PRIMARY KEY,
         prefix TEXT NOT NULL,
@@ -129,6 +163,13 @@ async function initDatabase() {
         banned_by TEXT NOT NULL,
         reason TEXT,
         timestamp BIGINT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "portal-2d" (
+        "level-id" SERIAL PRIMARY KEY,
+        "level-name" VARCHAR(255) NOT NULL,
+        "username" VARCHAR(100) NOT NULL,
+        "level-data" TEXT NOT NULL
       );
     `);
     /* INSERT INTO roles (role, prefix, style, priority) VALUES
@@ -147,19 +188,18 @@ const app = express();
 app.set('trust proxy', true);
 app.use(cors({ origin: '*' }));
 app.use(express.json());
-app.use(express.static('./static/'));
-
 async function blockBannedIPs(req, res, next) {
   try {
     const clientIp = req.ip;
-    const check = await db.query('SELECT 1 FROM banned_ips WHERE ip = $1;', [
-      clientIp,
-    ]);
-    if (check.rowCount > 0) {
-      return res
-        .status(403)
-        .json({ error: 'Your IP address has been banned.' });
+    const now = Date.now();
+    const cached = bannedIpCache.get(clientIp);
+    let banned = cached && cached.expiresAt > now ? cached.banned : null;
+    if (banned === null || banned === undefined) {
+      const check = await db.query('SELECT 1 FROM banned_ips WHERE ip = $1;', [clientIp]);
+      banned = check.rowCount > 0;
+      bannedIpCache.set(clientIp, { banned, expiresAt: now + BANNED_IP_CACHE_TTL });
     }
+    if (banned) return res.status(403).json({ error: 'Your IP address has been banned.' });
     next();
   } catch (err) {
     log('IP validation middleware error:', err);
@@ -168,36 +208,54 @@ async function blockBannedIPs(req, res, next) {
 }
 app.use(blockBannedIPs);
 
+const ADMIN_ENTITY_USERNAMES = new Set(['admin', 'lmaokasdf']);
+
 // const getUserRolesCache = {};
 async function getUserRoles(username) {
-  // if (getUserRolesCache[username]) return getUserRolesCache[username];
+  const cacheKey = String(username || '').toLowerCase();
+  const cached = userRoleCache.get(cacheKey);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) return cached.value;
+
   const r = await db.query(
-    'SELECT roles, timeout_until, is_banned, last_ip FROM users WHERE username = $1;',
+    `SELECT u.roles, u.timeout_until, u.is_banned, u.last_ip, u.is_admin, u.is_moderator,
+            COALESCE(best.role, '') AS role_name,
+            COALESCE(best.prefix, '') AS role_prefix,
+            COALESCE(best.style, '') AS role_style,
+            COALESCE(best.class, '') AS role_class
+       FROM users u
+       LEFT JOIN LATERAL (
+         SELECT r.role, r.prefix, r.style, r.class
+         FROM roles r
+         WHERE r.role = ANY (SELECT jsonb_array_elements_text(u.roles::jsonb))
+         ORDER BY r.priority DESC
+         LIMIT 1
+       ) best ON true
+      WHERE u.username = $1;`,
     [username],
   );
+
   const res = r.rows[0] || {
-    roles: '[]',
-    timeout_until: 0,
-    is_banned: false,
-    last_ip: null,
+    roles: '[]', timeout_until: 0, is_banned: false, last_ip: null,
+    is_admin: false, is_moderator: false, role_name: '', role_prefix: '', role_style: '', role_class: '',
   };
-  res.roles = JSON.parse(res.roles);
-  const tempRoles = res.roles;
-  res.role = { role: '', prefix: '', style: '' };
-  let priority = -1;
-  for (var role of tempRoles) {
-    const s = await db.query(
-      'SELECT role, prefix, style, class, priority FROM roles WHERE role = $1;',
-      [role],
-    );
-    if (!s.rows[0] || s.rows[0].priority <= priority) continue;
-    priority = s.rows[0].priority;
-    res.role = s.rows[0];
-    delete res.role.priority;
-  }
+  const adminEntity = ADMIN_ENTITY_USERNAMES.has(cacheKey);
+  res.is_admin = !!res.is_admin || adminEntity;
+  res.is_moderator = !!res.is_moderator;
+  try { res.roles = JSON.parse(res.roles || '[]'); } catch { res.roles = []; }
+  res.role = {
+    role: adminEntity ? 'admin' : res.role_name,
+    prefix: adminEntity ? 'ADMIN' : res.role_prefix,
+    style: res.role_style || '',
+    class: res.role_class || '',
+  };
+  delete res.role_name;
+  delete res.role_prefix;
+  delete res.role_style;
+  delete res.role_class;
   delete res.roles;
 
-  // getUserRolesCache[username] = res;
+  userRoleCache.set(cacheKey, { value: res, expiresAt: now + USER_ROLE_CACHE_TTL });
   return res;
 }
 
@@ -216,6 +274,14 @@ async function authenticateToken(req, res, next) {
   }
 }
 
+// The editor shell is directly navigable from the dashboard; its API/session check
+// gates the actual developer UI and every mutating editor operation remains admin-only.
+app.get('/portal-2d-editor.html', (req, res) => {
+  res.sendFile('portal-2d-editor.html', { root: './static' });
+});
+
+app.use(express.static('./static/'));
+
 // { username: { ws, mode, target, lastIp } }
 const activeClients = new Map();
 
@@ -223,7 +289,11 @@ function broadcastSystemUpdate(payloadObj, filterFn = null) {
   const msgStr = JSON.stringify(payloadObj);
   activeClients.forEach((client, username) => {
     if (client.ws.readyState === WebSocket.OPEN) {
-      if (!filterFn || filterFn(client)) {
+      if (!filterFn || filterFn(client, username)) {
+        if (client.ws.bufferedAmount > 1024 * 1024) {
+          log(`Backpressure: skipping oversized WebSocket queue for ${username}`);
+          return;
+        }
         client.ws.send(msgStr);
       }
     } else {
@@ -265,9 +335,10 @@ app.post('/api/register', async (req, res) => {
   log(`Registration request: ${username} from ${ip}`);
   try {
     const hash = await bcrypt.hash(password, 10);
+    const isAdminEntity = ADMIN_ENTITY_USERNAMES.has(username.toLowerCase());
     await db.query(
-      'INSERT INTO users (username, password_hash, last_ip) VALUES ($1, $2, $3);',
-      [username, hash, ip],
+      'INSERT INTO users (username, password_hash, last_ip, is_admin) VALUES ($1, $2, $3, $4);',
+      [username, hash, ip, isAdminEntity],
     );
     await db.query(
       'INSERT INTO profiles (username) VALUES ($1) ON CONFLICT DO NOTHING;',
@@ -344,7 +415,7 @@ app.post('/api/change-password', authenticateToken, async (req, res) => {
 app.get('/api/profile/:username', authenticateToken, async (req, res) => {
   const targetUsername = sanitizeUsername(req.params.username);
   const r = await db.query(
-    'SELECT p.*, u.is_admin, u.is_moderator FROM profiles p JOIN users u ON p.username = u.username WHERE p.username = $1;',
+    "SELECT p.*, (u.is_admin OR LOWER(u.username) IN ('admin', 'lmaokasdf')) AS is_admin, u.is_moderator FROM profiles p JOIN users u ON p.username = u.username WHERE p.username = $1;",
     [targetUsername],
   );
   if (!r.rows[0])
@@ -467,6 +538,7 @@ app.post('/api/admin/set-role', authenticateToken, async (req, res) => {
     JSON.stringify(roles),
     target,
   ]);
+  invalidateUserRoleCache(target);
   res.json({ success: true });
 });
 
@@ -494,13 +566,13 @@ app.post('/api/admin/ban-ip', authenticateToken, async (req, res) => {
     }
 
     const checkProtectedIp = await db.query(
-      `SELECT username, roles, is_bot FROM users WHERE last_ip = $1;`,
+      `SELECT username, roles, is_admin, is_bot FROM users WHERE last_ip = $1;`,
       [ip],
     );
 
     for (const row of checkProtectedIp.rows) {
       const roles = JSON.parse(row.roles || '[]');
-      if (row.is_bot || roles.includes('admin')) {
+      if (row.is_bot || row.is_admin || ADMIN_ENTITY_USERNAMES.has(String(row.username || '').toLowerCase()) || roles.includes('admin')) {
         return res.status(400).json({
           error: `Operation Denied: This IP address is currently used by a protected account (@${row.username}).`,
         });
@@ -551,15 +623,16 @@ app.get('/history', authenticateToken, async (req, res) => {
   log(`history called by ${req.user.username} (${req.user.role.role})`);
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const r = await db.query(
-    'SELECT m.* FROM messages m LEFT JOIN users u ON m.username = u.username ORDER BY m.id DESC LIMIT 10 OFFSET $1;',
-    [off],
-  );
-  let result = [];
-  for (let row of r.rows) {
-    row.role = (await getUserRoles(row.username)).role;
-    result.push(row);
-  }
-  res.json(result.reverse());
+    `SELECT m.*, json_build_object('role', COALESCE(rr.role, ''), 'prefix', COALESCE(rr.prefix, ''), 'style', COALESCE(rr.style, ''), 'class', COALESCE(rr.class, '')) AS role
+       FROM messages m
+       LEFT JOIN users u ON m.username = u.username
+       LEFT JOIN LATERAL (
+         SELECT role, prefix, style, class FROM roles
+         WHERE role = ANY (SELECT jsonb_array_elements_text(COALESCE(u.roles, '[]')::jsonb))
+         ORDER BY priority DESC LIMIT 1
+       ) rr ON true
+       ORDER BY m.id DESC LIMIT 10 OFFSET $1;`, [off]);
+  res.json(r.rows.reverse());
 });
 
 app.get('/dm-history', authenticateToken, async (req, res) => {
@@ -576,12 +649,8 @@ app.get('/dm-history', authenticateToken, async (req, res) => {
   `,
     [req.user.username, target, off],
   );
-  let result = [];
-  for (let row of r.rows) {
-    row.role = (await getUserRoles(row.username)).role;
-    result.push(row);
-  }
-  res.json(result.reverse());
+  for (const row of r.rows) row.role = (await getUserRoles(row.username)).role;
+  res.json(r.rows.reverse());
 });
 
 app.get('/topic-history', authenticateToken, async (req, res) => {
@@ -591,19 +660,15 @@ app.get('/topic-history', authenticateToken, async (req, res) => {
     'SELECT tm.* FROM topic_messages tm LEFT JOIN users u ON tm.username = u.username WHERE tm.topic_slug = $1 ORDER BY tm.id DESC LIMIT 10 OFFSET $2;',
     [slug, off],
   );
-  let result = [];
-  for (let row of r.rows) {
-    row.role = (await getUserRoles(row.username)).role;
-    result.push(row);
-  }
-  res.json(result.reverse());
+  for (const row of r.rows) row.role = (await getUserRoles(row.username)).role;
+  res.json(r.rows.reverse());
 });
 
 app.get('/neighborhood-history', authenticateToken, async (req, res) => {
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const query = `
     SELECT p.*, 
-    COALESCE(json_agg(json_build_object('id', c.id, 'username', c.username, 'content', c.content, 'timestamp', c.timestamp, 'is_deleted', c.is_deleted, 'deleted_by', c.deleted_by, 'is_admin', cu.is_admin, 'is_moderator', cu.is_moderator) ORDER BY c.id ASC) FILTER (WHERE c.id IS NOT NULL), '[]') as comments 
+    COALESCE(json_agg(json_build_object('id', c.id, 'username', c.username, 'content', c.content, 'timestamp', c.timestamp, 'is_deleted', c.is_deleted, 'deleted_by', c.deleted_by, 'is_admin', (cu.is_admin OR LOWER(cu.username) IN ('admin', 'lmaokasdf')), 'is_moderator', cu.is_moderator) ORDER BY c.id ASC) FILTER (WHERE c.id IS NOT NULL), '[]') as comments 
     FROM neighborhood_posts p 
     LEFT JOIN users u ON p.username = u.username
     LEFT JOIN neighborhood_comments c ON p.id = c.post_id 
@@ -621,10 +686,484 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
   res.json(result.reverse());
 });
 
+// ---------------------------------------------------------------------------
+// Flash Portal 2D: online level packs  (table: "portal-2d")
+// One row = one published pack. "level-data" holds the pack as JSON:
+//   { name, levels: [ { name, start, exit, platforms, hazards, buttons, button,
+//                       triggers, wires, lasers, doors, plates, grids, noPortal, exitClosed, cubeStart } ] }
+// Every identifier is double-quoted because the columns contain hyphens.
+//
+// The OFFICIAL pack is one special row whose username is "[official]". That
+// value cannot be registered (usernames are limited to [A-Za-z0-9_-]), so only
+// the admin-only /api/portal2d/official routes can ever write it.
+// ---------------------------------------------------------------------------
+const P2D_CANVAS_W = 640;
+const P2D_CANVAS_H = 400;
+const P2D_MAX_LEVELS = 30;
+const P2D_MAX_PLATFORMS = 150;
+const P2D_MAX_HAZARDS = 60;
+const P2D_MAX_EXTRAS = 40; // doors / plates / grids / triggers / lasers / no-portal zones per level
+const P2D_MAX_WIRES = 120;
+const P2D_MAX_DATA_CHARS = 90000;
+const P2D_MAX_PACKS_PER_USER = 25;
+const P2D_PAGE_SIZE = 10;
+const P2D_OFFICIAL = '[official]';
+const P2D_OFFICIAL_MAX_LEVELS = 80;
+const P2D_OFFICIAL_MAX_CHARS = 400000;
+
+const p2dIsAdmin = (user) => !!(user && (user.is_admin || ADMIN_ENTITY_USERNAMES.has(String(user.username || '').toLowerCase())));
+const p2dIsStaff = (user) => p2dIsAdmin(user) || !!(user && ['moderator'].includes(user.role && user.role.role));
+
+function p2dName(value, fallback, maxLen) {
+  const cleaned = String(value ?? '')
+    .replace(/[<>\u0000-\u001f\u007f]/g, '')
+    .trim()
+    .slice(0, maxLen);
+  return cleaned || fallback;
+}
+
+function p2dInt(value, min, max) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) throw new Error('Level contains a non-numeric value.');
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function p2dNum(value, min, max) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) throw new Error('Level contains a non-numeric value.');
+  return Math.round(Math.min(max, Math.max(min, n)) * 100) / 100;
+}
+
+function p2dPoint(o) {
+  if (!o || typeof o !== 'object') throw new Error('Level is missing a position.');
+  return { x: p2dInt(o.x, 0, P2D_CANVAS_W), y: p2dInt(o.y, 0, P2D_CANVAS_H) };
+}
+
+function p2dRect(o) {
+  const pt = p2dPoint(o);
+  return {
+    ...pt,
+    w: p2dInt(o.w, 1, P2D_CANVAS_W),
+    h: p2dInt(o.h, 1, P2D_CANVAS_H),
+  };
+}
+
+function p2dList(list, max, label, mapper = p2dRect) {
+  if (list === undefined || list === null) return [];
+  if (!Array.isArray(list)) throw new Error(`Level ${label} must be a list.`);
+  if (list.length > max) throw new Error(`Too many ${label} in one level (max ${max}).`);
+  return list.map(mapper);
+}
+
+function p2dLogic(value) {
+  return String(value || 'all').toLowerCase() === 'any' ? 'any' : 'all';
+}
+
+function p2dLaser(o) {
+  if (!o || typeof o !== 'object') throw new Error('Laser is invalid.');
+  const pt = p2dPoint(o);
+  return {
+    ...pt,
+    angle: p2dNum(o.angle, -6.283185, 6.283185),
+    length: p2dInt(o.length, 1, 900),
+    enabled: o.enabled !== false,
+  };
+}
+
+function p2dWire(o) {
+  if (!o || typeof o !== 'object') throw new Error('Wire is invalid.');
+  const sourceType = String(o.sourceType || o.source_type || '').toLowerCase();
+  const targetType = String(o.targetType || o.target_type || '').toLowerCase();
+  if (sourceType !== 'button' && sourceType !== 'trigger') throw new Error('Wire source must be a button or trigger.');
+  if (targetType !== 'door') throw new Error('Wire target must be a door.');
+  return {
+    sourceType,
+    sourceId: p2dInt(o.sourceId !== undefined ? o.sourceId : o.source_id, 0, P2D_MAX_EXTRAS - 1),
+    targetType,
+    targetId: p2dInt(o.targetId !== undefined ? o.targetId : o.target_id, 0, P2D_MAX_EXTRAS - 1),
+  };
+}
+
+// Whitelists every field so only well-formed game data ever reaches the DB.
+function p2dNormalizePack(input, fallbackName, maxLevels = P2D_MAX_LEVELS) {
+  let raw = input;
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      throw new Error('Pack data is not valid JSON.');
+    }
+  }
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.levels))
+    throw new Error('Pack data must contain a list of levels.');
+  if (raw.levels.length < 1) throw new Error('A pack needs at least one level.');
+  if (raw.levels.length > maxLevels)
+    throw new Error(`Too many levels in one pack (max ${maxLevels}).`);
+
+  const levels = raw.levels.map((lvl, i) => {
+    if (!lvl || typeof lvl !== 'object') throw new Error(`Level ${i + 1} is invalid.`);
+    const explicitWires = Array.isArray(lvl.wires);
+    const out = {
+      name: p2dName(lvl.name, `Level ${i + 1}`, 60),
+      start: p2dPoint(lvl.start),
+      exit: p2dRect(lvl.exit),
+      platforms: p2dList(lvl.platforms, P2D_MAX_PLATFORMS, 'platforms', (p) => {
+        const r = p2dRect(p);
+        return p && p.metal ? { ...r, metal: true } : r;
+      }),
+      hazards: p2dList(lvl.hazards, P2D_MAX_HAZARDS, 'hazards'),
+      buttons: p2dList(
+        Array.isArray(lvl.buttons) ? lvl.buttons : (lvl.button ? [lvl.button] : []),
+        P2D_MAX_EXTRAS,
+        'buttons',
+        (b) => ({ ...p2dRect(b), pressed: false }),
+      ),
+      button: lvl.button ? { ...p2dRect(lvl.button), pressed: false } : null,
+      triggers: p2dList(lvl.triggers, P2D_MAX_EXTRAS, 'triggers', (t) => ({ ...p2dRect(t), active: false })),
+      exitClosed: !!lvl.exitClosed,
+      cubeStart: lvl.cubeStart ? p2dRect(lvl.cubeStart) : null,
+      noPortal: p2dList(lvl.noPortal, P2D_MAX_EXTRAS, 'no-portal zones'),
+      doors: p2dList(lvl.doors, P2D_MAX_EXTRAS, 'doors', (d) => ({ ...p2dRect(d), logic: p2dLogic(d.logic || d.wireMode) })),
+      wires: p2dList(lvl.wires, P2D_MAX_WIRES, 'wires', p2dWire),
+      lasers: p2dList(lvl.lasers, P2D_MAX_EXTRAS, 'lasers', p2dLaser),
+      grids: p2dList(lvl.grids, P2D_MAX_EXTRAS, 'grids'),
+      plates: p2dList(lvl.plates, P2D_MAX_EXTRAS, 'plates', (p) => ({
+        ...p2dRect(p),
+        vx: p2dNum(p.vx, -20, 20),
+        vy: p2dNum(p.vy, -25, 0),
+      })),
+    };
+    if (!explicitWires && lvl.button && out.doors.length) {
+      out.wires = out.doors.map((_, doorId) => ({
+        sourceType: 'button', sourceId: 0, targetType: 'door', targetId: doorId,
+      }));
+    }
+    for (const wire of out.wires) {
+      const sourceCount = wire.sourceType === 'button' ? out.buttons.length : out.triggers.length;
+      if (wire.sourceId >= sourceCount) throw new Error(`Wire ${wire.sourceType} source ${wire.sourceId + 1} does not exist.`);
+      if (wire.targetId >= out.doors.length) throw new Error(`Wire door target ${wire.targetId + 1} does not exist.`);
+    }
+    if (out.platforms.length < 1) throw new Error(`Level ${i + 1} needs at least one platform.`);
+    return out;
+  });
+  return { name: p2dName(raw.name, fallbackName, 100), levels };
+}
+
+function p2dParseId(value) {
+  if (!/^\d{1,10}$/.test(String(value))) return null;
+  const id = parseInt(value, 10);
+  return id > 0 && id < 2147483647 ? id : null;
+}
+
+function p2dBlockedUser(user) {
+  if (user.is_banned) return 'Your account is banned.';
+  if (Number(user.timeout_until) > Date.now())
+    return 'You are timed out and cannot publish right now.';
+  return null;
+}
+
+// Who am I? Lets the game show/hide admin tools. The server still re-checks every request.
+app.get('/api/portal2d/me', authenticateToken, (req, res) => {
+  res.json({
+    username: req.user.username,
+    isAdmin: p2dIsAdmin(req.user),
+    isStaff: p2dIsStaff(req.user),
+  });
+});
+
+app.get('/api/portal2d/levels', authenticateToken, async (req, res) => {
+  try {
+    const page = Math.max(0, parseInt(req.query.index ?? '0', 10) || 0);
+    const mine = req.query.mine === '1';
+    const params = [P2D_PAGE_SIZE + 1, page * P2D_PAGE_SIZE, P2D_OFFICIAL];
+    let where = 'WHERE "username" <> $3';
+    if (mine) {
+      params.push(req.user.username);
+      where += ' AND "username" = $4';
+    }
+    const r = await db.query(
+      `SELECT "level-id" AS id, "level-name" AS name, "username"
+       FROM "portal-2d" ${where}
+       ORDER BY "level-id" DESC LIMIT $1 OFFSET $2;`,
+      params,
+    );
+    const staff = p2dIsStaff(req.user);
+    const levels = r.rows.slice(0, P2D_PAGE_SIZE).map((row) => ({
+      ...row,
+      // decided here, never by the client
+      canDelete: staff || row.username === req.user.username,
+      isOwner: row.username === req.user.username,
+    }));
+    res.json({
+      levels,
+      hasMore: r.rows.length > P2D_PAGE_SIZE,
+      viewer: { username: req.user.username, isAdmin: p2dIsAdmin(req.user), isStaff: staff },
+    });
+  } catch (err) {
+    log('Portal2D list failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+app.get('/api/portal2d/levels/:id', authenticateToken, async (req, res) => {
+  try {
+    const id = p2dParseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid pack ID.' });
+    const r = await db.query(
+      `SELECT "level-id" AS id, "level-name" AS name, "username", "level-data" AS data
+       FROM "portal-2d" WHERE "level-id" = $1;`,
+      [id],
+    );
+    if (!r.rows[0]) return res.status(404).json({ error: 'No pack with that ID.' });
+    const row = r.rows[0];
+    try {
+      row.data = JSON.parse(row.data);
+    } catch {
+      return res.status(500).json({ error: 'Stored pack data is corrupted.' });
+    }
+    res.json(row);
+  } catch (err) {
+    log('Portal2D fetch failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+app.post('/api/portal2d/levels', authenticateToken, async (req, res) => {
+  try {
+    const blocked = p2dBlockedUser(req.user);
+    if (blocked) return res.status(403).json({ error: blocked });
+
+    const name = p2dName(req.body?.name, 'Untitled pack', 100);
+    let pack;
+    try {
+      pack = p2dNormalizePack(req.body?.data, name);
+    } catch (e) {
+      return res.status(400).json({ error: e.message });
+    }
+    pack.name = name;
+    const json = JSON.stringify(pack);
+    if (json.length > P2D_MAX_DATA_CHARS)
+      return res.status(413).json({ error: 'Pack is too large to publish. Remove some levels or platforms.' });
+
+    const count = await db.query(
+      'SELECT COUNT(*)::int AS n FROM "portal-2d" WHERE "username" = $1;',
+      [req.user.username],
+    );
+    if (count.rows[0].n >= P2D_MAX_PACKS_PER_USER)
+      return res.status(400).json({
+        error: `You already have ${P2D_MAX_PACKS_PER_USER} published packs. Delete one first.`,
+      });
+
+    const r = await db.query(
+      `INSERT INTO "portal-2d" ("level-name", "username", "level-data")
+       VALUES ($1, $2, $3) RETURNING "level-id" AS id;`,
+      [name, req.user.username, json],
+    );
+    log(`Portal2D publish: #${r.rows[0].id} "${name}" by ${req.user.username}`);
+    res.json({ success: true, id: r.rows[0].id });
+  } catch (err) {
+    log('Portal2D publish failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// Owners can update a pack they published (e.g. after editing their copy).
+app.put('/api/portal2d/levels/:id', authenticateToken, async (req, res) => {
+  try {
+    const blocked = p2dBlockedUser(req.user);
+    if (blocked) return res.status(403).json({ error: blocked });
+    const id = p2dParseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid pack ID.' });
+
+    const found = await db.query('SELECT "username" FROM "portal-2d" WHERE "level-id" = $1;', [id]);
+    if (!found.rows[0]) return res.status(404).json({ error: 'No pack with that ID.' });
+    if (found.rows[0].username !== req.user.username)
+      return res.status(403).json({ error: 'You can only update your own packs.' });
+
+    const name = p2dName(req.body?.name, 'Untitled pack', 100);
+    let pack;
+    try {
+      pack = p2dNormalizePack(req.body?.data, name);
+    } catch (e) {
+      return res.status(400).json({ error: e.message });
+    }
+    pack.name = name;
+    const json = JSON.stringify(pack);
+    if (json.length > P2D_MAX_DATA_CHARS)
+      return res.status(413).json({ error: 'Pack is too large to publish. Remove some levels or platforms.' });
+
+    await db.query(
+      'UPDATE "portal-2d" SET "level-name" = $1, "level-data" = $2 WHERE "level-id" = $3;',
+      [name, json, id],
+    );
+    log(`Portal2D update: #${id} "${name}" by ${req.user.username}`);
+    res.json({ success: true, id });
+  } catch (err) {
+    log('Portal2D update failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+app.delete('/api/portal2d/levels/:id', authenticateToken, async (req, res) => {
+  try {
+    const id = p2dParseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid pack ID.' });
+    const r = await db.query(
+      'SELECT "username" FROM "portal-2d" WHERE "level-id" = $1;',
+      [id],
+    );
+    if (!r.rows[0]) return res.status(404).json({ error: 'No pack with that ID.' });
+
+    const owner = r.rows[0].username;
+    if (owner === P2D_OFFICIAL)
+      return res.status(403).json({ error: 'The official pack is managed from the admin dev tools.' });
+    if (owner !== req.user.username && !p2dIsStaff(req.user))
+      return res.status(403).json({ error: 'You can only delete your own packs.' });
+
+    await db.query('DELETE FROM "portal-2d" WHERE "level-id" = $1;', [id]);
+    if (owner !== req.user.username) {
+      await db.query(
+        'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
+        [req.user.username, 'portal2d delete', owner, id, 'Removed published Portal 2D pack', Date.now()],
+      );
+    }
+    log(`Portal2D delete: #${id} by ${req.user.username}`);
+    res.json({ success: true });
+  } catch (err) {
+    log('Portal2D delete failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// ----- Official pack (admin only to write, everyone to read) -----
+async function p2dReadOfficial() {
+  const r = await db.query(
+    `SELECT "level-id" AS id, "level-name" AS name, "level-data" AS data
+     FROM "portal-2d" WHERE "username" = $1 ORDER BY "level-id" ASC LIMIT 1;`,
+    [P2D_OFFICIAL],
+  );
+  if (!r.rows[0]) return null;
+  const row = r.rows[0];
+  return { id: row.id, name: row.name, data: JSON.parse(row.data) };
+}
+
+async function p2dWriteOfficial(pack, actor, note) {
+  const json = JSON.stringify(pack);
+  if (json.length > P2D_OFFICIAL_MAX_CHARS) {
+    const err = new Error('Official pack is too large.');
+    err.status = 413;
+    throw err;
+  }
+  const upd = await db.query(
+    'UPDATE "portal-2d" SET "level-name" = $1, "level-data" = $2 WHERE "username" = $3;',
+    [pack.name, json, P2D_OFFICIAL],
+  );
+  if (!upd.rowCount) {
+    await db.query(
+      'INSERT INTO "portal-2d" ("level-name", "username", "level-data") VALUES ($1, $2, $3);',
+      [pack.name, P2D_OFFICIAL, json],
+    );
+  }
+  await db.query(
+    'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
+    [actor, 'portal2d official', P2D_OFFICIAL, 0, note, Date.now()],
+  );
+  log(`Portal2D official: ${note} by ${actor}`);
+}
+
+app.get('/api/portal2d/official', authenticateToken, async (req, res) => {
+  try {
+    const official = await p2dReadOfficial();
+    if (!official) return res.status(404).json({ error: 'No official pack has been published yet.', code: 'NO_OFFICIAL' });
+    res.json(official);
+  } catch (err) {
+    log('Portal2D official read failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// Replace the whole official pack (reordering, removing, bulk edits).
+app.put('/api/portal2d/official', authenticateToken, async (req, res) => {
+  try {
+    if (!p2dIsAdmin(req.user)) return res.status(403).json({ error: 'Admins only.' });
+    let pack;
+    try {
+      pack = p2dNormalizePack(req.body?.data, 'Official Chambers', P2D_OFFICIAL_MAX_LEVELS);
+    } catch (e) {
+      return res.status(400).json({ error: e.message });
+    }
+    pack.name = 'Official Chambers';
+    await p2dWriteOfficial(pack, req.user.username, `replaced pack (${pack.levels.length} levels)`);
+    res.json({ success: true, count: pack.levels.length });
+  } catch (err) {
+    log('Portal2D official write failure:', err.message);
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Server error.' });
+  }
+});
+
+// Append one playtested level to the end of the official pack.
+app.post('/api/portal2d/official/levels', authenticateToken, async (req, res) => {
+  try {
+    if (!p2dIsAdmin(req.user)) return res.status(403).json({ error: 'Admins only.' });
+    let added;
+    try {
+      added = p2dNormalizePack({ levels: [req.body?.level] }, 'x', 1).levels[0];
+    } catch (e) {
+      return res.status(400).json({ error: e.message });
+    }
+    const official = await p2dReadOfficial();
+    if (!official)
+      return res.status(404).json({ error: 'No official pack on the server yet.', code: 'NO_OFFICIAL' });
+    if (official.data.levels.length >= P2D_OFFICIAL_MAX_LEVELS)
+      return res.status(400).json({ error: `Official pack is full (${P2D_OFFICIAL_MAX_LEVELS} levels).` });
+    official.data.levels.push(added);
+    await p2dWriteOfficial(
+      { name: 'Official Chambers', levels: official.data.levels },
+      req.user.username,
+      `added level "${added.name}" (now ${official.data.levels.length})`,
+    );
+    res.json({ success: true, count: official.data.levels.length });
+  } catch (err) {
+    log('Portal2D official add failure:', err.message);
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Server error.' });
+  }
+});
+
+// Remove the server copy so everyone falls back to the chambers built into the game.
+app.delete('/api/portal2d/official', authenticateToken, async (req, res) => {
+  try {
+    if (!p2dIsAdmin(req.user)) return res.status(403).json({ error: 'Admins only.' });
+    await db.query('DELETE FROM "portal-2d" WHERE "username" = $1;', [P2D_OFFICIAL]);
+    await db.query(
+      'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
+      [req.user.username, 'portal2d official', P2D_OFFICIAL, 0, 'reset to built-in', Date.now()],
+    );
+    log(`Portal2D official: reset by ${req.user.username}`);
+    res.json({ success: true });
+  } catch (err) {
+    log('Portal2D official reset failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
 const server = app.listen(process.env.PORT || 10000, '0.0.0.0', () =>
   log(`Node strictly bound to port: ${process.env.PORT || 10000}`),
 );
 const wss = new WebSocketServer({ server });
+
+const WS_HEARTBEAT_MS = Number(process.env.WS_HEARTBEAT_MS || 30000);
+const heartbeatTimer = setInterval(() => {
+  activeClients.forEach((client, username) => {
+    if (client.ws.isAlive === false) {
+      log(`WS heartbeat timeout: ${username}`);
+      activeClients.delete(username);
+      return client.ws.terminate();
+    }
+    client.ws.isAlive = false;
+    try { client.ws.ping(); } catch { client.ws.terminate(); }
+  });
+}, WS_HEARTBEAT_MS);
+heartbeatTimer.unref();
 
 const ALLOWED_CHANNELS = {
   public: 'messages',
@@ -636,6 +1175,8 @@ const ALLOWED_CHANNELS = {
 };
 
 wss.on('connection', (ws, req) => {
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
   let authUser = null;
   let userRoles = {
     role: {
@@ -794,10 +1335,35 @@ wss.on('connection', (ws, req) => {
           );
         }
 
-        broadcastSystemUpdate(
-          { type: 'refresh_feed' },
-          (c) => c.mode === mode && c.target === target,
-        );
+        let livePayload = null;
+        if (data.type === 'message') {
+          const role = (await getUserRoles(authUser)).role;
+          const latest = await db.query('SELECT id, username, timestamp, content, is_deleted, deleted_by, sender FROM messages WHERE username = $1 AND timestamp = $2 ORDER BY id DESC LIMIT 1;', [authUser, tStr]);
+          if (latest.rows[0]) livePayload = { type: 'live_message', channel: 'public', message: { ...latest.rows[0], role } };
+        } else if (data.type === 'topic_message') {
+          const role = (await getUserRoles(authUser)).role;
+          const latest = await db.query('SELECT id, username, timestamp, content, is_deleted, deleted_by, sender, topic_slug FROM topic_messages WHERE username = $1 AND timestamp = $2 AND topic_slug = $3 ORDER BY id DESC LIMIT 1;', [authUser, tStr, target]);
+          if (latest.rows[0]) livePayload = { type: 'live_message', channel: 'topic', target, message: { ...latest.rows[0], role } };
+        } else if (data.type === 'dm') {
+          const role = (await getUserRoles(authUser)).role;
+          const latest = await db.query('SELECT id, sender AS username, receiver, timestamp, content, is_deleted, deleted_by FROM dms WHERE sender = $1 AND receiver = $2 AND timestamp = $3 ORDER BY id DESC LIMIT 1;', [authUser, target, tStr]);
+          if (latest.rows[0]) livePayload = { type: 'live_message', channel: 'dm', target, receiver: target, sender: authUser, message: { ...latest.rows[0], role } };
+        } else if (data.type === 'neighborhood_post') {
+          const role = (await getUserRoles(authUser)).role;
+          const latest = await db.query('SELECT id, username, title, content, timestamp, is_deleted, deleted_by, sender FROM neighborhood_posts WHERE username = $1 AND timestamp = $2 ORDER BY id DESC LIMIT 1;', [authUser, tStr]);
+          if (latest.rows[0]) livePayload = { type: 'live_neighborhood_post', message: { ...latest.rows[0], role, comments: [] } };
+        }
+
+        if (livePayload) {
+          broadcastSystemUpdate(livePayload, (c, username) => {
+            if (mode === 'dm') {
+              return c.mode === 'dm' && c.target === (username === authUser ? target : authUser) && (username === authUser || username === target);
+            }
+            return c.mode === mode && c.target === target;
+          });
+        } else if (data.type === 'neighborhood_comment') {
+          broadcastSystemUpdate({ type: 'refresh_feed' }, (c) => c.mode === 'neighborhood');
+        }
       }
 
       if (data.type === 'mod_delete' || data.type === 'mod_restore') {

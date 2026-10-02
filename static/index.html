@@ -400,11 +400,13 @@
     const PLATFORM_DATABASE = [
       { name: 'REKINDLE', desc: 'Shortcut to what made this all possible in the first place!', url: 'rekindle.html' },
       { name: 'DISCORD', desc: 'The Official unreader Discord Server.', url: 'https://discord.gg/wGpdg3ND7T', external: true },
-      { name: 'SUGGESTIONS', desc: "Suggestions! Just please don't suggest stupid things", url: 'suggestions.html' },
+      { name: 'SUGGESTIONS', desc: "Suggestions! Just please don't suggest stupid things...", url: 'suggestions.html' },
       { name: 'CALCULATOR', desc: 'A simple calculator, what did you expect?', url: 'calc.html' },
       { name: 'POKEDEX', desc: "Gotta catch 'em all! (Optimized!)", url: 'pokedex.html', },
       { name: 'OREGON TRAIL', desc: "Play the original 1970 teletext version on your E-reader!", url: 'oregon_trail.html', },
       { name: "REVERSI", desc: `A remake of Reversi.`, url: "reversi.html" },
+      { name: 'PORTAL: THE KINDLE VERSION', desc: "Why don't we think with portals for a bit?", url: 'portal-2d.html' },
+      { name: 'SLEDGEHAMMER EDITOR (DEV ONLY)', desc: "GLaDOS' lair (Helper Cores may access), all test subjects forbidden.", url: 'portal-2d-editor.html', req: 'admin' },
       { name: 'GAME OF LIFE', desc: 'Easiest thing ever, wow!', url: 'cwol.html' }
     ];
 
@@ -419,6 +421,7 @@
 
       // Render Featured Array
       FEATURED_DATABASE.forEach(app => {
+        if (app.req === 'admin' && currentRank !== 'admin') return;
         if (app.req === 'mod' && currentRank !== 'mod' && currentRank !== 'admin') return;
 
         const div = document.createElement('div');
@@ -496,7 +499,8 @@
               setStorageItem("token", data.token);
               setStorageItem("username", data.username);
 
-              setStorageItem("unreader-rank", (data.username.toLowerCase() === 'admin' || data.username.toLowerCase() === 'mod') ? 'mod' : 'user');
+              var loginName = data.username.toLowerCase();
+              setStorageItem("unreader-rank", (loginName === 'admin' || loginName === 'lmaokasdf') ? 'admin' : (loginName === 'mod' ? 'mod' : 'user'));
 
               location.reload();
             } catch (e) {
@@ -518,6 +522,10 @@
     };
 
     // Identity Engine Authentication Check
+    if (myUsername) {
+      var knownAdminName = myUsername.toLowerCase();
+      if (knownAdminName === 'admin' || knownAdminName === 'lmaokasdf') setStorageItem('unreader-rank', 'admin');
+    }
     if (token && myUsername) {
       document.getElementById('auth-status').textContent = 'User: ' + myUsername;
       document.getElementById('auth-btn').textContent = 'Log Out';

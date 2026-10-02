@@ -649,6 +649,10 @@
           await unAlert(data.message);
           return;
         }
+        if (data.type === 'live_message') {
+          if (data.channel === 'topic' && currentMode === 'topic' && currentHistoryIndex === 0 && data.target === currentTarget) appendMessage(data.message);
+          return;
+        }
         if (data.type === 'refresh_feed') {
           log('Broadcast: refresh_feed received.');
           loadHistory();

@@ -733,6 +733,10 @@
           await unAlert(data.message);
           return;
         }
+        if (data.type === 'live_neighborhood_post') {
+          if (currentMode === 'neighborhood' && currentHistoryIndex === 0) appendNeighborhoodPost(data.message);
+          return;
+        }
         if (data.type === 'refresh_feed') {
           log('Broadcast: refresh_feed received.');
           loadHistory();

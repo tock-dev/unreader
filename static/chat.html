@@ -456,6 +456,15 @@
             await unAlert(data.message);
             return;
           }
+          if (data.type === "live_message") {
+            if (data.channel === "public" && currentMode === "public" && currentHistoryIndex === 0) {
+              appendMessage(data.message);
+            } else if (data.channel === "dm" && currentMode === "dm" && currentHistoryIndex === 0 && data.message && (data.message.username === myUsername || data.message.receiver === myUsername) && currentTarget === (data.message.username === myUsername ? data.message.receiver : data.message.username)) {
+              appendMessage(data.message);
+            }
+            return;
+          }
+          if (data.type === "live_neighborhood_post") return;
           if (data.type === "refresh_feed") {
             log("Broadcast: refresh_feed received.");
             loadHistory();
