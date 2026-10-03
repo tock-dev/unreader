@@ -8,27 +8,42 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="bbs.css" />
   <style type="text/css">
+    .window { width: 98vw; max-width: 800px; height: 95vh; min-height: 0; box-sizing: border-box; }
+    .window *, .window *:before, .window *:after { box-sizing: border-box; }
     .form-box { margin: 15px; border: var(--border); padding: 15px; background: white; box-shadow: 2px 2px 0px black; }
-    .kindle-input { width: 100%; border: var(--border); background: white; color: black; padding: 8px; font-family: monospace; font-size: 13px; margin-bottom: 12px; }
+    .kindle-input { display: block; width: 100%; border: var(--border); background: white; color: black; padding: 8px; font-family: monospace; font-size: 13px; margin-bottom: 12px; }
     textarea.kindle-input { resize: vertical; min-height: 80px; }
     .submit-btn { width: 100%; padding: 10px; font-size: 13px; font-weight: bold; cursor: pointer; }
 
-    .suggestions-feed { margin: 15px; }
+    .suggestions-feed { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; margin: 0 15px 15px; overflow: hidden; }
     .suggestion-card { border: var(--border); padding: 12px; margin-bottom: 12px; background: white; box-shadow: 2px 2px 0px black; }
     .card-header { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; color: #555; border-bottom: 1px dashed black; padding-bottom: 4px; margin-bottom: 8px; text-transform: uppercase; }
     .card-title { font-weight: bold; font-size: 14px; margin: 0 0 6px 0; }
     .card-desc { font-size: 13px; line-height: 1.3; white-space: pre-wrap; color: black; }
     .status-msg { font-size: 12px; font-weight: bold; text-align: center; margin: 10px 0; display: none; padding: 5px; border: 1px dashed black; }
 
-    #pagination-bar { display: flex; justify-content: space-between; align-items: center; margin: 15px; }
+    #pagination-bar { display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; margin: 0 0 10px; }
+    #feed-container { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
     .staff-banner { margin: 0 15px 10px 15px; padding: 6px; border: 3px solid #0000ff; box-shadow: 2px 2px 0px #0000ff50; font-size: 11px; font-weight: bold; text-transform: uppercase; display: none; }
     .card-status { display: inline-block; font-size: 10px; font-weight: bold; text-transform: uppercase; border: 2px solid black; padding: 2px 6px; margin-bottom: 6px; background: black; color: white; }
     .card-done { display: inline-block; font-size: 10px; font-weight: bold; text-transform: uppercase; border: 2px solid black; padding: 2px 6px; margin-bottom: 6px; background: repeating-linear-gradient(45deg, #000, #000 4px, #fff 4px, #fff 8px); color: black; }
     .suggestion-card.completed .card-desc { text-decoration: line-through; color: #666; }
-    .card-actions { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .card-actions { margin-top: 8px; display: flex; flex-wrap: wrap; }
     .card-actions .paper-btn { font-size: 10px; padding: 4px 8px; }
+    .card-actions .paper-btn + .paper-btn { margin-left: 6px; }
     .card-meta { font-size: 9px; color: #777; font-family: monospace; }
+
+    @media (max-width: 480px) {
+      .form-box { margin: 8px; padding: 10px; }
+      .suggestions-feed { margin: 0 8px 8px; }
+      #pagination-bar { margin-bottom: 8px; }
+      .suggestion-card { padding: 8px; }
+    }
+    @media (max-height: 520px) {
+      .form-box { margin-top: 6px; margin-bottom: 6px; padding: 8px; }
+      textarea.kindle-input { min-height: 48px; }
+    }
   </style>
   <script src="common.js"></script>
 </head>
@@ -37,7 +52,7 @@
   <div class="window">
     <div class="title-bar">
       <div class="title-stripes"></div>
-      <button class='paper-btn' id="back-btn" onclick="window.location.href='index.html'">◀ HOME</button>
+      <button class='paper-btn' id="back-btn" onclick="window.location.href='index.html'">&lt; HOME</button>
       <div class="title-text">SUGGESTIONS</div>
     </div>
 
@@ -68,7 +83,14 @@
     var token = localStorage.getItem("token") || localStorage.getItem("unreader-token");
     var myUsername = localStorage.getItem("username");
     var currentHistoryIndex = 0;
+    var currentPageSize = 0;
     var viewer = { username: "", isAdmin: false, isStaff: false };
+
+    function getPageSize() {
+      var feed = document.getElementById("feed-container");
+      var estimatedCardHeight = window.innerWidth < 480 ? 220 : 180;
+      return Math.max(1, Math.min(30, Math.ceil(feed.clientHeight / estimatedCardHeight) + 1));
+    }
 
     function escapeHtml(str) {
       return String(str == null ? "" : str)
@@ -111,6 +133,18 @@
       loadHistory();
     }
 
+    var resizeTimer;
+    window.addEventListener("resize", function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        var nextPageSize = getPageSize();
+        if (nextPageSize !== currentPageSize) {
+          currentHistoryIndex = 0;
+          loadHistory();
+        }
+      }, 150);
+    });
+
     function api(method, path, body) {
       return fetch(BACKEND_URL + path, {
         method: method,
@@ -135,13 +169,14 @@
     // GET HISTORY VIA THE SUGGESTIONS TABLE ENDPOINT
     function loadHistory() {
       var container = document.getElementById("feed-container");
+      currentPageSize = getPageSize();
       if (!token) {
         container.innerHTML = '<div style="font-size:12px; font-family:monospace; font-style:italic; text-align:center;">Log in to read the suggestions feed.</div>';
         return;
       }
       container.innerHTML = '<div style="font-size:12px; font-family:monospace; font-style:italic;">Querying BBS databanks...</div>';
 
-      api("GET", "/suggestions-history?index=" + currentHistoryIndex)
+      api("GET", "/suggestions-history?index=" + currentHistoryIndex + "&limit=" + currentPageSize)
         .then(function (data) {
           document.getElementById("page-display-index").textContent = "PAGE: " + currentHistoryIndex;
           container.innerHTML = "";
@@ -176,10 +211,10 @@
           '<div>@' + escapeHtml(post.username || "anonymous") + '</div>' +
           '<div>' + escapeHtml(dateDisplay) + '</div>' +
         '</div>' +
-        '<div class="card-title">💡 ' + escapeHtml(title) + '</div>';
+          '<div class="card-title">' + escapeHtml(title) + '</div>';
 
       if (post.completion === true) {
-        html += '<div class="card-done">✔ COMPLETED</div>';
+        html += '<div class="card-done">COMPLETED</div>';
       }
       if (post.admin_filter) {
         html += '<div class="card-status">STATUS: ' + escapeHtml(post.admin_filter) + '</div>';

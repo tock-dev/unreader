@@ -722,10 +722,11 @@ function suggClean(value, maxLen) {
 
 app.get('/suggestions-history', authenticateToken, async (req, res) => {
   try {
-    const off = Math.max(0, (parseInt(req.query.index ?? '0', 10) || 0) * 10);
+    const limit = Math.min(30, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const off = Math.max(0, (parseInt(req.query.index ?? '0', 10) || 0) * limit);
     const r = await db.query(
-      'SELECT id, date::text AS date, suggestions, username, admin_filter, completion FROM suggestions ORDER BY id DESC LIMIT 10 OFFSET $1;',
-      [off],
+      'SELECT id, date::text AS date, suggestions, username, admin_filter, completion FROM suggestions ORDER BY id DESC LIMIT $2 OFFSET $1;',
+      [off, limit],
     );
     res.json(r.rows.reverse());
   } catch (err) {
