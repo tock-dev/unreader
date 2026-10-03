@@ -560,6 +560,15 @@
       last_ip: null,
     };
 
+      function isAdminUser(roles) {
+        return !!(roles && (roles.is_admin || (roles.role && roles.role.role === 'admin')));
+      }
+
+      function isModeratorUser(roles) {
+        return !!(roles && (roles.is_moderator || (roles.role && roles.role.role === 'moderator')));
+      }
+
+
     function log(...args) {
       if (DO_LOGGING) console.log(`[CLIENT]`, ...args);
     }
@@ -723,7 +732,7 @@
         if (data.type === 'auth_success') {
           if (
             data.userRoles.role.role &&
-            data.userRoles.role.role === 'admin'
+            isAdminUser(data.userRoles)
           ) {
             show('#kick-all-btn');
           }
@@ -750,7 +759,7 @@
           if (data.user_roles) {
             userRoles = data.user_roles;
             log('Roles updated:', userRoles);
-            if (['admin', 'moderator'].includes(userRoles.role.role)) {
+            if ((isAdminUser(userRoles) || isModeratorUser(userRoles))) {
               document.querySelector('#mod-toggle-container').style.display =
                 'flex';
               localStorage.setItem('unreader-rank', 'mod');
@@ -817,7 +826,7 @@
               ? ' (DM @' + u.target + ')'
               : ' (Neighborhood)') +
           ' who ' +
-          (['admin', 'moderator'].includes(userRoles.role.role) &&
+          ((isAdminUser(userRoles) || isModeratorUser(userRoles)) &&
             u.username !== myUsername
             ? 'can'
             : 'cannot') +
@@ -826,9 +835,9 @@
         if (
           u.username !== myUsername &&
           userRoles.role.role &&
-          (userRoles.role.role === 'admin' ||
-            (userRoles.role.role === 'moderator' &&
-              !u.userRoles.role.role === 'admin'))
+          (isAdminUser(userRoles) ||
+            (isModeratorUser(userRoles) &&
+              !isAdminUser(u.userRoles)))
         ) {
           const username = u.username;
           var kick = document.createElement('button');
@@ -921,7 +930,7 @@
 
               if (
                 cEffectiveUsername === myUsername ||
-                ['admin', 'moderator'].includes(userRoles.role.role)
+                (isAdminUser(userRoles) || isModeratorUser(userRoles))
               ) {
                 var cDel = document.createElement('button');
                 cDel.style =
@@ -930,7 +939,7 @@
                 (function (cid) {
                   cDel.onclick = async function () {
                     var r =
-                      userRoles.role.role && userRoles.role.role === 'admin'
+                      isAdminUser(userRoles)
                         ? "Admin doesn't need any reasons"
                         : await unPrompt('Reason for purge?');
                     if (r !== null) {
@@ -982,7 +991,7 @@
 
     function injectModTray(targetNode, data, isMe) {
       if (
-        !['admin', 'moderator'].includes(userRoles.role.role) ||
+        !(isAdminUser(userRoles) || isModeratorUser(userRoles)) ||
         !modModeActive ||
         data.id === -1
       )
@@ -998,7 +1007,7 @@
         dBtn.textContent = 'PURGE';
         dBtn.onclick = async function () {
           var r =
-            userRoles.role.role && userRoles.role.role === 'admin'
+            isAdminUser(userRoles)
               ? "Admin doesn't need any reasons"
               : await unPrompt('Reason for purge?');
           if (r !== null) sendModAction('mod_delete', data.id, r);
@@ -1007,8 +1016,8 @@
       } else {
         if (
           userRoles.role.role &&
-          (userRoles.role.role === 'admin' ||
-            (userRoles.role.role === 'moderator' &&
+          (isAdminUser(userRoles) ||
+            (isModeratorUser(userRoles) &&
               data.deleted_by === myUsername))
         ) {
           var rBtn = document.createElement('button');
@@ -1040,11 +1049,11 @@
       if (!socket || socket.readyState !== WebSocket.OPEN)
         return await unAlert('Socket offline.');
       var reason =
-        userRoles.role.role && userRoles.role.role === 'admin'
+        isAdminUser(userRoles)
           ? "Admin doesn't need any reasons"
           : await unPrompt('Reason for kick?');
       if (
-        !(userRoles.role.role && userRoles.role.role === 'admin') &&
+        !(isAdminUser(userRoles)) &&
         !reason
       )
         return;
@@ -1062,7 +1071,7 @@
         const username = user.username;
         if (
           username === myUsername ||
-          (user.userRoles.role.role && user.userRoles.role.role === 'admin')
+          (user.userRoles.role.role && isAdminUser(user.userRoles))
         )
           continue;
         kickUser(username);
@@ -1198,7 +1207,7 @@
           async function () {
             var dur = document.getElementById('admin-timeout-dur').value;
             var r =
-              userRoles.role.role && userRoles.role.role === 'admin'
+              isAdminUser(userRoles)
                 ? "Admin doesn't need any reasons"
                 : await unPrompt('Reason for timeout?');
             socket.send(
@@ -1212,7 +1221,7 @@
           };
       } else if (
         userRoles.role.role &&
-        userRoles.role.role === 'moderator' &&
+        isModeratorUser(userRoles) &&
         !isSelf
       ) {
         show('#admin-controls');
@@ -1223,7 +1232,7 @@
           async function () {
             var dur = document.getElementById('admin-timeout-dur').value;
             var r =
-              userRoles.role.role && userRoles.role.role === 'admin'
+              isAdminUser(userRoles)
                 ? "Admin doesn't need any reasons"
                 : await unPrompt('Reason for timeout?');
             if (r)

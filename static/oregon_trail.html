@@ -663,7 +663,7 @@
         function loadGame() {
             const saved = localStorage.getItem('oregontrail-save');
             if (!saved) {
-                alert('No saved game found');
+                log('No saved game found.');
                 return;
             }
 

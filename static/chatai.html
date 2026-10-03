@@ -189,6 +189,7 @@
     <div class="credits">Programmed by KodiGamingYT</div>
 
     <div class="settings-panel">
+        <div id="settings-error" role="status" aria-live="polite"></div>
         <h3> Connection & AI Settings</h3>
 
         <div class="input-group">
@@ -282,7 +283,7 @@
             const storedPrompt = localStorage.getItem('kindle_system_prompt') || defaultPrompt;
 
             if (!storedUrl || !storedKey) {
-                alert("Please fill in both the API Endpoint URL and your API Key in the settings panel first!");
+                document.getElementById("settings-error").textContent = "Enter the API endpoint URL and API key in Settings first.";
                 return;
             }
 

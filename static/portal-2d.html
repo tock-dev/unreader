@@ -42,6 +42,102 @@
             position: relative;
         }
 
+        /* Refined compact desktop/Kindle UI */
+        .window {
+            max-width: 760px;
+        }
+        .content {
+            padding: 10px;
+            gap: 0;
+        }
+        .canvas-wrap, .row, .toolbar, .aim-indicator, .touch-controls {
+            max-width: 720px;
+        }
+        .game-meta {
+            display: grid;
+            grid-template-columns: 1.35fr repeat(3, .75fr) 1fr;
+            gap: 0;
+            overflow: hidden;
+            padding: 0;
+        }
+        .game-meta .cell {
+            padding: 7px 8px;
+            margin: 0;
+            border-right: 1px solid #999;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .game-meta .cell:last-child { border-right: 0; text-align: right; }
+        .pack-bar {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto auto;
+            gap: 5px;
+            align-items: center;
+            padding: 5px;
+        }
+        .pack-bar .label { margin: 0 2px 0 4px; }
+        .pack-bar select { min-width: 0; margin: 0; }
+        .pack-bar .btn { margin: 0; }
+        .panel-title {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .panel-title small {
+            font-size: .62rem;
+            font-weight: normal;
+            color: #555;
+        }
+        .pack-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 6px;
+            width: 100%;
+        }
+        .pack-card {
+            border: 2px solid #000;
+            background: #fff;
+            padding: 7px;
+            display: grid;
+            grid-template-columns: minmax(0,1fr) auto;
+            gap: 6px;
+            align-items: center;
+        }
+        .pack-card.active { background: #ededed; }
+        .pack-card-name {
+            min-width: 0;
+            font-family: "Courier New", monospace;
+            font-weight: bold;
+            font-size: .72rem;
+        }
+        .pack-card-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: .6rem;
+            font-weight: normal;
+            color: #555;
+        }
+        .pack-card-actions { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+        .pack-card-actions .btn { margin: 0; }
+        .pack-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 7px;
+            padding-top: 7px;
+            border-top: 1px solid #999;
+        }
+        .pack-actions .btn { margin: 0; }
+        @media (max-width: 560px) {
+            .game-meta { grid-template-columns: 1fr 1fr; }
+            .game-meta .cell { border-bottom: 1px solid #999; }
+            .game-meta .cell:last-child { text-align: left; }
+            .pack-bar { grid-template-columns: auto minmax(0,1fr) auto auto; }
+        }
+
         .title-bar {
             height: 34px;
             border-bottom: 2px solid black;
@@ -108,6 +204,8 @@
             box-sizing: border-box;
         }
         .mode-tab:last-child { border-right: none; }
+            #user-editor-toolbar, #user-editor-actions { flex-wrap: wrap; }
+            #user-editor-toolbar .btn, #user-editor-actions .btn { margin: 2px; }
         .mode-tab.active {
             background: white;
             border-bottom-color: white;
@@ -262,6 +360,7 @@
             flex-wrap: wrap;
         }
         .touch-controls.hidden { display: none; }
+        .touch-controls.desktop-hidden { display: none !important; }
 
         .touch-cluster {
             display: flex;
@@ -280,6 +379,8 @@
             font-size: 1.15rem;
             cursor: pointer;
             touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -496,21 +597,25 @@
             .joystick-stick { width: 34px; height: 34px; left: 22px; top: 22px; }
             .row { font-size: 0.64rem; }
         }
-    </style>
+    /* PC browsers hide the Kindle/touch control deck; touch-capable devices keep it.
+       Do not use hover/pointer media queries here: Kindle browsers can advertise
+       a fine/hover pointer while still being touch-first. */
+        </style>
 </head>
 <body>
 
     <div class="window">
         <div class="title-bar">
             <div class="title-stripes"></div>
-            <div class="close-box" onclick="window.location.href = 'index.html'">X</div>
-            <span class="title-text">PORTAL: THE KINDLE VERSION</span>
+            <div class="close-box" onclick="if (window.top !== window.self) { window.top.location.href = 'index.html'; } else { window.location.href = 'index.html'; }">X</div>
+            <span class="title-text" id="app-title">PORTAL: THE KINDLE VERSION</span>
         </div>
 
         <div class="mode-tabs">
             <div class="mode-tab active" id="tab-play" onclick="switchMode('play')">PLAY</div>
             <div class="mode-tab" id="tab-packs" onclick="switchMode('packs')">PACKS</div>
             <div class="mode-tab" id="tab-online" onclick="switchMode('online')">ONLINE LEVELS</div>
+            <div class="mode-tab" id="tab-edit" onclick="switchMode('edit')">EDIT</div>
         </div>
 
         <div class="content">
@@ -519,21 +624,57 @@
                 <canvas id="game" width="640" height="400"></canvas>
             </div>
 
-            <div class="row gray">
-                <span class="cell">LVL: <span id="level-display">1</span></span>
+            <div class="row gray game-meta">
+                <span class="cell">LVL: <span id="level-display">1</span> <span id="level-name-display"></span></span>
                 <span class="cell">PORTALS: <span id="portal-count">0</span>/2</span>
                 <span class="cell">GUN: <span id="gun-stage">2</span>/2</span>
                 <span class="spacer"></span>
                 <span class="cell">STATUS: <span id="status-display">READY</span></span>
             </div>
 
-            <div class="row" id="pack-bar">
+            <div class="row pack-bar" id="pack-bar">
                 <span class="label">PACK:</span>
                 <select id="pack-select" onchange="onPackChange()"></select>
                 <button class="btn" onclick="prevLevel()">&lt;</button>
                 <button class="btn" onclick="nextLevel()">&gt;</button>
             </div>
 
+
+            <div class="toolbar" id="user-editor-toolbar" style="display:none;">
+                <button class="btn selected" data-user-tool="select" onclick="selectTool('select')">SELECT</button>
+                <button class="btn" data-user-tool="platform" onclick="selectTool('platform')">PLATFORM</button>
+                <button class="btn" data-user-tool="hazard" onclick="selectTool('hazard')">HAZARD</button>
+                <button class="btn" data-user-tool="button" onclick="selectTool('button')">BUTTON</button>
+                <button class="btn" data-user-tool="trigger" onclick="selectTool('trigger')">TOUCH TRIGGER</button>
+                <button class="btn" data-user-tool="laserTrigger" onclick="selectTool('laserTrigger')">LASER TRIGGER</button>
+                <button class="btn" data-user-tool="door" onclick="selectTool('door')">DOOR</button>
+                <button class="btn" data-user-tool="laser" onclick="selectTool('laser')">LASER</button>
+                <button class="btn" data-user-tool="wire" onclick="selectTool('wire')">WIRE</button>
+                <button class="btn" data-user-tool="upgrade" onclick="selectTool('upgrade')">UPGRADE</button>
+                <button class="btn" data-user-tool="cube" onclick="selectTool('cube')">CUBE</button>
+                <button class="btn" data-user-tool="start" onclick="selectTool('start')">START</button>
+                <button class="btn" data-user-tool="exit" onclick="selectTool('exit')">EXIT</button>
+                <button class="btn" data-user-tool="metal" onclick="selectTool('metal')">NO PORTAL</button>
+                <button class="btn" data-user-tool="erase" onclick="selectTool('erase')">ERASE</button>
+            </div>
+            <div class="toolbar" id="user-editor-actions" style="display:none;">
+                <button class="btn" onclick="editorNewLevel()">NEW LEVEL</button>
+                <button class="btn" onclick="editorDeleteLevel()">DELETE LEVEL</button>
+                <button class="btn" onclick="editorClear()">CLEAR</button>
+                <button class="btn" onclick="editorSavePack()">SAVE</button>
+                <button class="btn" onclick="editorTest()">TEST</button>
+                <button class="btn" onclick="editorCopyPack()">COPY PACK</button>
+                <button class="btn" onclick="editorRenameLevel()">RENAME LEVEL</button>
+                <label class="btn" style="display:inline-flex;align-items:center;gap:4px;cursor:default;">GUN STAGE
+                    <select id="editor-gun-stage" onchange="editorSetGunStage(this.value)" style="font:inherit;background:#111;color:#fff;border:1px solid #777;">
+                        <option value="0">0 - No Portals</option>
+                        <option value="1">1 - Blue Portal only</option>
+                        <option value="2">2 - Both Orange and Blue</option>
+                    </select>
+                </label>
+                <button class="btn" onclick="onlinePublish()">PUBLISH / UPDATE</button>
+                <button class="btn dev-only" style="display:none;" onclick="editorExportGame()">EXPORT DROP-IN HTML</button>
+            </div>
 
             <div class="online-panel" id="online-panel">
                 <h3>ONLINE LEVELS</h3>
@@ -583,6 +724,7 @@
                 </div>
             </div>
 
+            <div class="row gray" id="pc-controls" style="display:none;">PC: A/D or ←/→ move · W/Space jump · Mouse aims · Left click / Q = BLUE · Right click / E = ORANGE · F = grab · R = clear portals · P = restart</div>
             <div class="row gray" id="instructions">
                 Drag joystick to aim. Crosshair snaps to nearest surface. Tap BLUE / ORANGE to fire.
             </div>
@@ -681,10 +823,13 @@
             var portalB = null;
             var portalGunStage = 2;
             var teleportCooldown = 0;
-            var heldCube = false;
+            var heldCube = -1;
+            var cubes = [];
             var cube = null;
             var levelClear = false;
             var editorTool = 'platform';
+            var editorSelection = null;
+            var editorSelectionOffset = null;
             var editorDragging = false;
             var editorDragStart = null;
             var editorDragEnd = null;
@@ -710,116 +855,674 @@
                     id: 'builtin', name: 'Built-in Chambers',
                     levels: [
                         /* PORTAL2D_BUILTIN_LEVELS_START */
-                        { name: "Chamber 01 - Hello, Portal",
-                          start: { x: 60, y: 360 }, exit: { x: 540, y: 340, w: 40, h: 40 },
-                          platforms: [
-                              { x: 0, y: 0, w: 640, h: 20 },
-                              { x: 0, y: 0, w: 20, h: 400 },
-                              { x: 620, y: 0, w: 20, h: 400 },
-                              { x: 0, y: 380, w: 640, h: 20 },
-                              { x: 300, y: 140, w: 40, h: 240 }
-                          ],
-                          hazards: [],
-                          button: null, exitClosed: false, cubeStart: null },
-                        { name: "Chamber 02 - Leap of Faith",
-                          start: { x: 40, y: 240 }, exit: { x: 560, y: 340, w: 40, h: 40 },
-                          platforms: [
-                              { x: 0, y: 0, w: 640, h: 20 },
-                              { x: 0, y: 0, w: 20, h: 400 },
-                              { x: 620, y: 0, w: 20, h: 400 },
-                              { x: 0, y: 260, w: 200, h: 140 },
-                              { x: 460, y: 380, w: 160, h: 20 }
-                          ],
-                          hazards: [{ x: 200, y: 360, w: 260, h: 40 }],
-                          button: null, exitClosed: false, cubeStart: null },
-                        { name: "Chamber 03 - Flingshot",
-                          start: { x: 60, y: 180 }, exit: { x: 560, y: 70, w: 40, h: 40 },
-                          platforms: [
-                              { x: 0, y: 0, w: 640, h: 20 },
-                              { x: 0, y: 0, w: 20, h: 400 },
-                              { x: 620, y: 0, w: 20, h: 400 },
-                              { x: 0, y: 380, w: 640, h: 20 },
-                              { x: 20, y: 200, w: 140, h: 20 },
-                              { x: 440, y: 110, w: 180, h: 20 }
-                          ],
-                          hazards: [],
-                          noPortal: [{ x: 340, y: 0, w: 300, h: 24 }, { x: 612, y: 0, w: 28, h: 400 }, { x: 436, y: 106, w: 188, h: 28 }],
-                          button: null, exitClosed: false, cubeStart: null },
-                        { name: "Chamber 04 - Faith Plate",
-                          start: { x: 40, y: 360 }, exit: { x: 570, y: 210, w: 40, h: 40 },
-                          platforms: [
-                              { x: 0, y: 0, w: 640, h: 20 },
-                              { x: 0, y: 0, w: 20, h: 400 },
-                              { x: 620, y: 0, w: 20, h: 400 },
-                              { x: 0, y: 380, w: 200, h: 20 },
-                              { x: 380, y: 250, w: 240, h: 150 }
-                          ],
-                          hazards: [{ x: 200, y: 360, w: 180, h: 40 }],
-                          noPortal: [{ x: 0, y: 0, w: 640, h: 24 }, { x: 0, y: 0, w: 24, h: 400 }, { x: 612, y: 0, w: 28, h: 400 }, { x: 0, y: 372, w: 204, h: 32 }],
-                          plates: [{ x: 150, y: 374, w: 40, h: 6, vx: 4, vy: -14 }],
-                          button: null, exitClosed: false, cubeStart: null },
-                        { name: "Chamber 05 - Metal Detector",
-                          start: { x: 60, y: 360 }, exit: { x: 560, y: 340, w: 40, h: 40 },
-                          platforms: [
-                              { x: 0, y: 0, w: 640, h: 20 },
-                              { x: 0, y: 0, w: 20, h: 400 },
-                              { x: 620, y: 0, w: 20, h: 400 },
-                              { x: 0, y: 380, w: 640, h: 20 },
-                              { x: 300, y: 200, w: 40, h: 180 },
-                              { x: 350, y: 100, w: 170, h: 20 }
-                          ],
-                          hazards: [],
-                          noPortal: [{ x: 0, y: 0, w: 640, h: 24 }],
-                          button: null, exitClosed: false, cubeStart: null },
-                        { name: "Chamber 06 - Cube Duty",
-                          start: { x: 50, y: 360 }, exit: { x: 560, y: 340, w: 40, h: 40 },
-                          platforms: [
-                              { x: 0, y: 0, w: 640, h: 20 },
-                              { x: 0, y: 0, w: 20, h: 400 },
-                              { x: 620, y: 0, w: 20, h: 400 },
-                              { x: 0, y: 380, w: 640, h: 20 },
-                              { x: 300, y: 140, w: 40, h: 240 }
-                          ],
-                          hazards: [],
-                          button: { x: 400, y: 360, w: 40, h: 20, pressed: false }, exitClosed: true, cubeStart: { x: 100, y: 360, w: 20, h: 20 } },
-                        { name: "Chamber 07 - Open Door",
-                          start: { x: 40, y: 360 }, exit: { x: 570, y: 210, w: 40, h: 40 },
-                          platforms: [
-                              { x: 0, y: 0, w: 640, h: 20 },
-                              { x: 0, y: 0, w: 20, h: 400 },
-                              { x: 620, y: 0, w: 20, h: 400 },
-                              { x: 0, y: 380, w: 200, h: 20 },
-                              { x: 380, y: 250, w: 240, h: 150 }
-                          ],
-                          hazards: [{ x: 200, y: 360, w: 180, h: 40 }],
-                          noPortal: [{ x: 0, y: 0, w: 640, h: 24 }, { x: 0, y: 0, w: 24, h: 400 }, { x: 612, y: 0, w: 28, h: 400 }, { x: 0, y: 372, w: 204, h: 32 }, { x: 504, y: 242, w: 116, h: 16 }],
-                          doors: [{ x: 520, y: 20, w: 20, h: 230 }],
-                          plates: [{ x: 150, y: 374, w: 40, h: 6, vx: 4, vy: -14 }],
-                          button: { x: 430, y: 230, w: 40, h: 20, pressed: false }, exitClosed: false, cubeStart: { x: 100, y: 360, w: 20, h: 20 } },
-                        { name: "Chamber 08 - Heavy Lifting",
-                          start: { x: 50, y: 180 }, exit: { x: 470, y: 340, w: 40, h: 40 },
-                          platforms: [
-                              { x: 0, y: 0, w: 640, h: 20 },
-                              { x: 0, y: 0, w: 20, h: 400 },
-                              { x: 620, y: 0, w: 20, h: 400 },
-                              { x: 0, y: 380, w: 640, h: 20 },
-                              { x: 20, y: 200, w: 140, h: 20 },
-                              { x: 440, y: 130, w: 180, h: 20 }
-                          ],
-                          hazards: [],
-                          noPortal: [{ x: 340, y: 0, w: 300, h: 24 }, { x: 612, y: 0, w: 28, h: 400 }, { x: 436, y: 126, w: 188, h: 28 }],
-                          button: { x: 560, y: 110, w: 40, h: 20, pressed: false }, exitClosed: true, cubeStart: { x: 110, y: 180, w: 20, h: 20 } },
-                        { name: "Chamber 09 - Fizzler Gate",
-                          start: { x: 50, y: 360 }, exit: { x: 560, y: 340, w: 40, h: 40 },
-                          platforms: [
-                              { x: 0, y: 0, w: 640, h: 20 },
-                              { x: 0, y: 0, w: 20, h: 400 },
-                              { x: 620, y: 0, w: 20, h: 400 },
-                              { x: 0, y: 380, w: 640, h: 20 }
-                          ],
-                          hazards: [],
-                          grids: [{ x: 300, y: 130, w: 12, h: 250 }],
-                          button: { x: 400, y: 360, w: 40, h: 20, pressed: false }, exitClosed: true, cubeStart: { x: 100, y: 360, w: 20, h: 20 } }
+{
+                    "name": "Chamber 01 - Hello, Portal",
+                    "start": {
+                              "x": 60,
+                              "y": 360
+                    },
+                    "exit": {
+                              "x": 540,
+                              "y": 340,
+                              "w": 40,
+                              "h": 40
+                    },
+                    "platforms": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 620,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 380,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 300,
+                                        "y": 140,
+                                        "w": 40,
+                                        "h": 240
+                              }
+                    ],
+                    "hazards": [],
+                    "button": null,
+                    "exitClosed": false,
+                    "cubeStart": null,
+                    "buttons": [],
+                    "triggers": [],
+                    "laserTriggers": [],
+                    "doors": [],
+                    "wires": [],
+                    "lasers": [],
+                    "portalGunUpgrades": [],
+                    "portalGunStage": 2
+          },
+          {
+                    "name": "Chamber 02 - Leap of Faith",
+                    "start": {
+                              "x": 40,
+                              "y": 240
+                    },
+                    "exit": {
+                              "x": 560,
+                              "y": 340,
+                              "w": 40,
+                              "h": 40
+                    },
+                    "platforms": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 620,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 260,
+                                        "w": 200,
+                                        "h": 140
+                              },
+                              {
+                                        "x": 460,
+                                        "y": 380,
+                                        "w": 160,
+                                        "h": 20
+                              }
+                    ],
+                    "hazards": [
+                              {
+                                        "x": 200,
+                                        "y": 360,
+                                        "w": 260,
+                                        "h": 40
+                              }
+                    ],
+                    "button": null,
+                    "exitClosed": false,
+                    "cubeStart": null
+          },
+          {
+                    "name": "Chamber 03 - Flingshot",
+                    "start": {
+                              "x": 60,
+                              "y": 180
+                    },
+                    "exit": {
+                              "x": 560,
+                              "y": 70,
+                              "w": 40,
+                              "h": 40
+                    },
+                    "platforms": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 620,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 380,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 20,
+                                        "y": 200,
+                                        "w": 140,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 440,
+                                        "y": 110,
+                                        "w": 180,
+                                        "h": 20
+                              }
+                    ],
+                    "hazards": [],
+                    "noPortal": [
+                              {
+                                        "x": 340,
+                                        "y": 0,
+                                        "w": 300,
+                                        "h": 24
+                              },
+                              {
+                                        "x": 612,
+                                        "y": 0,
+                                        "w": 28,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 436,
+                                        "y": 106,
+                                        "w": 188,
+                                        "h": 28
+                              }
+                    ],
+                    "button": null,
+                    "exitClosed": false,
+                    "cubeStart": null
+          },
+          {
+                    "name": "Chamber 04 - Faith Plate",
+                    "start": {
+                              "x": 40,
+                              "y": 360
+                    },
+                    "exit": {
+                              "x": 570,
+                              "y": 210,
+                              "w": 40,
+                              "h": 40
+                    },
+                    "platforms": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 620,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 380,
+                                        "w": 200,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 380,
+                                        "y": 250,
+                                        "w": 240,
+                                        "h": 150
+                              }
+                    ],
+                    "hazards": [
+                              {
+                                        "x": 200,
+                                        "y": 360,
+                                        "w": 180,
+                                        "h": 40
+                              }
+                    ],
+                    "noPortal": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 24
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 24,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 612,
+                                        "y": 0,
+                                        "w": 28,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 372,
+                                        "w": 204,
+                                        "h": 32
+                              }
+                    ],
+                    "plates": [
+                              {
+                                        "x": 150,
+                                        "y": 374,
+                                        "w": 40,
+                                        "h": 6,
+                                        "vx": 4,
+                                        "vy": -14
+                              }
+                    ],
+                    "button": null,
+                    "exitClosed": false,
+                    "cubeStart": null
+          },
+          {
+                    "name": "Chamber 05 - Metal Detector",
+                    "start": {
+                              "x": 60,
+                              "y": 360
+                    },
+                    "exit": {
+                              "x": 560,
+                              "y": 340,
+                              "w": 40,
+                              "h": 40
+                    },
+                    "platforms": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 620,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 380,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 300,
+                                        "y": 200,
+                                        "w": 40,
+                                        "h": 180
+                              },
+                              {
+                                        "x": 350,
+                                        "y": 100,
+                                        "w": 170,
+                                        "h": 20
+                              }
+                    ],
+                    "hazards": [],
+                    "noPortal": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 24
+                              }
+                    ],
+                    "button": null,
+                    "exitClosed": false,
+                    "cubeStart": null
+          },
+          {
+                    "name": "Chamber 06 - Cube Duty",
+                    "start": {
+                              "x": 50,
+                              "y": 360
+                    },
+                    "exit": {
+                              "x": 560,
+                              "y": 340,
+                              "w": 40,
+                              "h": 40
+                    },
+                    "platforms": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 620,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 380,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 300,
+                                        "y": 140,
+                                        "w": 40,
+                                        "h": 240
+                              }
+                    ],
+                    "hazards": [],
+                    "button": {
+                              "x": 400,
+                              "y": 360,
+                              "w": 40,
+                              "h": 20,
+                              "pressed": false
+                    },
+                    "exitClosed": true,
+                    "cubeStart": {
+                              "x": 100,
+                              "y": 360,
+                              "w": 20,
+                              "h": 20
+                    }
+          },
+          {
+                    "name": "Chamber 07 - Open Door",
+                    "start": {
+                              "x": 40,
+                              "y": 360
+                    },
+                    "exit": {
+                              "x": 570,
+                              "y": 210,
+                              "w": 40,
+                              "h": 40
+                    },
+                    "platforms": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 620,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 380,
+                                        "w": 200,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 380,
+                                        "y": 250,
+                                        "w": 240,
+                                        "h": 150
+                              }
+                    ],
+                    "hazards": [
+                              {
+                                        "x": 200,
+                                        "y": 360,
+                                        "w": 180,
+                                        "h": 40
+                              }
+                    ],
+                    "noPortal": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 24
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 24,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 612,
+                                        "y": 0,
+                                        "w": 28,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 372,
+                                        "w": 204,
+                                        "h": 32
+                              },
+                              {
+                                        "x": 504,
+                                        "y": 242,
+                                        "w": 116,
+                                        "h": 16
+                              }
+                    ],
+                    "doors": [
+                              {
+                                        "x": 520,
+                                        "y": 20,
+                                        "w": 20,
+                                        "h": 230
+                              }
+                    ],
+                    "plates": [
+                              {
+                                        "x": 150,
+                                        "y": 374,
+                                        "w": 40,
+                                        "h": 6,
+                                        "vx": 4,
+                                        "vy": -14
+                              }
+                    ],
+                    "button": {
+                              "x": 430,
+                              "y": 230,
+                              "w": 40,
+                              "h": 20,
+                              "pressed": false
+                    },
+                    "exitClosed": false,
+                    "cubeStart": {
+                              "x": 100,
+                              "y": 360,
+                              "w": 20,
+                              "h": 20
+                    }
+          },
+          {
+                    "name": "Chamber 08 - Heavy Lifting",
+                    "start": {
+                              "x": 50,
+                              "y": 180
+                    },
+                    "exit": {
+                              "x": 470,
+                              "y": 340,
+                              "w": 40,
+                              "h": 40
+                    },
+                    "platforms": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 620,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 380,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 20,
+                                        "y": 200,
+                                        "w": 140,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 440,
+                                        "y": 130,
+                                        "w": 180,
+                                        "h": 20
+                              }
+                    ],
+                    "hazards": [],
+                    "noPortal": [
+                              {
+                                        "x": 340,
+                                        "y": 0,
+                                        "w": 300,
+                                        "h": 24
+                              },
+                              {
+                                        "x": 612,
+                                        "y": 0,
+                                        "w": 28,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 436,
+                                        "y": 126,
+                                        "w": 188,
+                                        "h": 28
+                              }
+                    ],
+                    "button": {
+                              "x": 560,
+                              "y": 110,
+                              "w": 40,
+                              "h": 20,
+                              "pressed": false
+                    },
+                    "exitClosed": true,
+                    "cubeStart": {
+                              "x": 110,
+                              "y": 180,
+                              "w": 20,
+                              "h": 20
+                    }
+          },
+          {
+                    "name": "Chamber 09 - Fizzler Gate",
+                    "start": {
+                              "x": 50,
+                              "y": 360
+                    },
+                    "exit": {
+                              "x": 560,
+                              "y": 340,
+                              "w": 40,
+                              "h": 40
+                    },
+                    "platforms": [
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 640,
+                                        "h": 20
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 620,
+                                        "y": 0,
+                                        "w": 20,
+                                        "h": 400
+                              },
+                              {
+                                        "x": 0,
+                                        "y": 380,
+                                        "w": 640,
+                                        "h": 20
+                              }
+                    ],
+                    "hazards": [],
+                    "grids": [
+                              {
+                                        "x": 300,
+                                        "y": 130,
+                                        "w": 12,
+                                        "h": 250
+                              }
+                    ],
+                    "button": {
+                              "x": 400,
+                              "y": 360,
+                              "w": 40,
+                              "h": 20,
+                              "pressed": false
+                    },
+                    "exitClosed": true,
+                    "cubeStart": {
+                              "x": 100,
+                              "y": 360,
+                              "w": 20,
+                              "h": 20
+                    }
+          }
                         /* PORTAL2D_BUILTIN_LEVELS_END */
                     ]
                 };
@@ -832,7 +1535,7 @@
             var testMode = false;
             var advanceTimer = null;
             var bootDone = false;
-            var DEV_PACK_ID = 'official_dev';
+            var sledgehammerMode = /(?:^|&)sledgehammer=1(?:&|$)/.test(window.location.search.substring(1));
 
             // ---------- Pack storage ----------
             function loadPacksFromStorage() {
@@ -903,10 +1606,16 @@
                 if (!lvl) return;
                 if (!Array.isArray(lvl.buttons)) lvl.buttons = lvl.button ? [lvl.button] : [];
                 if (!Array.isArray(lvl.triggers)) lvl.triggers = [];
+                if (!Array.isArray(lvl.laserTriggers)) lvl.laserTriggers = [];
                 if (!Array.isArray(lvl.doors)) lvl.doors = [];
                 if (!Array.isArray(lvl.wires)) lvl.wires = [];
                 if (!Array.isArray(lvl.lasers)) lvl.lasers = [];
                 if (!Array.isArray(lvl.portalGunUpgrades)) lvl.portalGunUpgrades = [];
+                if (!Array.isArray(lvl.cubes)) lvl.cubes = [];
+                if (!lvl.cubes.length && lvl.cubeStart) {
+                    lvl.cubes.push({ x: lvl.cubeStart.x, y: lvl.cubeStart.y, w: lvl.cubeStart.w || 20, h: lvl.cubeStart.h || 20 });
+                }
+                if (!lvl.cubeStart && lvl.cubes.length) lvl.cubeStart = lvl.cubes[0];
                 if (typeof lvl.portalGunStage !== 'number') lvl.portalGunStage = 2;
                 if (lvl.portalGunStage < 0) lvl.portalGunStage = 0;
                 if (lvl.portalGunStage > 2) lvl.portalGunStage = 2;
@@ -922,6 +1631,16 @@
                 }
                 for (var ti = 0; ti < lvl.triggers.length; ti++) {
                     if (typeof lvl.triggers[ti].active !== 'boolean') lvl.triggers[ti].active = false;
+                     if (!lvl.triggers[ti].triggerType) lvl.triggers[ti].triggerType = 'touchPlayer';
+                }
+                for (var lti = 0; lti < lvl.laserTriggers.length; lti++) {
+                    if (typeof lvl.laserTriggers[lti].active !== 'boolean') lvl.laserTriggers[lti].active = false;
+                    lvl.laserTriggers[lti].triggerType = 'laser';
+                }
+                for (var li = 0; li < lvl.lasers.length; li++) {
+                    if (typeof lvl.lasers[li].baseEnabled !== 'boolean') lvl.lasers[li].baseEnabled = lvl.lasers[li].enabled !== false;
+                    if (typeof lvl.lasers[li].enabled !== 'boolean') lvl.lasers[li].enabled = true;
+                    if (lvl.lasers[li].logic !== 'any') lvl.lasers[li].logic = 'all';
                 }
                 for (var di = 0; di < lvl.doors.length; di++) {
                     if (lvl.doors[di].logic !== 'any') lvl.doors[di].logic = 'all';
@@ -969,6 +1688,10 @@
                     var triggers = lvl.triggers || [];
                     return !!(triggers[id] && triggers[id].active);
                 }
+                if (type === 'laserTrigger') {
+                    var laserTriggers = lvl.laserTriggers || [];
+                    return !!(laserTriggers[id] && laserTriggers[id].active);
+                }
                 return false;
             }
             function doorIsOpen(lvl, doorIndex) {
@@ -988,16 +1711,37 @@
                 }
                 return true;
             }
-            function laserHitsRect(laser, rect) {
-                var x1 = laser.x;
-                var y1 = laser.y;
-                var x2 = x1 + Math.cos(laser.angle) * laser.length;
-                var y2 = y1 + Math.sin(laser.angle) * laser.length;
-                var dx = x2 - x1;
-                var dy = y2 - y1;
-                var t0 = 0;
-                var t1 = 1;
-                var p, q, r;
+            function updateLaserTriggers(lvl) {
+                ensureLevelMechanics(lvl);
+                for (var i = 0; i < lvl.laserTriggers.length; i++) {
+                    var tr = lvl.laserTriggers[i];
+                    tr.active = false;
+                    for (var li = 0; li < lvl.lasers.length; li++) {
+                        if (!laserIsEnabled(lvl, li)) continue;
+                        if (laserHitsRect(lvl.lasers[li], tr)) { tr.active = true; break; }
+                    }
+                }
+            }
+
+            function laserIsEnabled(lvl, laserIndex) {
+                ensureLevelMechanics(lvl);
+                var laser = (lvl.lasers || [])[laserIndex];
+                if (!laser) return false;
+                var inputs = [];
+                for (var i = 0; i < lvl.wires.length; i++) {
+                    var w = lvl.wires[i];
+                    if (w.targetType === 'laser' && Number(w.targetId) === laserIndex) inputs.push(w);
+                }
+                if (!inputs.length) return laser.baseEnabled !== false && laser.enabled !== false;
+                if (laser.logic === 'any') {
+                    for (var j = 0; j < inputs.length; j++) if (sourceActive(lvl, inputs[j].sourceType, inputs[j].sourceId)) return true;
+                    return false;
+                }
+                for (var k = 0; k < inputs.length; k++) if (!sourceActive(lvl, inputs[k].sourceType, inputs[k].sourceId)) return false;
+                return true;
+            }
+            function segmentHitsRect(x1, y1, x2, y2, rect) {
+                var dx = x2 - x1, dy = y2 - y1, t0 = 0, t1 = 1, p, q, r;
                 p = -dx; q = x1 - rect.x;
                 if (p === 0) { if (q < 0) return false; }
                 else { r = q / p; if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; } }
@@ -1013,44 +1757,171 @@
                 return t1 >= t0;
             }
 
+            // Trace a laser as connected segments. A beam can enter either portal,
+            // emerge from its partner with the correct 2-D orientation, and continue
+            // until it hits solid geometry, a fizzler, or its range limit.
+            // Transform a ray through a portal pair. The component tangent to the
+            // entry portal is preserved, while the component along the entry
+            // normal is re-expressed as the outward direction of the exit portal.
+            // This is the calculation that makes a laser physically continue
+            // from portal A to portal B instead of merely drawing a fixed beam.
+            function transformRayThroughPortal(dx, dy, entry, exit) {
+                var etx = -entry.normal.y, ety = entry.normal.x;
+                var xt = dx * etx + dy * ety;
+                var xn = dx * entry.normal.x + dy * entry.normal.y;
+                var xtx = -exit.normal.y, xty = exit.normal.x;
+                var ox = xt * xtx - xn * exit.normal.x;
+                var oy = xt * xty - xn * exit.normal.y;
+                var len = Math.sqrt(ox * ox + oy * oy) || 1;
+                return { x: ox / len, y: oy / len };
+            }
+
+            function traceLaser(laser) {
+                var out = [], sx = laser.x, sy = laser.y;
+                var dx = Math.cos(laser.angle), dy = Math.sin(laser.angle);
+                var remaining = Math.sqrt(W * W + H * H) + 100, hops = 0;
+                var lastPortal = null;
+                while (remaining > 1 && hops < 8) {
+                    var hit = raycast(sx, sy, dx, dy);
+                    var dist = hit ? Math.sqrt((hit.x - sx) * (hit.x - sx) + (hit.y - sy) * (hit.y - sy)) : remaining;
+                    if (dist > remaining) dist = remaining;
+
+                    var portal = null, portalDist = remaining + 1;
+                    var candidates = [
+                        { p: portalA, other: portalB, key: 'A' },
+                        { p: portalB, other: portalA, key: 'B' }
+                    ];
+
+                    // Find the first portal opening that this ray actually crosses.
+                    // A portal is allowed when it lies on the first collision surface
+                    // (raycast sees the wall underneath the portal), so equality with
+                    // the surface hit is intentional here.
+                    for (var pi = 0; pi < candidates.length; pi++) {
+                        var c = candidates[pi];
+                        if (!c.p || !c.other || !c.p.normal || !c.other.normal || c.key === lastPortal) continue;
+
+                        var vx = c.p.x - sx, vy = c.p.y - sy;
+                        var t = vx * dx + vy * dy;
+                        if (t <= 2 || t >= portalDist || t > dist + 6) continue;
+
+                        var px = sx + dx * t, py = sy + dy * t;
+                        var off = Math.sqrt((px - c.p.x) * (px - c.p.x) + (py - c.p.y) * (py - c.p.y));
+                        var entering = dx * c.p.normal.x + dy * c.p.normal.y;
+
+                        if (off <= PORTAL_RADIUS && entering < -0.02) {
+                            portal = c;
+                            portalDist = t;
+                        }
+                    }
+
+                    if (portal) {
+                        // Draw exactly to the portal opening.
+                        out.push({
+                            x1: sx, y1: sy,
+                            x2: sx + dx * portalDist,
+                            y2: sy + dy * portalDist
+                        });
+
+                        remaining -= portalDist;
+
+                        // Actually calculate the beam direction after exiting the
+                        // paired portal. This is independent of the editor beam length.
+                        var next = transformRayThroughPortal(dx, dy, portal.p, portal.other);
+                        dx = next.x;
+                        dy = next.y;
+
+                        // Start just outside the exit portal so the raycast does not
+                        // immediately collide with the wall containing the portal.
+                        sx = portal.other.x + portal.other.normal.x * 4;
+                        sy = portal.other.y + portal.other.normal.y * 4;
+                        remaining = Math.max(0, remaining - 4);
+
+                        // Prevent an immediate re-entry into the portal we just exited.
+                        lastPortal = portal.key === 'A' ? 'B' : 'A';
+                        hops++;
+                    } else {
+                        out.push({
+                            x1: sx, y1: sy,
+                            x2: sx + dx * dist,
+                            y2: sy + dy * dist
+                        });
+                        break;
+                    }
+                }
+                return out;
+            }
+
+
+            function laserHitsRect(laser, rect) {
+                var segs = traceLaser(laser);
+                for (var i = 0; i < segs.length; i++) {
+                    var s = segs[i];
+                    if (segmentHitsRect(s.x1, s.y1, s.x2, s.y2, rect)) return true;
+                }
+                return false;
+            }
+
+
             // ---------- Mode switching ----------
             window.switchMode = function(newMode) {
                 testMode = false;
                 if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
-                if (newMode === 'edit') {
-                    toast('DEV EDITOR IS SEPARATE');
-                    newMode = 'play';
-                }
                 mode = newMode;
                 document.getElementById('tab-play').className = 'mode-tab' + (mode === 'play' ? ' active' : '');
                 document.getElementById('tab-packs').className = 'mode-tab' + (mode === 'packs' ? ' active' : '');
                 document.getElementById('tab-online').className = 'mode-tab' + (mode === 'online' ? ' active' : '');
+                document.getElementById('tab-edit').className = 'mode-tab' + (mode === 'edit' ? ' active' : '');
 
                 var packBar = document.getElementById('pack-bar');
                 var touchCtrl = document.getElementById('touch-controls');
                 var aimInd = document.getElementById('aim-indicator');
                 var onlinePanel = document.getElementById('online-panel');
                 var instructions = document.getElementById('instructions');
+                var userToolbar = document.getElementById('user-editor-toolbar');
+                var userActions = document.getElementById('user-editor-actions');
+                var pcControls = document.getElementById('pc-controls');
 
                 touchCtrl.classList.add('hidden');
+                touchCtrl.classList.remove('desktop-hidden');
                 packBar.style.display = 'none';
                 aimInd.style.display = 'none';
                 onlinePanel.classList.remove('active');
+                userToolbar.style.display = 'none';
+                userActions.style.display = 'none';
+                pcControls.style.display = 'none';
 
                 if (mode === 'packs') {
-                    instructions.innerText = 'Tap a pack to play it. Level editing is available to developers from the separate admin editor.';
+                    instructions.innerText = 'Create, copy, delete, import, publish, and edit your Portal: The Kindle Version level packs.';
                     toast('PACKS');
                     renderPackManager();
                 } else if (mode === 'online') {
                     onlinePanel.classList.add('active');
-                    instructions.innerText = 'Browse or import published level packs.';
+                    instructions.innerText = 'Browse, import, and edit published level packs.';
                     onlineRefreshStatus();
                     toast('ONLINE LEVELS');
+                } else if (mode === 'edit') {
+                    if (getActivePack().id === 'builtin') {
+                        copyActivePack(function() { switchMode('edit'); });
+                        return;
+                    }
+                    packBar.style.display = 'flex';
+                    userToolbar.style.display = 'flex';
+                    userActions.style.display = 'flex';
+                    instructions.innerText = 'EDITOR: drag to create entities. SELECT moves existing entities. WIRE connects buttons/triggers/laser triggers to doors or lasers. Delete removes selected entities. Test before publishing.';
+                    toast('LEVEL EDITOR');
+                    loadLevel(levelIndex);
+                    updateAimSnap();
                 } else {
                     packBar.style.display = 'flex';
                     touchCtrl.classList.remove('hidden');
+                    var isKindle = /Kindle|Silk|KFTT|KF[A-Z0-9]+/i.test(navigator.userAgent || '');
+                    var hasTouch = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window || isKindle;
+                    if (!hasTouch) touchCtrl.classList.add('desktop-hidden');
                     aimInd.style.display = 'block';
-                    instructions.innerText = 'Drag joystick to aim. Portal Gun Stage 0 = no portals; Stage 1 = blue only; Stage 2 = blue and orange. Player-placed portals are enabled by the gun stage. Hatched grey = no portals. Yellow pad = launch. Red dashed = fizzler: clears portals, resets the cube. Door wires can combine buttons and triggers.';
+                    pcControls.style.display = 'block';
+                    instructions.innerText = hasTouch
+                        ? 'TOUCH: drag the AIM pad to aim. Tap BLUE or ORANGE to fire. Use LEFT/RIGHT to move, JUMP, and GRAB.'
+                        : 'PC: mouse aims automatically. Left click fires BLUE; right click fires ORANGE. Q/E also fire portals. A/D or arrows move, W/Space jumps, F grabs, R clears portals.';
                     loadLevel(levelIndex);
                     toast('PLAY MODE');
                     updateAimSnap();
@@ -1070,20 +1941,23 @@
                 player.x = lvl.start.x; player.y = lvl.start.y;
                 player.vx = 0; player.vy = 0; player.push = 0;
                 portalA = null; portalB = null;
-                heldCube = false; cube = null;
+                heldCube = -1; cube = null; cubes = [];
                 teleportCooldown = 0; levelClear = false;
-                if (typeof lvl.portalGunStage === 'number' && lvl.portalGunStage > portalGunStage) setPortalGunStage(lvl.portalGunStage);
+                portalGunStage = (typeof lvl.portalGunStage === 'number') ? Math.max(0, Math.min(2, lvl.portalGunStage)) : 0;
                 for (var pui = 0; pui < (lvl.portalGunUpgrades || []).length; pui++) lvl.portalGunUpgrades[pui].collected = false;
                 setPortalGunStage(portalGunStage);
-                if (lvl.cubeStart) {
-                    cube = { x: lvl.cubeStart.x, y: lvl.cubeStart.y,
-                             w: lvl.cubeStart.w, h: lvl.cubeStart.h, vx: 0, vy: 0 };
-                }
+                syncEditorGunStage();
+                cubes = (lvl.cubes || []).map(function(cs) {
+                    return { x: cs.x, y: cs.y, w: cs.w || 20, h: cs.h || 20, vx: 0, vy: 0 };
+                });
+                cube = cubes.length ? cubes[0] : null;
                 var loadButtons = lvl.buttons || [];
                 for (var lbi = 0; lbi < loadButtons.length; lbi++) loadButtons[lbi].pressed = false;
                 var loadTriggers = lvl.triggers || [];
                 for (var lti = 0; lti < loadTriggers.length; lti++) loadTriggers[lti].active = false;
                 document.getElementById('level-display').innerText = (index + 1) + '/' + levels.length;
+                var levelNameDisplay = document.getElementById('level-name-display');
+                if (levelNameDisplay) levelNameDisplay.innerText = lvl.name ? '— ' + lvl.name : '';
                 updatePortalCount();
                 updateAimSnap();
                 updateAimIndicator();
@@ -1091,8 +1965,11 @@
 
             // ---------- Keyboard ----------
             window.addEventListener('keydown', function(e) {
-                keys[e.key.toLowerCase()] = true;
-                if (['arrowup','arrowdown','arrowleft','arrowright',' '].indexOf(e.key.toLowerCase()) !== -1) e.preventDefault();
+                var target = e.target;
+                var isTextInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+                if (!isTextInput) keys[e.key.toLowerCase()] = true;
+                if (!isTextInput && ['arrowup','arrowdown','arrowleft','arrowright',' '].indexOf(e.key.toLowerCase()) !== -1) e.preventDefault();
+                if (!isTextInput && mode === 'edit' && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSelection(); }
                 if (mode === 'play') {
                     if (e.key.toLowerCase() === 'q') firePortal('blue');
                     if (e.key.toLowerCase() === 'e') firePortal('yellow');
@@ -1113,13 +1990,66 @@
                 return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
             }
 
+            function editorHitEntity(lvl, x, y) {
+                var lists = [
+                    ['doors', 'door'], ['buttons', 'button'], ['triggers', 'trigger'], ['laserTriggers', 'laserTrigger'], ['platforms', 'platform'],
+                    ['hazards', 'hazard'], ['lasers', 'laser'], ['plates', 'plate'], ['grids', 'grid'], ['portalGunUpgrades', 'upgrade'], ['noPortal', 'metal']
+                ];
+                for (var li = 0; li < lists.length; li++) {
+                    var arr = lvl[lists[li][0]] || [];
+                    for (var i = arr.length - 1; i >= 0; i--) { var o = arr[i]; if (x >= o.x && x <= o.x + (o.w || 10) && y >= o.y && y <= o.y + (o.h || 10)) return { list: lists[li][0], index: i, type: lists[li][1] }; }
+                }
+                var cubes = lvl.cubes || [];
+                for (var ci = cubes.length - 1; ci >= 0; ci--) {
+                    var cb = cubes[ci];
+                    if (x >= cb.x && x <= cb.x + cb.w && y >= cb.y && y <= cb.y + cb.h) return { list: 'cubes', index: ci, type: 'cube' };
+                }
+                if (lvl.cubeStart && !cubes.length && x >= lvl.cubeStart.x && x <= lvl.cubeStart.x + lvl.cubeStart.w && y >= lvl.cubeStart.y && y <= lvl.cubeStart.y + lvl.cubeStart.h) return { list: 'cubeStart', index: 0, type: 'cube' };
+                if (lvl.start && x >= lvl.start.x && x <= lvl.start.x + 20 && y >= lvl.start.y && y <= lvl.start.y + 20) return { list: 'start', index: 0, type: 'start' };
+                if (lvl.exit && x >= lvl.exit.x && x <= lvl.exit.x + lvl.exit.w && y >= lvl.exit.y && y <= lvl.exit.y + lvl.exit.h) return { list: 'exit', index: 0, type: 'exit' };
+                return null;
+            }
+            function editorGetEntity(sel) { var l = levels[levelIndex]; if (!sel) return null; if (sel.list === 'start') return l.start; if (sel.list === 'exit') return l.exit; if (sel.list === 'cubeStart') return l.cubeStart; return (l[sel.list] || [])[sel.index] || null; }
+            function remapWiresAfterDelete(lvl, sel) {
+                if (!lvl.wires) return;
+                var out=[];
+                for(var wi=0;wi<lvl.wires.length;wi++){var w=lvl.wires[wi];
+                    if((sel.list==='buttons'&&w.sourceType==='button')||(sel.list==='triggers'&&w.sourceType==='trigger')||(sel.list==='laserTriggers'&&w.sourceType==='laserTrigger')){
+                        if(w.sourceId===sel.index) continue; if(w.sourceId>sel.index) w.sourceId--;
+                    }
+                    if(sel.list==='doors' && w.targetType==='door'){if(w.targetId===sel.index)continue;if(w.targetId>sel.index)w.targetId--;}
+                    if(sel.list==='lasers' && w.targetType==='laser'){if(w.targetId===sel.index)continue;if(w.targetId>sel.index)w.targetId--;}
+                    out.push(w);
+                }
+                lvl.wires=out;
+            }
+            function deleteSelection() {
+                if (!editorSelection) return;
+                var l = levels[levelIndex], sel = editorSelection;
+                if (sel.list === 'start') l.start = { x: 60, y: 300 };
+                else if (sel.list === 'exit') l.exit = { x: 560, y: 300, w: 40, h: 40 };
+                else if (sel.list === 'cubeStart') {
+                    l.cubeStart = null;
+                    l.cubes = [];
+                    cube = null;
+                    cubes = [];
+                    heldCube = -1;
+                }
+                else if (l[sel.list]) { l[sel.list].splice(sel.index, 1); remapWiresAfterDelete(l, sel); }
+                editorSelection = null; touchEditor(); updateAimSnap(); toast('SELECTED ENTITY DELETED');
+            }
+
             function editorPointAt(lvl, x, y) {
                 var buttons = lvl.buttons || (lvl.button ? [lvl.button] : []);
                 for (var i = 0; i < buttons.length; i++) if (x >= buttons[i].x && x <= buttons[i].x + buttons[i].w && y >= buttons[i].y && y <= buttons[i].y + buttons[i].h) return { type: 'button', id: i };
+                var laserTriggers = lvl.laserTriggers || [];
+                for (var lt = 0; lt < laserTriggers.length; lt++) if (x >= laserTriggers[lt].x && x <= laserTriggers[lt].x + laserTriggers[lt].w && y >= laserTriggers[lt].y && y <= laserTriggers[lt].y + laserTriggers[lt].h) return { type: 'laserTrigger', id: lt };
                 var triggers = lvl.triggers || [];
                 for (var j = 0; j < triggers.length; j++) if (x >= triggers[j].x && x <= triggers[j].x + triggers[j].w && y >= triggers[j].y && y <= triggers[j].y + triggers[j].h) return { type: 'trigger', id: j };
                 var doors = lvl.doors || [];
                 for (var k = 0; k < doors.length; k++) if (x >= doors[k].x && x <= doors[k].x + doors[k].w && y >= doors[k].y && y <= doors[k].y + doors[k].h) return { type: 'door', id: k };
+                var lasers = lvl.lasers || [];
+                for (var m = 0; m < lasers.length; m++) if (Math.abs(x - lasers[m].x) < 12 && Math.abs(y - lasers[m].y) < 12) return { type: 'laser', id: m };
                 return null;
             }
             function editorWireClick(coords) {
@@ -1127,23 +2057,23 @@
                 ensureLevelMechanics(lvl);
                 var hit = editorPointAt(lvl, coords.x, coords.y);
                 if (!wireSource) {
-                    if (hit && (hit.type === 'button' || hit.type === 'trigger')) {
+                    if (hit && (hit.type === 'button' || hit.type === 'trigger' || hit.type === 'laserTrigger')) {
                         wireSource = hit;
                         wireCursor = { x: coords.x, y: coords.y };
-                        toast('WIRE SOURCE: ' + hit.type.toUpperCase() + ' ' + (hit.id + 1) + ' - PICK DOOR');
+                        toast('WIRE SOURCE: ' + (hit.type === 'trigger' ? 'TOUCH PLAYER TRIGGER ' : hit.type === 'laserTrigger' ? 'LASER TRIGGER ' : hit.type.toUpperCase() + ' ') + (hit.id + 1) + ' - PICK DOOR OR LASER');
                     } else {
-                        toast('CLICK A BUTTON OR TRIGGER FIRST');
+                        toast('CLICK A BUTTON, TOUCH TRIGGER, OR LASER TRIGGER FIRST');
                     }
                     return;
                 }
-                if (hit && hit.type === 'door') {
+                if (hit && (hit.type === 'door' || hit.type === 'laser')) {
                     var exists = false;
                     for (var i = 0; i < lvl.wires.length; i++) {
                         var w = lvl.wires[i];
-                        if (w.sourceType === wireSource.type && w.sourceId === wireSource.id && w.targetId === hit.id) { exists = true; break; }
+                        if (w.sourceType === wireSource.type && w.sourceId === wireSource.id && w.targetType === hit.type && w.targetId === hit.id) { exists = true; break; }
                     }
                     if (!exists) {
-                        lvl.wires.push({ sourceType: wireSource.type, sourceId: wireSource.id, targetType: 'door', targetId: hit.id });
+                        lvl.wires.push({ sourceType: wireSource.type, sourceId: wireSource.id, targetType: hit.type, targetId: hit.id });
                         touchEditor();
                         toast('WIRE ADDED');
                     } else {
@@ -1152,7 +2082,7 @@
                     wireSource = null; wireCursor = null;
                     return;
                 }
-                if (hit && (hit.type === 'button' || hit.type === 'trigger')) {
+                if (hit && (hit.type === 'button' || hit.type === 'trigger' || hit.type === 'laserTrigger')) {
                     wireSource = hit; wireCursor = { x: coords.x, y: coords.y };
                     toast('WIRE SOURCE CHANGED');
                     return;
@@ -1165,6 +2095,15 @@
                 if (mode === 'edit') {
                     var coords = getCanvasCoords(clientX, clientY);
                     if (editorTool === 'wire') { editorWireClick(coords); return; }
+                    if (editorTool === 'select') {
+                        editorSelection = editorHitEntity(levels[levelIndex], coords.x, coords.y);
+                        if (editorSelection) {
+                            var obj = editorGetEntity(editorSelection);
+                            editorSelectionOffset = { x: coords.x - obj.x, y: coords.y - obj.y };
+                            toast('SELECTED ' + editorSelection.type.toUpperCase());
+                        } else { editorSelection = null; toast('NOTHING SELECTED'); }
+                        return;
+                    }
                     editorDragging = true;
                     editorDragStart = { x: Math.floor(coords.x / GRID) * GRID, y: Math.floor(coords.y / GRID) * GRID };
                     editorDragEnd = { x: editorDragStart.x + GRID, y: editorDragStart.y + GRID };
@@ -1183,15 +2122,39 @@
                 }
             }
             function canvasPointerMove(clientX, clientY) {
-                if (mode === 'edit' && editorDragging) {
+                if (mode === 'edit') {
                     var coords = getCanvasCoords(clientX, clientY);
-                    editorDragEnd = { x: Math.floor(coords.x / GRID) * GRID, y: Math.floor(coords.y / GRID) * GRID };
-                    if (editorTool === 'wire') wireCursor = { x: coords.x, y: coords.y };
+                    if (editorTool === 'select' && editorSelection) {
+                        var obj = editorGetEntity(editorSelection);
+                        if (obj) { obj.x = Math.round((coords.x - editorSelectionOffset.x) / GRID) * GRID; obj.y = Math.round((coords.y - editorSelectionOffset.y) / GRID) * GRID; }
+                        return;
+                    }
+                    if (editorDragging) {
+                        editorDragEnd = { x: Math.floor(coords.x / GRID) * GRID, y: Math.floor(coords.y / GRID) * GRID };
+                        if (editorTool === 'wire') wireCursor = { x: coords.x, y: coords.y };
+                    }
                 }
             }
             function canvasPointerUp() {
+                if (mode === 'edit' && editorTool === 'select' && editorSelection) { touchEditor(); return; }
                 if (mode === 'edit' && editorDragging) { editorDragging = false; commitEditorDrag(); }
             }
+
+            var mouseAimActive = false;
+            canvas.addEventListener('mousemove', function(e) {
+                if (mode !== 'play') return;
+                var c = getCanvasCoords(e.clientX, e.clientY);
+                var dx = c.x - (player.x + player.w / 2), dy = c.y - (player.y + player.h / 2);
+                var len = Math.sqrt(dx * dx + dy * dy);
+                if (len > 0) { aimX = dx / len; aimY = dy / len; aimActive = true; aimMagnitude = Math.min(1, len / 160); mouseAimActive = true; updateAimSnap(); updateAimIndicator(); }
+            });
+            canvas.addEventListener('mouseleave', function() { mouseAimActive = false; });
+            canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+            canvas.addEventListener('mousedown', function(e) {
+                if (mode !== 'play') return;
+                if (e.button === 0) { firePortal('blue'); e.preventDefault(); }
+                else if (e.button === 2) { firePortal('yellow'); e.preventDefault(); }
+            });
 
             canvas.addEventListener('touchstart', function(e) {
                 e.preventDefault(); var t = e.touches[0]; canvasPointerDown(t.clientX, t.clientY);
@@ -1201,9 +2164,9 @@
             }, { passive: false });
             canvas.addEventListener('touchend', function(e) { e.preventDefault(); canvasPointerUp(); }, { passive: false });
             canvas.addEventListener('touchcancel', function() { editorDragging = false; }, { passive: false });
-            canvas.addEventListener('mousedown', function(e) { if (e.button !== 0) return; canvasPointerDown(e.clientX, e.clientY); });
-            canvas.addEventListener('mousemove', function(e) { canvasPointerMove(e.clientX, e.clientY); });
-            canvas.addEventListener('mouseup', function(e) { if (e.button !== 0) return; canvasPointerUp(); });
+            canvas.addEventListener('mousedown', function(e) { if (e.button !== 0 || mode !== 'edit') return; canvasPointerDown(e.clientX, e.clientY); });
+            canvas.addEventListener('mousemove', function(e) { if (mode === 'edit') canvasPointerMove(e.clientX, e.clientY); });
+            canvas.addEventListener('mouseup', function(e) { if (e.button !== 0 || mode !== 'edit') return; canvasPointerUp(); });
             canvas.addEventListener('mouseleave', function() { editorDragging = false; });
 
             function commitEditorDrag() {
@@ -1230,16 +2193,22 @@
                 }
                 else if (editorTool === 'door') {
                     if (!lvl.doors) lvl.doors = []; lvl.doors.push({ x: x1, y: y1, w: w, h: h, logic: doorLogic }); toast('DOOR ADDED (' + doorLogic.toUpperCase() + ' INPUTS)'); }
+                else if (editorTool === 'laserTrigger') {
+                    if (!lvl.laserTriggers) lvl.laserTriggers = []; lvl.laserTriggers.push({ x: x1, y: y1, w: w, h: h, active: false, triggerType: 'laser' }); toast('LASER TRIGGER ADDED');
+                }
                 else if (editorTool === 'trigger') {
-                    if (!lvl.triggers) lvl.triggers = []; lvl.triggers.push({ x: x1, y: y1, w: w, h: h, active: false }); toast('TRIGGER ADDED');
+                    if (!lvl.triggers) lvl.triggers = []; lvl.triggers.push({ x: x1, y: y1, w: w, h: h, active: false, triggerType: 'touchPlayer' }); toast('TOUCH PLAYER TRIGGER ADDED');
                 }
                 else if (editorTool === 'laser') {
                     if (!lvl.lasers) lvl.lasers = [];
                     var lsx = editorDragStart.x + GRID / 2, lsy = editorDragStart.y + GRID / 2;
                     var lex = editorDragEnd.x + GRID / 2, ley = editorDragEnd.y + GRID / 2;
-                    var ldx = lex - lsx, ldy = ley - lsy, llen = Math.sqrt(ldx * ldx + ldy * ldy);
-                    lvl.lasers.push({ x: lsx, y: lsy, angle: Math.atan2(ldy, ldx), length: Math.max(GRID, llen), enabled: true });
-                    toast('LASER ADDED - DRAG TO AIM');
+                    var ldx = lex - lsx, ldy = ley - lsy;
+                    if (Math.abs(ldx) < 1 && Math.abs(ldy) < 1) {
+                        ldx = 1; ldy = 0;
+                    }
+                    lvl.lasers.push({ x: lsx, y: lsy, angle: Math.atan2(ldy, ldx), enabled: true, baseEnabled: true, logic: 'all' });
+                    toast('LASER ADDED - DRAG TO AIM - BEAM TRACES TO SURFACE');
                 }
                 else if (editorTool === 'plate') {
                     if (!lvl.plates) lvl.plates = [];
@@ -1252,18 +2221,29 @@
                 else if (editorTool === 'start') { lvl.start = { x: x1, y: y1 }; toast('START MOVED'); }
                 else if (editorTool === 'exit') { lvl.exit = { x: x1, y: y1, w: w, h: h }; toast('EXIT MOVED'); }
                 else if (editorTool === 'button') { ensureLevelMechanics(lvl); lvl.buttons.push({ x: x1, y: y1, w: w, h: h, pressed: false }); lvl.button = lvl.buttons[0]; lvl.exitClosed = true; toast('BUTTON ADDED (' + lvl.buttons.length + ')'); }
-                else if (editorTool === 'cube') { lvl.cubeStart = { x: x1, y: y1, w: Math.max(w,20), h: Math.max(h,20) }; toast('CUBE ADDED'); }
+                else if (editorTool === 'cube') {
+                    ensureLevelMechanics(lvl);
+                    if (!lvl.cubes) lvl.cubes = [];
+                    lvl.cubes.push({ x: x1, y: y1, w: Math.max(w,20), h: Math.max(h,20) });
+                    lvl.cubeStart = lvl.cubes[0] || null;
+                    toast('CUBE ADDED (' + lvl.cubes.length + ')');
+                }
                 else if (editorTool === 'erase') {
                     var keepOut = function(p) { return !(p.x < x2 && p.x + p.w > x1 && p.y < y2 && p.y + p.h > y1); };
                     var oldButtons = (lvl.buttons || []).slice();
                     var oldTriggers = (lvl.triggers || []).slice();
+                    var oldLaserTriggers = (lvl.laserTriggers || []).slice();
                     var oldDoors = (lvl.doors || []).slice();
                     var oldWires = (lvl.wires || []).slice();
+                    var oldLasers = (lvl.lasers || []).slice();
                     lvl.platforms = lvl.platforms.filter(keepOut);
                     lvl.hazards = lvl.hazards.filter(keepOut);
                     lvl.doors = oldDoors.filter(keepOut);
                     lvl.buttons = oldButtons.filter(keepOut);
                     lvl.triggers = oldTriggers.filter(keepOut);
+                    lvl.laserTriggers = oldLaserTriggers.filter(keepOut);
+                    if (lvl.cubes) lvl.cubes = lvl.cubes.filter(keepOut);
+                    lvl.cubeStart = lvl.cubes && lvl.cubes.length ? lvl.cubes[0] : null;
                     if (lvl.lasers) lvl.lasers = lvl.lasers.filter(function(lz) { return !(lz.x >= x1 && lz.x <= x2 && lz.y >= y1 && lz.y <= y2); });
                     if (lvl.plates) lvl.plates = lvl.plates.filter(keepOut);
                     if (lvl.grids) lvl.grids = lvl.grids.filter(keepOut);
@@ -1275,14 +2255,16 @@
                     var remappedWires = [];
                     for (var wri = 0; wri < oldWires.length; wri++) {
                         var oldWire = oldWires[wri];
-                        var oldSourceList = oldWire.sourceType === 'button' ? oldButtons : oldTriggers;
-                        var newSourceList = oldWire.sourceType === 'button' ? lvl.buttons : lvl.triggers;
+                        var oldSourceList = oldWire.sourceType === 'button' ? oldButtons : (oldWire.sourceType === 'laserTrigger' ? oldLaserTriggers : oldTriggers);
+                        var newSourceList = oldWire.sourceType === 'button' ? lvl.buttons : (oldWire.sourceType === 'laserTrigger' ? lvl.laserTriggers : lvl.triggers);
                         var sourceObject = oldSourceList[oldWire.sourceId];
-                        var targetObject = oldDoors[oldWire.targetId];
+                        var targetList = oldWire.targetType === 'laser' ? oldLasers : oldDoors;
+                        var targetObject = targetList[oldWire.targetId];
                         var newSourceId = sourceObject ? newSourceList.indexOf(sourceObject) : -1;
-                        var newTargetId = targetObject ? lvl.doors.indexOf(targetObject) : -1;
+                        var newTargetList = oldWire.targetType === 'laser' ? (lvl.lasers || []) : lvl.doors;
+                        var newTargetId = targetObject ? newTargetList.indexOf(targetObject) : -1;
                         if (newSourceId >= 0 && newTargetId >= 0) {
-                            remappedWires.push({ sourceType: oldWire.sourceType, sourceId: newSourceId, targetType: 'door', targetId: newTargetId });
+                            remappedWires.push({ sourceType: oldWire.sourceType, sourceId: newSourceId, targetType: oldWire.targetType, targetId: newTargetId });
                         }
                     }
                     lvl.wires = remappedWires;
@@ -1448,7 +2430,7 @@
             window.editorClear = function() {
                 var lvl = levels[levelIndex];
                 lvl.platforms = []; lvl.hazards = []; lvl.buttons = []; lvl.triggers = []; lvl.doors = []; lvl.wires = []; lvl.lasers = []; lvl.plates = []; lvl.grids = []; lvl.noPortal = [];
-                lvl.button = null; lvl.exitClosed = false; lvl.cubeStart = null;
+                lvl.button = null; lvl.exitClosed = false; lvl.cubeStart = null; lvl.cubes = [];
                 toast('CLEARED'); touchEditor(); updateAimSnap();
             };
             window.editorNewLevel = function() {
@@ -1460,7 +2442,7 @@
                         { x: 0, y: 380, w: 640, h: 20 }, { x: 0, y: 0, w: 640, h: 20 },
                         { x: 0, y: 100, w: 20, h: 280 }, { x: 620, y: 100, w: 20, h: 280 }
                     ],
-                    hazards: [], buttons: [], triggers: [], doors: [], wires: [], lasers: [], portalGunUpgrades: [], portalGunStage: 0, button: null, exitClosed: false, cubeStart: null
+                    hazards: [], buttons: [], triggers: [], laserTriggers: [], doors: [], wires: [], lasers: [], portalGunUpgrades: [], portalGunStage: 0, button: null, exitClosed: false, cubeStart: null, cubes: []
                 };
                 pack.levels.push(newLvl);
                 levels = pack.levels;
@@ -1468,6 +2450,32 @@
                 persistIfEditable();
                 toast('NEW LEVEL');
             };
+            window.editorRenameLevel = function() {
+                var lvl = levels[levelIndex];
+                if (!lvl) return;
+                showPrompt('Name this level:', lvl.name || ('Level ' + (levelIndex + 1)), function(name) {
+                    name = (name || '').replace(/^\s+|\s+$/g, '');
+                    if (!name) return;
+                    lvl.name = name;
+                    touchEditor();
+                    toast('LEVEL RENAMED');
+                });
+            };
+            window.editorSetGunStage = function(value) {
+                var lvl = levels[levelIndex];
+                if (!lvl) return;
+                var stage = Math.max(0, Math.min(2, parseInt(value, 10) || 0));
+                lvl.portalGunStage = stage;
+                if (mode === 'play' || mode === 'edit') setPortalGunStage(stage);
+                touchEditor();
+                toast('LEVEL GUN STAGE ' + stage);
+            };
+            function syncEditorGunStage() {
+                var sel = document.getElementById('editor-gun-stage');
+                if (!sel || !levels[levelIndex]) return;
+                var stage = typeof levels[levelIndex].portalGunStage === 'number' ? levels[levelIndex].portalGunStage : 0;
+                sel.value = String(Math.max(0, Math.min(2, stage)));
+            }
             window.editorDeleteLevel = function() {
                 var pack = getActivePack();
                 if (pack.levels.length <= 1) { toast('NEED 1 LEVEL MIN'); return; }
@@ -1584,21 +2592,28 @@
             // ---------- Pack manager ----------
             window.renderPackManager = function() {
                 var container = document.getElementById('instructions');
-                var html = '<b>LEVEL PACKS</b><br>';
+                var html = '<div class="panel-title"><b>LEVEL PACKS</b><small>' + packs.length + ' pack' + (packs.length === 1 ? '' : 's') + '</small></div>';
+                html += '<div class="pack-list">';
                 for (var i = 0; i < packs.length; i++) {
                     var p = packs[i];
-                    var active = (p.id === activePackId) ? ' [ACTIVE]' : '';
-                    var builtin = (p.id === 'builtin') ? ' (built-in)' : '';
-                    html += '<div style="margin:4px 0;">' +
-                        '<button class="btn" onclick="switchPack(\'' + escapeHtml(p.id) + '\')">PLAY</button> ' +
-                        '<b>' + escapeHtml(p.name) + '</b>' + active + builtin + ' (' + p.levels.length + ' lvl)</div>';
+                    var active = (p.id === activePackId);
+                    var builtin = (p.id === 'builtin');
+                    html += '<div class="pack-card' + (active ? ' active' : '') + '">' +
+                        '<div class="pack-card-name">' + escapeHtml(p.name) +
+                        '<span class="pack-card-meta">' + (builtin ? 'BUILT-IN · ' : '') + p.levels.length + ' level' + (p.levels.length === 1 ? '' : 's') + (active ? ' · ACTIVE' : '') + '</span></div>' +
+                        '<div class="pack-card-actions">' +
+                        '<button class="btn" onclick="switchPack(\'' + escapeHtml(p.id) + '\')">PLAY</button>' +
+                        '</div></div>';
                 }
-                html += '<br>' +
-                    '<button class="btn" onclick="packNew()">NEW PACK</button> ' +
-                    '<button class="btn" onclick="editorCopyPack()">COPY ACTIVE</button> ' +
-                    '<button class="btn" onclick="packDelete()">DELETE ACTIVE</button> ' +
-                    '<button class="btn" onclick="packExport()">EXPORT ALL</button> ' +
-                    '<button class="btn" onclick="packImport()">IMPORT</button>';
+                html += '</div>';
+                html += '<div class="pack-actions">' +
+                    '<button class="btn" onclick="packNew()">NEW PACK</button>' +
+                    '<button class="btn" onclick="packRename()"' + (activePackId === 'builtin' ? ' disabled' : '') + '>RENAME ACTIVE</button>' +
+                    '<button class="btn" onclick="editorCopyPack()">COPY ACTIVE</button>' +
+                    '<button class="btn danger" onclick="packDelete()">DELETE ACTIVE</button>' +
+                    '<button class="btn" onclick="packExport()">EXPORT ALL</button>' +
+                    '<button class="btn" onclick="packImport()">IMPORT</button>' +
+                    '</div>';
                 container.innerHTML = html;
             };
             window.packNew = function() {
@@ -1612,12 +2627,25 @@
                                 { x: 0, y: 380, w: 640, h: 20 }, { x: 0, y: 0, w: 640, h: 20 },
                                 { x: 0, y: 100, w: 20, h: 280 }, { x: 620, y: 100, w: 20, h: 280 }
                             ],
-                            hazards: [], button: null, exitClosed: false, cubeStart: null
+                            hazards: [], buttons: [], triggers: [], laserTriggers: [], doors: [], wires: [], lasers: [], portalGunUpgrades: [], portalGunStage: 0, noPortal: [], plates: [], grids: [], button: null, exitClosed: false, cubeStart: null, cubes: []
                         }]
                     };
                     packs.push(newPack); activePackId = newPack.id; levels = newPack.levels;
                     savePacksToStorage(); refreshPackSelect(); renderPackManager();
                     toast('PACK CREATED');
+                });
+            };
+            window.packRename = function() {
+                var pack = getActivePack();
+                if (!pack || pack.id === 'builtin') { showModal('The built-in pack cannot be renamed.', false); return; }
+                showPrompt('Rename pack:', pack.name || 'My Pack', function(name) {
+                    name = String(name || '').replace(/^\s+|\s+$/g, '');
+                    if (!name) { showModal('A pack name is required.', false); return; }
+                    pack.name = name;
+                    savePacksToStorage();
+                    refreshPackSelect();
+                    renderPackManager();
+                    toast('PACK RENAMED');
                 });
             };
             window.packDelete = function() {
@@ -1693,44 +2721,26 @@
                 else el.innerText = 'Not logged in. Log in from the home page to use online levels.';
             }
             window.refreshViewer = function() {
-                if (!getToken()) { viewer.name = null; viewer.isAdmin = false; applyDevUi(); statusText(); return; }
+                if (!getToken()) {
+                    viewer.name = null; viewer.isAdmin = false; applyDevUi(); statusText();
+                    if (sledgehammerMode) window.location.href = 'portal-2d.html';
+                    return;
+                }
                 api('GET', '/api/portal2d/me', null, function(err, res) {
                     if (!err) { viewer.name = res.username; viewer.isAdmin = !!res.isAdmin; }
                     applyDevUi(); statusText();
+                    if (sledgehammerMode) {
+                        if (!viewer.isAdmin) {
+                            showModal('Sledgehammer Editor is restricted to administrators.', false);
+                            setTimeout(function() { window.location.href = 'portal-2d.html'; }, 1200);
+                            return;
+                        }
+                        document.getElementById('app-title').innerText = 'SLEDGEHAMMER EDITOR';
+                        switchMode('edit');
+                    }
                 });
             };
             window.onlineRefreshStatus = function() { statusText(); refreshViewer(); };
-
-            // ----- official pack: the "built-in" slot is replaced by the server copy when one exists -----
-            function packSig(arr) { return JSON.stringify(arr, function(k, v) { return (k === 'pressed' || k === '_ok') ? undefined : v; }); }
-            function applyOfficial(data, silent) {
-                var base = packs[0];
-                var before = packSig(base.levels);
-                if (data && looksLikePack(data)) {
-                    base.levels = data.levels; base.name = 'Official Chambers';
-                    try { localStorage.setItem('portal2d_official', JSON.stringify({ levels: data.levels })); } catch (e) {}
-                } else {
-                    var fresh = makeBuiltinPack();
-                    base.levels = fresh.levels; base.name = fresh.name;
-                    try { localStorage.removeItem('portal2d_official'); } catch (e2) {}
-                }
-                refreshPackSelect();
-                if (bootDone && packSig(base.levels) !== before) {
-                    if (activePackId === 'builtin') {
-                        levels = base.levels;
-                        if (levelIndex >= levels.length) levelIndex = 0;
-                        if (mode === 'play') loadLevel(levelIndex);
-                    }
-                    if (!silent) toast('OFFICIAL CHAMBERS UPDATED');
-                }
-            }
-            function fetchOfficial(silent) {
-                if (!getToken()) return;
-                api('GET', '/api/portal2d/official', null, function(err, res) {
-                    if (!err) applyOfficial(res.data, silent);
-                    else if (err.status === 404) applyOfficial(null, silent);   // none on the server: use the game's own chambers
-                });
-            }
 
             window.onlinePublish = function() {
                 var pack = getActivePack();
@@ -1844,120 +2854,47 @@
                 });
             };
 
-            // ---------- Dev tools (admins only; the server re-checks every call) ----------
-            window.devLoadOfficial = function() {
-                var build = function() {
-                    api('GET', '/api/portal2d/official', null, function(err, res) {
-                        var src;
-                        if (err && err.status === 404) src = makeBuiltinPack().levels;
-                        else if (err) { showModal('Could not load the official pack: ' + err.error, false); return; }
-                        else src = res.data.levels;
-                        var lv = cleanLevels(src);
-                        for (var i = 0; i < lv.length; i++) lv[i]._ok = true;   // already live, so already proven
-                        var existing = null;
-                        for (var j = 0; j < packs.length; j++) if (packs[j].id === DEV_PACK_ID) existing = packs[j];
-                        if (existing) { existing.levels = lv; }
-                        else { existing = { id: DEV_PACK_ID, name: 'Official (dev copy)', levels: lv }; packs.push(existing); }
-                        activePackId = DEV_PACK_ID; levels = existing.levels;
-                        savePacksToStorage(); refreshPackSelect();
-                        switchMode('edit');
-                        loadLevel(0);
-                        toast('DEV COPY LOADED');
-                    });
-                };
-                var hasCopy = false;
-                for (var k = 0; k < packs.length; k++) if (packs[k].id === DEV_PACK_ID) hasCopy = true;
-                if (hasCopy) showConfirm('You already have a dev copy. Replace it with the current official pack? Unpushed work in it will be lost.', function(yes) { if (yes) build(); });
-                else build();
-            };
-
-            window.devAddLevel = function() {
-                var lvl = levels[levelIndex];
-                var pack = getActivePack();
-                if (!lvl) return;
-                if (pack.id === 'builtin') { showModal('Load the official pack for editing first (ONLINE tab, DEV TOOLS), or copy this level into your own pack.', false); return; }
-                var send = function() {
-                    var item = cleanLevel(lvl);
-                    api('POST', '/api/portal2d/official/levels', { level: item }, function(err, res) {
-                        if (err && err.code === 'NO_OFFICIAL') {
-                            // first ever push: seed the server with the game's own chambers, then the new level
-                            var seed = makeBuiltinPack().levels.concat([item]);
-                            api('PUT', '/api/portal2d/official', { data: { levels: seed } }, function(err2, res2) {
-                                if (err2) { showModal('Add failed: ' + err2.error, false); return; }
-                                fetchOfficial(true);
-                                showModal('Official pack created on the server. "' + item.name + '" is chamber ' + res2.count + '.', false);
-                            });
-                            return;
-                        }
-                        if (err) { showModal('Add failed: ' + err.error, false); return; }
-                        fetchOfficial(true);
-                        showModal('Added "' + item.name + '" as official chamber ' + res.count + '. Everyone gets it next time they open the game.', false);
-                    });
-                };
-                var confirmAdd = function() {
-                    showConfirm('Add "' + lvl.name + '" to the end of the OFFICIAL pack for every player?', function(yes) { if (yes) send(); });
-                };
-                if (!lvl._ok) {
-                    showConfirm('This level has not been playtested and cleared since it was last edited. Add it anyway?', function(yes) { if (yes) confirmAdd(); });
-                } else confirmAdd();
-            };
-
-            window.devPushPack = function() {
-                var pack = getActivePack();
-                if (pack.id === 'builtin') { showModal('Pick your dev copy or another editable pack as the active pack first.', false); return; }
-                var untested = 0;
-                for (var i = 0; i < pack.levels.length; i++) if (!pack.levels[i]._ok) untested++;
-                var msg = 'REPLACE the whole official pack with "' + pack.name + '" (' + pack.levels.length + ' levels)?' + (untested ? ' ' + untested + ' level(s) have not been playtested.' : '') + ' Every player will get it.';
-                showConfirm(msg, function(yes) {
-                    if (!yes) return;
-                    api('PUT', '/api/portal2d/official', { data: { levels: cleanLevels(pack.levels) } }, function(err, res) {
-                        if (err) { showModal('Replace failed: ' + err.error, false); return; }
-                        fetchOfficial(true);
-                        showModal('Official pack replaced (' + res.count + ' levels).', false);
-                    });
-                });
-            };
-
-            window.devResetOfficial = function() {
-                showConfirm('Delete the server copy so everyone uses the chambers built into the game?', function(yes) {
-                    if (!yes) return;
-                    api('DELETE', '/api/portal2d/official', null, function(err) {
-                        if (err) { showModal('Reset failed: ' + err.error, false); return; }
-                        applyOfficial(null, false);
-                        showModal('Official pack reset to the built-in chambers.', false);
-                    });
-                });
-            };
-
+            // ---------- Admin-only export ----------
             window.editorExportGame = function() {
                 if (!viewer.isAdmin) { showModal('Admins only.', false); return; }
                 var pack = getActivePack();
                 if (!pack || !pack.levels || !pack.levels.length) { showModal('There are no levels to export.', false); return; }
                 var payload = JSON.stringify(cleanLevels(pack.levels), null, 20);
                 payload = payload.substring(1, payload.length - 1).trim();
-                var xhr = new XMLHttpRequest();
-                xhr.open('GET', 'portal-2d.html?export_template=' + Date.now(), true);
-                xhr.onreadystatechange = function() {
-                    if (xhr.readyState !== 4) return;
-                    if (xhr.status < 200 || xhr.status >= 300) { showModal('Could not load the game template (' + xhr.status + ').', false); return; }
-                    var html = xhr.responseText;
-                    var start = '/* PORTAL2D_BUILTIN_LEVELS_START */';
-                    var end = '/* PORTAL2D_BUILTIN_LEVELS_END */';
-                    var a = html.indexOf(start), b = html.indexOf(end);
-                    if (a < 0 || b < 0 || b <= a) { showModal('The game template is missing its export markers.', false); return; }
-                    html = html.substring(0, a + start.length) + '\n' + payload + '\n                        ' + html.substring(b);
-                    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-                    var url = URL.createObjectURL(blob);
-                    var link = document.createElement('a');
-                    link.href = url;
-                    link.download = 'portal-2d.html';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-                    toast('GAME HTML EXPORTED');
-                };
-                xhr.send(null);
+
+                // Export the actual game document instead of fetching a second server-side
+                // template. This keeps the exported drop-in identical to the game currently
+                // being edited, including Kindle touch controls, touch aiming, PC controls,
+                // portal-gun stages, and all current client-side mechanics.
+                var titleEl = document.getElementById('app-title');
+                var oldTitle = titleEl ? titleEl.innerText : '';
+                if (titleEl) titleEl.innerText = 'PORTAL: THE KINDLE VERSION';
+
+                var html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+                if (titleEl) titleEl.innerText = oldTitle;
+
+                var start = '/* PORTAL2D_BUILTIN_LEVELS_START */';
+                var end = '/* PORTAL2D_BUILTIN_LEVELS_END */';
+                var a = html.indexOf(start), b = html.indexOf(end);
+                if (a < 0 || b < 0 || b <= a) { showModal('The game template is missing its export markers.', false); return; }
+
+                // Never ship an export that silently lost Kindle controls.
+                if (html.indexOf('id=\"touch-controls\"') < 0 || html.indexOf('function touchDown') < 0 || html.indexOf('function touchFire') < 0) {
+                    showModal('Export failed: Kindle touch controls are missing from the game template.', false);
+                    return;
+                }
+
+                html = html.substring(0, a + start.length) + '\n' + payload + '\n                        ' + html.substring(b);
+                var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                var url = URL.createObjectURL(blob);
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = 'portal-2d.html';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+                toast('GAME HTML EXPORTED');
             };
 
             // ---------- Portal firing ----------
@@ -2014,7 +2951,7 @@
             }
 
             function raycast(sx, sy, dx, dy) {
-                var step = 4, maxDist = 900;
+                var step = 4, maxDist = Math.sqrt(W * W + H * H) + 100;
                 var plats = solids();
                 var grids = levels[levelIndex].grids || [];
                 for (var t = 0; t < maxDist; t += step) {
@@ -2092,38 +3029,49 @@
                 }
                 player.y += player.vy; resolveCollisions('y');
                 if (player.onGround) player.push = 0; else player.push *= 0.985;
-                if (cube && !heldCube) {
-                    cube.vy += GRAVITY; if (cube.vy > MAX_FALL_SPEED) cube.vy = MAX_FALL_SPEED;
-                    cube.vx *= 0.8; if (Math.abs(cube.vx) < 0.1) cube.vx = 0;
+                var lvl = levels[levelIndex];
+                if (!Array.isArray(lvl.cubes)) lvl.cubes = [];
+                for (var ci = cubes.length - 1; ci >= 0; ci--) {
+                    var cb = cubes[ci];
+                    if (ci === heldCube) continue;
+                    cb.vy += GRAVITY; if (cb.vy > MAX_FALL_SPEED) cb.vy = MAX_FALL_SPEED;
+                    cb.vx *= 0.8; if (Math.abs(cb.vx) < 0.1) cb.vx = 0;
                     var cPlats = solids();
-                    cube.x += cube.vx;
-                    for (var i = 0; i < cPlats.length; i++) {
-                        var cp = cPlats[i];
-                        if (cube.x < cp.x + cp.w && cube.x + cube.w > cp.x && cube.y < cp.y + cp.h && cube.y + cube.h > cp.y) {
-                            if (cube.vx > 0) cube.x = cp.x - cube.w;
-                            else if (cube.vx < 0) cube.x = cp.x + cp.w;
-                            cube.vx = 0;
+                    cb.x += cb.vx;
+                    for (var cpi = 0; cpi < cPlats.length; cpi++) {
+                        var cp = cPlats[cpi];
+                        if (cb.x < cp.x + cp.w && cb.x + cb.w > cp.x && cb.y < cp.y + cp.h && cb.y + cb.h > cp.y) {
+                            if (cb.vx > 0) cb.x = cp.x - cb.w;
+                            else if (cb.vx < 0) cb.x = cp.x + cp.w;
+                            cb.vx = 0;
                         }
                     }
-                    cube.y += cube.vy;
-                    for (var i2 = 0; i2 < cPlats.length; i2++) {
-                        var cp2 = cPlats[i2];
-                        if (cube.x < cp2.x + cp2.w && cube.x + cube.w > cp2.x && cube.y < cp2.y + cp2.h && cube.y + cube.h > cp2.y) {
-                            if (cube.vy > 0) { cube.y = cp2.y - cube.h; cube.vy = 0; }
-                            else if (cube.vy < 0) { cube.y = cp2.y + cp2.h; cube.vy = 0; }
+                    cb.y += cb.vy;
+                    for (var cpi2 = 0; cpi2 < cPlats.length; cpi2++) {
+                        var cp2 = cPlats[cpi2];
+                        if (cb.x < cp2.x + cp2.w && cb.x + cb.w > cp2.x && cb.y < cp2.y + cp2.h && cb.y + cb.h > cp2.y) {
+                            if (cb.vy > 0) { cb.y = cp2.y - cb.h; cb.vy = 0; }
+                            else if (cb.vy < 0) { cb.y = cp2.y + cp2.h; cb.vy = 0; }
                         }
                     }
-                    for (var h = 0; h < levels[levelIndex].hazards.length; h++) {
-                        var hz = levels[levelIndex].hazards[h];
-                        if (cube.x < hz.x + hz.w && cube.x + cube.w > hz.x && cube.y < hz.y + hz.h && cube.y + cube.h > hz.y) {
-                            cube = null; toast('CUBE DESTROYED'); break;
+                    for (var h = 0; h < lvl.hazards.length; h++) {
+                        var hz = lvl.hazards[h];
+                        if (cb.x < hz.x + hz.w && cb.x + cb.w > hz.x && cb.y < hz.y + hz.h && cb.y + cb.h > hz.y) {
+                            cubes.splice(ci, 1);
+                            if (heldCube === ci) heldCube = -1;
+                            else if (heldCube > ci) heldCube--;
+                            break;
                         }
                     }
                 }
-                if (heldCube && cube) {
-                    cube.x = player.x + player.w + 5; cube.y = player.y;
-                    cube.vx = player.vx; cube.vy = player.vy;
+                if (heldCube >= 0 && cubes[heldCube]) {
+                    var held = cubes[heldCube];
+                    held.x = player.x + player.w + 5; held.y = player.y;
+                    held.vx = player.vx; held.vy = player.vy;
+                } else {
+                    heldCube = -1;
                 }
+                cube = cubes.length ? cubes[0] : null;
                 var lvl = levels[levelIndex];
                 if (lvl.plates) {
                     for (var pi = 0; pi < lvl.plates.length; pi++) {
@@ -2140,10 +3088,15 @@
                         if ((portalA || portalB) && overlaps(player, gd)) {
                             portalA = null; portalB = null; updatePortalCount(); toast('PORTALS CLEARED');
                         }
-                        if (cube && overlaps(cube, gd)) {
-                            heldCube = false;
-                            cube = lvl.cubeStart ? { x: lvl.cubeStart.x, y: lvl.cubeStart.y, w: lvl.cubeStart.w, h: lvl.cubeStart.h, vx: 0, vy: 0 } : null;
-                            toast('CUBE RESET');
+                        for (var cgi = cubes.length - 1; cgi >= 0; cgi--) {
+                            if (overlaps(cubes[cgi], gd)) {
+                                var original = (lvl.cubes || [])[cgi];
+                                if (original) {
+                                    cubes[cgi].x = original.x; cubes[cgi].y = original.y; cubes[cgi].vx = 0; cubes[cgi].vy = 0;
+                                }
+                                if (heldCube === cgi) heldCube = -1;
+                                toast('CUBE RESET');
+                            }
                         }
                     }
                 }
@@ -2158,12 +3111,15 @@
                 }
                 for (var bi = 0; bi < lvl.buttons.length; bi++) {
                     var bt = lvl.buttons[bi];
-                    bt.pressed = overlaps(player, bt) || !!(cube && overlaps(cube, bt));
+                    bt.pressed = overlaps(player, bt);
+                    for (var cbi = 0; cbi < cubes.length; cbi++) if (overlaps(cubes[cbi], bt)) { bt.pressed = true; break; }
                 }
                 for (var tri = 0; tri < lvl.triggers.length; tri++) {
                     var tr = lvl.triggers[tri];
                     tr.active = overlaps(player, tr);
                 }
+                // Laser triggers are driven by the actual traced laser path.
+                updateLaserTriggers(lvl);
                 lvl.button = lvl.buttons.length ? lvl.buttons[0] : null;
 
                 // A door that closes on you pushes you back to the nearest side (never through it).
@@ -2177,12 +3133,17 @@
                 }
                 for (var li = 0; li < lvl.lasers.length; li++) {
                     var laser = lvl.lasers[li];
-                    if (laser.enabled === false) continue;
+                    if (!laserIsEnabled(lvl, li)) continue;
                     if (laserHitsRect(laser, player)) {
                         toast('LASER HIT - RESTARTING'); loadLevel(levelIndex); return;
                     }
-                    if (cube && laserHitsRect(laser, cube)) {
-                        cube = null; heldCube = false; toast('CUBE HIT BY LASER');
+                    for (var lci = cubes.length - 1; lci >= 0; lci--) {
+                        if (laserHitsRect(laser, cubes[lci])) {
+                            cubes.splice(lci, 1);
+                            if (heldCube === lci) heldCube = -1;
+                            else if (heldCube > lci) heldCube--;
+                            toast('CUBE HIT BY LASER');
+                        }
                     }
                 }
                 for (var h = 0; h < lvl.hazards.length; h++) {
@@ -2240,24 +3201,28 @@
             }
 
             function toggleGrab() {
-                if (!cube) { toast('NO CUBE'); return; }
-                if (heldCube) {
-                    heldCube = false;
+                if (heldCube >= 0 && cubes[heldCube]) {
+                    var held = cubes[heldCube];
+                    heldCube = -1;
                     var dplats = solids();
                     for (var di = 0; di < dplats.length; di++) {
                         var dp = dplats[di];
-                        if (cube.x < dp.x + dp.w && cube.x + cube.w > dp.x && cube.y < dp.y + dp.h && cube.y + cube.h > dp.y) { cube.x = player.x; cube.y = player.y; break; }
+                        if (held.x < dp.x + dp.w && held.x + held.w > dp.x && held.y < dp.y + dp.h && held.y + held.h > dp.y) { held.x = player.x; held.y = player.y; break; }
                     }
-                    cube.vx = 0; cube.vy = 0;
+                    held.vx = 0; held.vy = 0;
                     toast('CUBE DROPPED');
+                    return;
                 }
-                else {
-                    var dx = (player.x + player.w/2) - (cube.x + cube.w/2);
-                    var dy = (player.y + player.h/2) - (cube.y + cube.h/2);
+                var nearest = -1, nearestDist = 60;
+                for (var ci = 0; ci < cubes.length; ci++) {
+                    var cb = cubes[ci];
+                    var dx = (player.x + player.w/2) - (cb.x + cb.w/2);
+                    var dy = (player.y + player.h/2) - (cb.y + cb.h/2);
                     var dist = Math.sqrt(dx*dx + dy*dy);
-                    if (dist < 60) { heldCube = true; toast('CUBE GRABBED'); }
-                    else toast('TOO FAR');
+                    if (dist < nearestDist) { nearestDist = dist; nearest = ci; }
                 }
+                if (nearest >= 0) { heldCube = nearest; toast('CUBE GRABBED'); }
+                else toast('TOO FAR');
             }
 
             // ---------- Render ----------
@@ -2316,23 +3281,60 @@
                 var lls = lvl.lasers || [];
                 for (var li = 0; li < lls.length; li++) {
                     var ll = lls[li];
-                    if (ll.enabled === false) continue;
-                    var lex = ll.x + Math.cos(ll.angle) * ll.length;
-                    var ley = ll.y + Math.sin(ll.angle) * ll.length;
-                    ctx.strokeStyle = '#330000'; ctx.lineWidth = 6;
-                    ctx.beginPath(); ctx.moveTo(ll.x, ll.y); ctx.lineTo(lex, ley); ctx.stroke();
-                    ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 3;
-                    ctx.beginPath(); ctx.moveTo(ll.x, ll.y); ctx.lineTo(lex, ley); ctx.stroke();
+                    if (!laserIsEnabled(lvl, li)) continue;
+                    var beam = traceLaser(ll);
+                    for (var bs = 0; bs < beam.length; bs++) {
+                        var seg = beam[bs];
+                        ctx.strokeStyle = '#330000'; ctx.lineWidth = 6;
+                        ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+                        ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 3;
+                        ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+                    }
                     ctx.fillStyle = '#880000'; ctx.fillRect(ll.x - 5, ll.y - 5, 10, 10);
                     ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(ll.x - 5, ll.y - 5, 10, 10);
+                    if (mode === 'edit') {
+                        var laserInputs = 0;
+                        for (var lwi = 0; lwi < (lvl.wires || []).length; lwi++) {
+                            if (lvl.wires[lwi].targetType === 'laser' && Number(lvl.wires[lwi].targetId) === li) laserInputs++;
+                        }
+                        ctx.fillStyle = laserInputs ? '#00d9ff' : '#555';
+                        ctx.beginPath(); ctx.arc(ll.x - 9, ll.y, 5, 0, Math.PI * 2); ctx.fill();
+                        ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+                        ctx.font = 'bold 9px sans-serif'; ctx.fillStyle = laserInputs ? '#9ff3ff' : '#aaa';
+                        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+                        ctx.fillText(laserInputs ? 'LASER INPUT ' + laserInputs : 'LASER', ll.x + 9, ll.y);
+                        ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+                    }
+                }
+                var ltrs = lvl.laserTriggers || [];
+                for (var ltrr = 0; ltrr < ltrs.length; ltrr++) {
+                    var ltg = ltrs[ltrr];
+                    ctx.fillStyle = ltg.active ? 'rgba(0,255,255,0.32)' : 'rgba(0,190,255,0.18)';
+                    ctx.fillRect(ltg.x, ltg.y, ltg.w, ltg.h);
+                    ctx.strokeStyle = ltg.active ? '#00ffff' : '#00aadd'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
+                    ctx.strokeRect(ltg.x, ltg.y, ltg.w, ltg.h); ctx.setLineDash([]);
+                    var ltcx = ltg.x + ltg.w / 2, ltcy = ltg.y + ltg.h / 2;
+                    ctx.strokeStyle = ltg.active ? '#ffffff' : '#00ddff'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(ltcx, ltcy, Math.max(6, Math.min(12, Math.min(ltg.w, ltg.h) / 3)), 0, Math.PI * 2); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(ltcx - 12, ltcy); ctx.lineTo(ltcx + 12, ltcy); ctx.moveTo(ltcx, ltcy - 12); ctx.lineTo(ltcx, ltcy + 12); ctx.stroke();
+                    ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillStyle = ltg.active ? '#ffffff' : '#8feaff'; ctx.fillText('LASER TRIGGER', ltcx, ltg.y - 8);
+                    ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
                 }
                 var trs = lvl.triggers || [];
                 for (var trr = 0; trr < trs.length; trr++) {
                     var tt = trs[trr];
-                    ctx.fillStyle = tt.active ? 'rgba(0,255,0,0.25)' : 'rgba(255,170,0,0.15)';
+                    ctx.fillStyle = tt.active ? 'rgba(0,255,80,0.32)' : 'rgba(255,170,0,0.22)';
                     ctx.fillRect(tt.x, tt.y, tt.w, tt.h);
-                    ctx.strokeStyle = tt.active ? '#00aa00' : '#cc8800'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
+                    ctx.strokeStyle = tt.active ? '#00ff66' : '#ffad00'; ctx.lineWidth = 3; ctx.setLineDash([5, 4]);
                     ctx.strokeRect(tt.x, tt.y, tt.w, tt.h); ctx.setLineDash([]);
+                    var tcx = tt.x + tt.w / 2, tcy = tt.y + tt.h / 2;
+                    ctx.strokeStyle = tt.active ? '#00ff66' : '#ffad00'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(tcx, tcy, Math.max(5, Math.min(10, Math.min(tt.w, tt.h) / 3)), 0, Math.PI * 2); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(tcx - 12, tcy); ctx.lineTo(tcx + 12, tcy); ctx.moveTo(tcx, tcy - 12); ctx.lineTo(tcx, tcy + 12); ctx.stroke();
+                    ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillStyle = tt.active ? '#baffcf' : '#ffe0a3'; ctx.fillText('TOUCH PLAYER', tcx, tt.y - 8);
+                    ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
                 }
                 var dls = lvl.doors || [];
                 for (var dr = 0; dr < dls.length; dr++) {
@@ -2351,17 +3353,20 @@
                     var wls = lvl.wires || [];
                     for (var wri = 0; wri < wls.length; wri++) {
                         var ww = wls[wri];
-                        var srcList = ww.sourceType === 'button' ? (lvl.buttons || []) : (lvl.triggers || []);
+                        var srcList = ww.sourceType === 'button' ? (lvl.buttons || []) : (ww.sourceType === 'laserTrigger' ? (lvl.laserTriggers || []) : (lvl.triggers || []));
                         var ss = srcList[ww.sourceId];
-                        var tt = (lvl.doors || [])[ww.targetId];
+                        var targetArr = ww.targetType === 'laser' ? (lvl.lasers || []) : (lvl.doors || []);
+                        var tt = targetArr[ww.targetId];
                         if (!ss || !tt) continue;
                         var sxw = ss.x + ss.w / 2, syw = ss.y + ss.h / 2;
-                        var txw = tt.x + tt.w / 2, tyw = tt.y + tt.h / 2;
+                        var txw = ww.targetType === 'laser' ? tt.x : tt.x + tt.w / 2, tyw = ww.targetType === 'laser' ? tt.y : tt.y + tt.h / 2;
                         ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
                         ctx.beginPath(); ctx.moveTo(sxw, syw); ctx.lineTo(txw, tyw); ctx.stroke(); ctx.setLineDash([]);
                     }
+                    ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#bbb'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+                    ctx.fillText('TOUCH PLAYER / LASER TRIGGER → LASER / DOOR', 8, H - 8);
                     if (wireSource && wireCursor) {
-                        var srcList2 = wireSource.type === 'button' ? (lvl.buttons || []) : (lvl.triggers || []);
+                        var srcList2 = wireSource.type === 'button' ? (lvl.buttons || []) : (wireSource.type === 'laserTrigger' ? (lvl.laserTriggers || []) : (lvl.triggers || []));
                         var ss2 = srcList2[wireSource.id];
                         if (ss2) {
                             ctx.strokeStyle = '#ff8800'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
@@ -2415,11 +3420,13 @@
                     ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
                     ctx.fillText('LOCKED', exit.x + exit.w/2, exit.y + exit.h/2 + 4);
                 }
-                if (cube) {
-                    ctx.fillStyle = '#ffaa00'; ctx.fillRect(cube.x, cube.y, cube.w, cube.h);
-                    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(cube.x, cube.y, cube.w, cube.h);
+                var renderCubes = mode === 'edit' ? (lvl.cubes || []) : cubes;
+                for (var rci = 0; rci < renderCubes.length; rci++) {
+                    var renderCube = renderCubes[rci];
+                    ctx.fillStyle = '#ffaa00'; ctx.fillRect(renderCube.x, renderCube.y, renderCube.w, renderCube.h);
+                    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(renderCube.x, renderCube.y, renderCube.w, renderCube.h);
                     ctx.fillStyle = '#000'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
-                    ctx.fillText('[C]', cube.x + cube.w/2, cube.y + cube.h/2 + 4);
+                    ctx.fillText('[C' + (rci + 1) + ']', renderCube.x + renderCube.w/2, renderCube.y + renderCube.h/2 + 4);
                 }
                 drawPortal(portalA, '#0088ff'); drawPortal(portalB, '#ff7a00');
                 if (mode === 'play') {
@@ -2457,6 +3464,13 @@
                 ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(player.x, player.y, player.w, player.h);
                 ctx.fillStyle = '#000'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
                 ctx.fillText(':)', player.x + player.w/2, player.y + player.h/2 + 3);
+                if (mode === 'edit' && editorSelection) {
+                    var selectedObj = editorGetEntity(editorSelection);
+                    if (selectedObj) {
+                        ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.setLineDash([3, 3]);
+                        ctx.strokeRect(selectedObj.x - 2, selectedObj.y - 2, (selectedObj.w || 16) + 4, (selectedObj.h || 16) + 4); ctx.setLineDash([]);
+                    }
+                }
                 if (mode === 'edit' && editorDragging && editorDragStart && editorDragEnd) {
                     var x1 = Math.min(editorDragStart.x, editorDragEnd.x);
                     var y1 = Math.min(editorDragStart.y, editorDragEnd.y);
@@ -2614,16 +3628,12 @@
 
             // ---------- Init ----------
             loadPacksFromStorage();
-            try {
-                var cachedOfficial = localStorage.getItem('portal2d_official');
-                if (cachedOfficial) applyOfficial(JSON.parse(cachedOfficial), true);
-            } catch (e) {}
             levels = getActivePack().levels;
             loadLevel(0);
             resetAim();
             bootDone = true;
             gameLoop();
-            if (getToken()) { fetchOfficial(true); refreshViewer(); }
+            if (getToken()) refreshViewer();
 
         })();
     </script>

@@ -6,9 +6,9 @@
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>un-reader BBS - Moderation Console</title>
+  <link rel="stylesheet" media="screen" href="https://fontlibrary.org/face/symbola/css/symbola.css" type="text/css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.2/purify.min.js"></script>
   <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" media="screen" href="https://fontlibrary.org/face/symbola/css/symbola.css" type="text/css" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="bbs.css" />
   <script src="common.js"></script>
@@ -308,6 +308,15 @@
       var socket = null;
       var userRoles = { role: { role:'', prefix: '', style: '', class: '' }, is_banned: false, timeout_until: 0, last_ip: null };
 
+      function isAdminUser(roles) {
+        return !!(roles && (roles.is_admin || (roles.role && roles.role.role === 'admin')));
+      }
+
+      function isModeratorUser(roles) {
+        return !!(roles && (roles.is_moderator || (roles.role && roles.role.role === 'moderator')));
+      }
+
+
       function initApp() {
         log('Booting moderation layers.');
         document.getElementById('user-display').textContent = '@' + myUsername;
@@ -339,7 +348,7 @@
               userRoles = data.user_roles;
               log('Mod console roles synced:', userRoles);
 
-              if (!['admin', 'moderator'].includes(userRoles.role.role)) {
+              if (!(isAdminUser(userRoles) || isModeratorUser(userRoles))) {
                 await unAlert(
                   'Access Denied: You do not possess structural operator credentials.',
                 );
@@ -350,7 +359,7 @@
               document.getElementById('mod-role-text').textContent =
                 userRoles.role.role.toUpperCase();
               document.getElementById('mod-role-text').style.color =
-                userRoles.role.role === 'admin' ? '#ff0000' : '#0000ff';
+                isAdminUser(userRoles) ? '#ff0000' : '#0000ff';
             }
             return;
           }
@@ -445,7 +454,7 @@
                 Duration (mins): <input type="number" id="admin-timeout-dur" value="60" style="width: 50px; padding:4px; border:var(--border-width) solid var(--border-color); background:var(--bg-color); color:var(--text-color);">
                 <button class="retro-btn" onclick="submitTimeout('${safeUsername}')">TIMEOUT</button>
               </div>`;
-              if (userRoles.role.role && userRoles.role.role === 'admin') {
+              if (isAdminUser(userRoles)) {
                 html += `<div style="border-top: 1px dotted var(--border-color); padding-top:8px; margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
                 <button class="retro-btn" onclick="setModeratorAction('${safeUsername}', ${!u.roles.includes('moderator')})">${u.roles.includes('moderator') ? 'REMOVE MOD ROLE' : 'PROMOTE TO MOD'}</button>
                 <button class="retro-btn danger-btn" onclick="adminAction('mod_ban', '${safeUsername}')">BAN USER</button>
@@ -475,8 +484,8 @@
         var dur = document.getElementById('admin-timeout-dur').value;
         if (!socket || socket.readyState !== WebSocket.OPEN)
           return await unAlert('Socket offline.');
-        var reason = userRoles.role.role && userRoles.role.role === 'admin' ? 'Admin doesn\'t need any reasons' : await unPrompt('Reason for timeout?');
-        if (!(userRoles.role.role && userRoles.role.role === 'admin') && !reason) return;
+        var reason = isAdminUser(userRoles) ? 'Admin doesn\'t need any reasons' : await unPrompt('Reason for timeout?');
+        if (!(isAdminUser(userRoles)) && !reason) return;
         var payload = {
           type: 'mod_timeout',
           target: targetUser,
@@ -518,7 +527,7 @@
       }
 
       async function banIP(targetUser) {
-        if (!(userRoles.role.role && userRoles.role.role === 'admin')) return await unAlert('Only admins can ban IPs.');
+        if (!(isAdminUser(userRoles))) return await unAlert('Only admins can ban IPs.');
         var xhr = new XMLHttpRequest();
         xhr.open('POST', BACKEND_URL + '/api/admin/ban-ip', true);
         xhr.setRequestHeader('Content-Type', 'application/json');

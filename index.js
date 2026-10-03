@@ -86,7 +86,7 @@ async function initDatabase() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT false;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS roles TEXT NOT NULL DEFAULT '[]';
-      UPDATE users SET is_admin = true WHERE LOWER(username) IN ('admin', 'lmaokasdf');
+      UPDATE users SET is_admin = true WHERE LOWER(username) IN ('admin', 'lmao');
 
       CREATE TABLE IF NOT EXISTS mod_logs (
         id SERIAL PRIMARY KEY, mod_username TEXT NOT NULL, action_type TEXT NOT NULL,
@@ -171,6 +171,15 @@ async function initDatabase() {
         "username" VARCHAR(100) NOT NULL,
         "level-data" TEXT NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS suggestions (
+        id SERIAL PRIMARY KEY,
+        date DATE NOT NULL,
+        suggestions TEXT NOT NULL,
+        username TEXT NOT NULL,
+        admin_filter TEXT,
+        completion BOOLEAN
+      );
     `);
     /* INSERT INTO roles (role, prefix, style, priority) VALUES
       ('admin', 'ADMIN', 'background: black !important;color: white !important;border: 3px solid black !important;box-shadow: 4px 4px 0px #0000004a !important;', 1000),
@@ -208,7 +217,15 @@ async function blockBannedIPs(req, res, next) {
 }
 app.use(blockBannedIPs);
 
-const ADMIN_ENTITY_USERNAMES = new Set(['admin', 'lmaokasdf']);
+const ADMIN_ENTITY_USERNAMES = new Set(['admin', 'lmao']);
+
+// SQL expression for rows read straight from `users` (roles is a JSON array TEXT column).
+const adminUserSql = (alias) =>
+  `(${alias}.is_admin OR LOWER(${alias}.username) IN ('admin', 'lmao') OR ${alias}.roles::jsonb @> '["admin"]')`;
+
+// SQL expression for rows read straight from `users` (roles is a JSON array TEXT column).
+const moderatorUserSql = (alias) =>
+  `(${alias}.is_moderator OR ${alias}.roles::jsonb @> '["moderator"]')`;
 
 // const getUserRolesCache = {};
 async function getUserRoles(username) {
@@ -240,12 +257,17 @@ async function getUserRoles(username) {
     is_admin: false, is_moderator: false, role_name: '', role_prefix: '', role_style: '', role_class: '',
   };
   const adminEntity = ADMIN_ENTITY_USERNAMES.has(cacheKey);
-  res.is_admin = !!res.is_admin || adminEntity;
-  res.is_moderator = !!res.is_moderator;
   try { res.roles = JSON.parse(res.roles || '[]'); } catch { res.roles = []; }
+  // An "admin"/"moderator" entry in the user's roles array (or the legacy boolean
+  // columns) grants the benefit instantly, even when the roles-table seed row is
+  // missing. style/class still come from the best-priority roles-table match, so
+  // promoted users keep their custom borders.
+  const roleList = Array.isArray(res.roles) ? res.roles : [];
+  res.is_admin = !!res.is_admin || adminEntity || roleList.includes('admin');
+  res.is_moderator = !!res.is_moderator || roleList.includes('moderator');
   res.role = {
-    role: adminEntity ? 'admin' : res.role_name,
-    prefix: adminEntity ? 'ADMIN' : res.role_prefix,
+    role: res.is_admin ? 'admin' : res.is_moderator ? 'moderator' : res.role_name,
+    prefix: res.is_admin ? 'ADMIN' : res.is_moderator ? 'MOD' : res.role_prefix,
     style: res.role_style || '',
     class: res.role_class || '',
   };
@@ -415,7 +437,7 @@ app.post('/api/change-password', authenticateToken, async (req, res) => {
 app.get('/api/profile/:username', authenticateToken, async (req, res) => {
   const targetUsername = sanitizeUsername(req.params.username);
   const r = await db.query(
-    "SELECT p.*, (u.is_admin OR LOWER(u.username) IN ('admin', 'lmaokasdf')) AS is_admin, u.is_moderator FROM profiles p JOIN users u ON p.username = u.username WHERE p.username = $1;",
+    `SELECT p.*, ${adminUserSql('u')} AS is_admin, ${moderatorUserSql('u')} AS is_moderator FROM profiles p JOIN users u ON p.username = u.username WHERE p.username = $1;`,
     [targetUsername],
   );
   if (!r.rows[0])
@@ -668,7 +690,7 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const query = `
     SELECT p.*, 
-    COALESCE(json_agg(json_build_object('id', c.id, 'username', c.username, 'content', c.content, 'timestamp', c.timestamp, 'is_deleted', c.is_deleted, 'deleted_by', c.deleted_by, 'is_admin', (cu.is_admin OR LOWER(cu.username) IN ('admin', 'lmaokasdf')), 'is_moderator', cu.is_moderator) ORDER BY c.id ASC) FILTER (WHERE c.id IS NOT NULL), '[]') as comments 
+    COALESCE(json_agg(json_build_object('id', c.id, 'username', c.username, 'content', c.content, 'timestamp', c.timestamp, 'is_deleted', c.is_deleted, 'deleted_by', c.deleted_by, 'is_admin', ${adminUserSql('cu')}, 'is_moderator', ${moderatorUserSql('cu')}) ORDER BY c.id ASC) FILTER (WHERE c.id IS NOT NULL), '[]') as comments 
     FROM neighborhood_posts p 
     LEFT JOIN users u ON p.username = u.username
     LEFT JOIN neighborhood_comments c ON p.id = c.post_id 
@@ -684,6 +706,114 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
     result.push(row);
   }
   res.json(result.reverse());
+});
+
+// ---------------------------------------------------------------------------
+// Suggestions  (table: suggestions — id, date DATE, suggestions, username, admin_filter, completion BOOLEAN)
+// One row = one app idea. "date" is the posting day, stamped by the DB.
+// "admin_filter" is a staff status tag; "completion" marks the idea as done.
+const SUGG_MAX_TITLE = 120;
+const SUGG_MAX_BODY = 4000;
+const SUGG_MAX_FILTER = 200;
+
+function suggClean(value, maxLen) {
+  return sanitize(value).replace(/[\u0000-\u001f\u007f]/g, (c) => (c === '\n' ? c : '')).trim().slice(0, maxLen);
+}
+
+app.get('/suggestions-history', authenticateToken, async (req, res) => {
+  try {
+    const off = Math.max(0, (parseInt(req.query.index ?? '0', 10) || 0) * 10);
+    const r = await db.query(
+      'SELECT id, date::text AS date, suggestions, username, admin_filter, completion FROM suggestions ORDER BY id DESC LIMIT 10 OFFSET $1;',
+      [off],
+    );
+    res.json(r.rows.reverse());
+  } catch (err) {
+    log('Suggestions history failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+app.post('/api/suggestions', authenticateToken, async (req, res) => {
+  try {
+    const blocked = p2dBlockedUser(req.user);
+    if (blocked) return res.status(403).json({ error: blocked });
+    const title = suggClean(req.body?.title, SUGG_MAX_TITLE);
+    const body = suggClean(req.body?.body, SUGG_MAX_BODY);
+    if (!title || !body)
+      return res.status(400).json({ error: 'Title and description are required.' });
+    const r = await db.query(
+      'INSERT INTO suggestions (date, suggestions, username) VALUES (CURRENT_DATE, $1, $2) RETURNING id;',
+      [`${title}\n${body}`, req.user.username],
+    );
+    log(`Suggestion #${r.rows[0].id} posted by ${req.user.username}`);
+    res.json({ success: true, id: r.rows[0].id });
+  } catch (err) {
+    log('Suggestion post failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// Staff annotation: admin_filter = status tag, completion = done flag.
+app.put('/api/suggestions/:id', authenticateToken, async (req, res) => {
+  try {
+    if (!['admin', 'moderator'].includes(req.user.role.role))
+      return res.status(403).json({ error: 'Staff only.' });
+    const id = p2dParseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid suggestion ID.' });
+    const found = await db.query('SELECT admin_filter, completion FROM suggestions WHERE id = $1;', [id]);
+    if (!found.rows[0]) return res.status(404).json({ error: 'No suggestion with that ID.' });
+    const body = req.body || {};
+    const touchesFilter = 'admin_filter' in body;
+    const touchesCompletion = 'completion' in body;
+    if (!touchesFilter && !touchesCompletion)
+      return res.status(400).json({ error: 'Nothing to update.' });
+    // Omitted fields keep their stored value; null or blank clears them.
+    const admin_filter = touchesFilter ? suggClean(body.admin_filter ?? '', SUGG_MAX_FILTER) || null : found.rows[0].admin_filter;
+    let completion = found.rows[0].completion;
+    if (touchesCompletion) {
+      const v = body.completion;
+      completion = v === null || v === undefined || v === '' || v === false ? null : true;
+    }
+    await db.query(
+      'UPDATE suggestions SET admin_filter = $1, completion = $2 WHERE id = $3;',
+      [admin_filter, completion, id],
+    );
+    await db.query(
+      'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
+      [req.user.username, 'suggestion update', null, id, `filter=${admin_filter || ''} completion=${completion === null ? 'unset' : completion}`, Date.now()],
+    );
+    log(`Suggestion #${id} annotated by ${req.user.username}`);
+    res.json({ success: true, id });
+  } catch (err) {
+    log('Suggestion update failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// Owners can delete their own suggestions; staff can delete any.
+app.delete('/api/suggestions/:id', authenticateToken, async (req, res) => {
+  try {
+    const id = p2dParseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid suggestion ID.' });
+    const r = await db.query('SELECT username FROM suggestions WHERE id = $1;', [id]);
+    if (!r.rows[0]) return res.status(404).json({ error: 'No suggestion with that ID.' });
+    const owner = r.rows[0].username;
+    if (owner !== req.user.username && !p2dIsStaff(req.user))
+      return res.status(403).json({ error: 'You can only delete your own suggestions.' });
+    await db.query('DELETE FROM suggestions WHERE id = $1;', [id]);
+    if (owner !== req.user.username) {
+      await db.query(
+        'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
+        [req.user.username, 'suggestion delete', owner, id, 'Removed suggestion', Date.now()],
+      );
+    }
+    log(`Suggestion #${id} deleted by ${req.user.username}`);
+    res.json({ success: true });
+  } catch (err) {
+    log('Suggestion delete failure:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -1084,67 +1214,19 @@ app.get('/api/portal2d/official', authenticateToken, async (req, res) => {
 
 // Replace the whole official pack (reordering, removing, bulk edits).
 app.put('/api/portal2d/official', authenticateToken, async (req, res) => {
-  try {
-    if (!p2dIsAdmin(req.user)) return res.status(403).json({ error: 'Admins only.' });
-    let pack;
-    try {
-      pack = p2dNormalizePack(req.body?.data, 'Official Chambers', P2D_OFFICIAL_MAX_LEVELS);
-    } catch (e) {
-      return res.status(400).json({ error: e.message });
-    }
-    pack.name = 'Official Chambers';
-    await p2dWriteOfficial(pack, req.user.username, `replaced pack (${pack.levels.length} levels)`);
-    res.json({ success: true, count: pack.levels.length });
-  } catch (err) {
-    log('Portal2D official write failure:', err.message);
-    res.status(err.status || 500).json({ error: err.status ? err.message : 'Server error.' });
-  }
+  res.status(410).json({ error: 'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.' });
 });
 
 // Append one playtested level to the end of the official pack.
 app.post('/api/portal2d/official/levels', authenticateToken, async (req, res) => {
-  try {
-    if (!p2dIsAdmin(req.user)) return res.status(403).json({ error: 'Admins only.' });
-    let added;
-    try {
-      added = p2dNormalizePack({ levels: [req.body?.level] }, 'x', 1).levels[0];
-    } catch (e) {
-      return res.status(400).json({ error: e.message });
-    }
-    const official = await p2dReadOfficial();
-    if (!official)
-      return res.status(404).json({ error: 'No official pack on the server yet.', code: 'NO_OFFICIAL' });
-    if (official.data.levels.length >= P2D_OFFICIAL_MAX_LEVELS)
-      return res.status(400).json({ error: `Official pack is full (${P2D_OFFICIAL_MAX_LEVELS} levels).` });
-    official.data.levels.push(added);
-    await p2dWriteOfficial(
-      { name: 'Official Chambers', levels: official.data.levels },
-      req.user.username,
-      `added level "${added.name}" (now ${official.data.levels.length})`,
-    );
-    res.json({ success: true, count: official.data.levels.length });
-  } catch (err) {
-    log('Portal2D official add failure:', err.message);
-    res.status(err.status || 500).json({ error: err.status ? err.message : 'Server error.' });
-  }
+  res.status(410).json({ error: 'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.' });
 });
 
 // Remove the server copy so everyone falls back to the chambers built into the game.
 app.delete('/api/portal2d/official', authenticateToken, async (req, res) => {
-  try {
-    if (!p2dIsAdmin(req.user)) return res.status(403).json({ error: 'Admins only.' });
-    await db.query('DELETE FROM "portal-2d" WHERE "username" = $1;', [P2D_OFFICIAL]);
-    await db.query(
-      'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
-      [req.user.username, 'portal2d official', P2D_OFFICIAL, 0, 'reset to built-in', Date.now()],
-    );
-    log(`Portal2D official: reset by ${req.user.username}`);
-    res.json({ success: true });
-  } catch (err) {
-    log('Portal2D official reset failure:', err.message);
-    res.status(500).json({ error: 'Server error.' });
-  }
+  res.status(410).json({ error: 'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.' });
 });
+
 
 const server = app.listen(process.env.PORT || 10000, '0.0.0.0', () =>
   log(`Node strictly bound to port: ${process.env.PORT || 10000}`),
@@ -1199,7 +1281,7 @@ wss.on('connection', (ws, req) => {
           authUser = sanitizeUsername(decoded.username);
           userRoles = await getUserRoles(authUser);
           log(
-            `WS Auth Session Established: ${authUser} (Admin: ${userRoles.role === 'admin'}, Mod: ${userRoles.role === 'moderator'})`,
+            `WS Auth Session Established: ${authUser} (Admin: ${userRoles.role.role === 'admin'}, Mod: ${userRoles.role.role === 'moderator'})`,
           );
           if (userRoles.is_banned) {
             log(`WS Termination Triggered: Banned or Timed out user session`);

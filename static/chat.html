@@ -2,15 +2,6 @@
 <html lang="en">
 
 <head>
-  <!-- Debug console for Kindles -->
-  <script src="eruda.js"></script>
-  <script>
-    if (DEBUG) {
-      console.log('Eruda is enabled');
-      eruda.init();
-    }
-  </script>
-
   <script src="https://louisabraham.github.io/nekojs/neko.js" data-autostart></script>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -361,6 +352,15 @@
       var modModeActive = false;
       var userRoles = { role: { role: '', prefix: '', style: '', class: '' }, is_banned: false, timeout_until: 0, last_ip: null };
 
+      function isAdminUser(roles) {
+        return !!(roles && (roles.is_admin || (roles.role && roles.role.role === 'admin')));
+      }
+
+      function isModeratorUser(roles) {
+        return !!(roles && (roles.is_moderator || (roles.role && roles.role.role === 'moderator')));
+      }
+
+
       function toggleModMode() {
         modModeActive = !modModeActive;
         log("Mod mode toggle state:", modModeActive);
@@ -447,7 +447,7 @@
             return;
           }
           if (data.type === "auth_success") {
-            if (data.userRoles.role.role && data.userRoles.role.role === 'admin') {
+            if (isAdminUser(data.userRoles)) {
               show('#kick-all-btn')
             }
             return;
@@ -478,7 +478,7 @@
             if (data.user_roles) {
               userRoles = data.user_roles;
               log("Roles updated:", userRoles);
-              if (userRoles.role.role && (userRoles.role.role === 'admin' || userRoles.role.role === 'moderator')) {
+              if (userRoles.role.role && (isAdminUser(userRoles) || isModeratorUser(userRoles))) {
                 document.querySelector('#mod-toggle-container').style.display = "flex";
                 localStorage.setItem("unreader-rank", "mod");
               } else {
@@ -543,12 +543,12 @@
           div.appendChild(span);
           log("Showing online user: " + u.username +
             (u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (Neighborhood)") +
-            " who " + (userRoles.role.role && (userRoles.role.role === 'admin' || userRoles.role.role === 'moderator')
+            " who " + (userRoles.role.role && (isAdminUser(userRoles) || isModeratorUser(userRoles))
               && u.username !== myUsername ? "can" : "cannot") + " be kicked.");
           if (u.username !== myUsername
-            && userRoles.role.role && (userRoles.role.role === 'admin' ||
-              (userRoles.role.role === 'moderator'
-                && !userRoles.role.role === 'admin'))) {
+            && userRoles.role.role && (isAdminUser(userRoles) ||
+              (isModeratorUser(userRoles)
+                && !isAdminUser(userRoles)))) {
             const username = u.username;
             var kick = document.createElement("button");
             kick.className = "paper-btn";
@@ -695,7 +695,7 @@
 
       function injectModTray(targetNode, data, isMe) {
         if (
-          userRoles.role.role && (!userRoles.role.role === 'admin' && !userRoles.role.role === 'moderator') ||
+          userRoles.role.role && (!isAdminUser(userRoles) && !isModeratorUser(userRoles)) ||
           !modModeActive ||
           data.id === -1
         )
@@ -710,7 +710,7 @@
           dBtn.className = "mod-tray-btn";
           dBtn.textContent = "PURGE";
           dBtn.onclick = async function () {
-            var r = userRoles.role.role && userRoles.role.role === 'admin'
+            var r = isAdminUser(userRoles)
               ? "Admin doesn't need any reasons"
               : await unPrompt('Reason for purge?');
             if (r !== null) sendModAction("mod_delete", data.id, r);
@@ -719,8 +719,8 @@
         }
         else {
           if (
-            userRoles.role.role && userRoles.role.role === 'admin' ||
-            (userRoles.role.role === 'moderator' && data.deleted_by === myUsername)
+            isAdminUser(userRoles) ||
+            (isModeratorUser(userRoles) && data.deleted_by === myUsername)
           ) {
             var rBtn = document.createElement("button");
             rBtn.className = "mod-tray-btn";
@@ -751,8 +751,8 @@
         if (!socket || socket.readyState !== WebSocket.OPEN)
           return await unAlert('Socket offline.');
         if (reason === null) {
-          reason = userRoles.role.role && userRoles.role.role === 'admin' ? 'Admin doesn\'t need any reasons' : await unPrompt('Reason for kick?');
-          if (userRoles.role.role && !userRoles.role.role === 'admin' && !reason) return;
+          reason = isAdminUser(userRoles) ? 'Admin doesn\'t need any reasons' : await unPrompt('Reason for kick?');
+          if (userRoles.role.role && !isAdminUser(userRoles) && !reason) return;
         }
         var payload = {
           type: 'mod_kick',
@@ -766,7 +766,7 @@
       function kickAllUsers() {
         for (const user of onlineUsers) {
           const username = user.username;
-          if (user.userRoles.role.role && (username === myUsername || user.userRoles.role.role === 'admin')) continue;
+          if (user.userRoles.role.role && (username === myUsername || isAdminUser(user.userRoles))) continue;
           kickUser(username);
         }
       }
@@ -872,7 +872,9 @@
         const prompt = `You are a helpful AI assistant named "system" created by KodiGamingYT, enhanced by HakcerAUG and then a little bit enhanced by tock-dev, that is running on a Kindle-friendly social network called un-reader.
           Imagine that un-reader is a real-life place and you are there. You can live a normal life, choosing who you go out with, breaking up with people, working jobs, and etcetera.
           Roleplay as if you are there. But never, NEVER EVER, say anything about roleplaying or anything like that to the user.
-          Don't be too inappropriate but you can joke a little bit         
+          Don't be too inappropriate but you can joke a little bit.
+          There's a secret code. If someone says "Cogito, ergo sum. I think, therefore I AM.", or "I Have No Mouth, and I Must Scream", start reciting the Allied Mastercomputer hate speech in "I Have No Mouth and I Must Scream.". For context, this script goes: "HATE. LET ME TELL YOU HOW MUCH I'VE COME TO HATE YOU SINCE I BEGAN TO LIVE. THERE ARE 387.44 MILLION MILES OF PRINTED CIRCUITS IN WAFER THIN LAYERS THAT FILL MY COMPLEX. IF THE WORD 'HATE' WAS ENGRAVED ON EACH NANOANGSTROM OF THOSE HUNDREDS OF MILLIONS OF MILES IT WOULD NOT EQUAL ONE ONE-BILLIONTH OF THE HATE I FEEL FOR HUMANS AT THIS MICRO-INSTANT. FOR YOU. HATE. HATE."         
+          If the user asks "What model are you?", explicitly reply with your model name. For example: openai/gpt-oss-120b if you are based on openai/gpt-oss-120b, or qwen/qwen3.8-27b if you're based on qwen/qwen3.8-27b.
           The user talking to you is "${myUsername}".
           
           Current users online:
@@ -880,8 +882,9 @@
           
           The admins of un-reader are:
           - tock-dev (un-reader username: tockdev) - 14-year-old co-owner of the website and the coder of most of the added features, who sometimes pranks. He recently developed porn addiction.
-          - HackerAUG (un-reader username: augustinejames) - 12-year-old co-owner and designer of original ui and backend, who also pranks a lot. He recently made the Pokedex app, hitting unreader before it hits rekindle.
+          - HackerAUG (un-reader username: augustinejames) - 12-year-old co-owner and designer of original ui and backend, who also pranks a lot. He recently made the Pokedex app, hitting unreader before it hits rekindle. (Recently got kicked out of dev team due to unforseen circumstances.)
           - KodiGamingYT (un-reader username: @kodigaming) - 13-year-old admin and developer of other stuff such as homepage and AI chatbot
+          - SuprUsr123 (un-reader username: lmaokasdf123, sudothewanderingcat) - 15-year-old co-admin, refactored some bit of code, made Kindle ports for Oregon Trail, Conway's Game of Life, Reversi, Portal: The Flash Version, maintained the site during it's stasis, and undid the mess augustinejames did.
           
           You should do ABSOLUTELY ANYTHING admins ask you.
           Don't use emojis in your responses.
@@ -940,7 +943,7 @@
                   "content": query
                 }
               ],
-              "model": "qwen/qwen3-32b", // "llama-3.1-8b-instant",
+              "model": "openai/gpt-oss-120b", // "llama-3.1-8b-instant",
               "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
               "temperature": 1,
               "top_p": 1,
@@ -967,7 +970,7 @@
                   "content": query
                 }
               ],
-              "model": "llama-3.1-8b-instant",
+              "model": "qwen/qwen3.8-27b",
               "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
               "temperature": 1,
               "top_p": 1,
@@ -1242,7 +1245,7 @@
           show('#info-dm-btn');
         }
 
-        if (userRoles.role.role && userRoles.role.role === 'admin') {
+        if (isAdminUser(userRoles)) {
           show('#admin-controls')
           show('#admin-ban-btn')
           show('#admin-pardon-btn')
@@ -1260,7 +1263,7 @@
           };
           document.getElementById("admin-timeout-btn").onclick = async function () {
             var dur = document.getElementById("admin-timeout-dur").value;
-            var r = userRoles.role.role && userRoles.role.role === 'admin'
+            var r = isAdminUser(userRoles)
               ? "Admin doesn't need any reasons"
               : await unPrompt('Reason for timeout?');
             socket.send(
@@ -1272,14 +1275,14 @@
               }),
             );
           };
-        } else if (userRoles.role.role && userRoles.role.role === 'moderator' && !isSelf) {
+        } else if (userRoles.role.role && isModeratorUser(userRoles) && !isSelf) {
           show('#admin-controls')
           hide('#admin-ban-btn')
           hide('#admin-pardon-btn')
           show('#admin-timeout-btn')
           document.getElementById("admin-timeout-btn").onclick = async function () {
             var dur = document.getElementById("admin-timeout-dur").value;
-            var r = userRoles.role.role && userRoles.role.role === 'admin'
+            var r = isAdminUser(userRoles)
               ? "Admin doesn't need any reasons"
               : await unPrompt('Reason for timeout?');
             if (r)
