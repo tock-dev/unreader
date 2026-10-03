@@ -235,6 +235,7 @@
                         <button class="btn" data-tool="exit" onclick="selectTool('exit')">EXIT</button>
                         <button class="btn" data-tool="cube" onclick="selectTool('cube')">CUBE</button>
                         <button class="btn" data-tool="upgrade" onclick="selectTool('upgrade')">UPGRADE</button>
+                        <button class="btn" data-tool="portal" onclick="selectTool('portal')">PORTAL</button>
                     </div>
                 </div>
             </div>
@@ -1169,6 +1170,7 @@
                 if (!Array.isArray(lvl.wires)) lvl.wires = [];
                 if (!Array.isArray(lvl.lasers)) lvl.lasers = [];
                 if (!Array.isArray(lvl.portalGunUpgrades)) lvl.portalGunUpgrades = [];
+                if (!Array.isArray(lvl.fixedPortals)) lvl.fixedPortals = [];
                 if (!Array.isArray(lvl.cubes)) lvl.cubes = [];
                 if (!lvl.cubes.length && lvl.cubeStart) {
                     lvl.cubes.push({ x: lvl.cubeStart.x, y: lvl.cubeStart.y, w: lvl.cubeStart.w || 20, h: lvl.cubeStart.h || 20 });
@@ -1210,6 +1212,32 @@
                         lvl.wires.push({ sourceType: 'button', sourceId: 0, targetType: 'door', targetId: wi });
                     }
                 }
+            }
+            // ---------- Pre-placed portals ----------
+            function applyFixedPortals(lvl) {
+                portalA = null; portalB = null;
+                var fp = (lvl && lvl.fixedPortals) || [];
+                for (var i = 0; i < fp.length; i++) {
+                    var f = fp[i];
+                    if (!f || !f.normal) continue;
+                    var np = { x: f.x, y: f.y, angle: Math.abs(f.normal.x) > Math.abs(f.normal.y) ? Math.PI / 2 : 0, normal: { x: f.normal.x, y: f.normal.y }, fixed: true };
+                    if (f.color === 'blue') portalA = np; else portalB = np;
+                }
+            }
+            function hasPlayerPortals() {
+                return !!((portalA && !portalA.fixed) || (portalB && !portalB.fixed));
+            }
+            function clearPlayerPortals() {
+                var lvl = levels[levelIndex];
+                var fa = null, fb = null;
+                var fp = (lvl && lvl.fixedPortals) || [];
+                for (var i = 0; i < fp.length; i++) {
+                    var f = fp[i];
+                    if (!f || !f.normal) continue;
+                    var np = { x: f.x, y: f.y, angle: Math.abs(f.normal.x) > Math.abs(f.normal.y) ? Math.PI / 2 : 0, normal: { x: f.normal.x, y: f.normal.y }, fixed: true };
+                    if (f.color === 'blue') fa = np; else fb = np;
+                }
+                portalA = fa; portalB = fb;
             }
             function applyPortalGunStage(stage) {
                 stage = Number(stage);
@@ -1503,7 +1531,7 @@
                 purgeUselessUpgrades(lvl);
                 player.x = lvl.start.x; player.y = lvl.start.y;
                 player.vx = 0; player.vy = 0; player.push = 0;
-                portalA = null; portalB = null;
+                applyFixedPortals(lvl);
                 heldCube = -1; cube = null; cubes = [];
                 teleportCooldown = 0; levelClear = false;
                 portalGunStage = (typeof lvl.portalGunStage === 'number') ? Math.max(0, Math.min(2, lvl.portalGunStage)) : 0;
@@ -1536,7 +1564,7 @@
                 if (mode === 'play') {
                     if (e.key.toLowerCase() === 'q') firePortal('blue');
                     if (e.key.toLowerCase() === 'e') firePortal('yellow');
-                    if (e.key.toLowerCase() === 'r') { portalA = null; portalB = null; updatePortalCount(); toast('PORTALS CLEARED'); }
+                    if (e.key.toLowerCase() === 'r') { clearPlayerPortals(); updatePortalCount(); toast('PORTALS CLEARED'); }
                     if (e.key.toLowerCase() === 'f') toggleGrab();
                     if (e.key.toLowerCase() === 'p') loadLevel(levelIndex);
                     if (e.key.toLowerCase() === 'n') nextLevel();
@@ -1732,6 +1760,32 @@
             canvas.addEventListener('mouseup', function(e) { if (e.button !== 0 || mode !== 'edit') return; canvasPointerUp(); });
             canvas.addEventListener('mouseleave', function() { editorDragging = false; });
 
+            function nearestPortalSurface(lvl, cx, cy) {
+                var best = null, bestD = 1e9;
+                var plats = lvl.platforms || [];
+                for (var i = 0; i < plats.length; i++) {
+                    var q = plats[i], px, py, nx, ny, d;
+                    if (cx > q.x && cx < q.x + q.w && cy > q.y && cy < q.y + q.h) {
+                        var dl = cx - q.x, dr = q.x + q.w - cx, dt = cy - q.y, db = q.y + q.h - cy;
+                        var m = Math.min(dl, dr, dt, db);
+                        if (m === dt) { px = cx; py = q.y; nx = 0; ny = -1; }
+                        else if (m === db) { px = cx; py = q.y + q.h; nx = 0; ny = 1; }
+                        else if (m === dl) { px = q.x; py = cy; nx = -1; ny = 0; }
+                        else { px = q.x + q.w; py = cy; nx = 1; ny = 0; }
+                        d = m;
+                    } else {
+                        px = Math.max(q.x, Math.min(cx, q.x + q.w));
+                        py = Math.max(q.y, Math.min(cy, q.y + q.h));
+                        var ddx = cx - px, ddy = cy - py;
+                        d = Math.sqrt(ddx * ddx + ddy * ddy);
+                        if (Math.abs(ddx) > Math.abs(ddy)) { nx = ddx < 0 ? -1 : 1; ny = 0; }
+                        else { nx = 0; ny = ddy < 0 ? -1 : 1; }
+                    }
+                    if (d < bestD) { bestD = d; best = { x: px, y: py, normal: { x: nx, y: ny }, blocked: inNoPortal(lvl, px, py) }; }
+                }
+                if (!best || bestD > GRID * 1.5) return null;
+                return best;
+            }
             function commitEditorDrag() {
                 if (!editorDragStart || !editorDragEnd) return;
                 var x1 = Math.min(editorDragStart.x, editorDragEnd.x);
@@ -1779,6 +1833,18 @@
                     lvl.plates.push({ x: x1, y: y2 - 6, w: w, h: 6, vx: pset.vx, vy: pset.vy });
                     toast('LAUNCH PLATE ' + pset.label);
                 }
+                else if (editorTool === 'portal') {
+                    ensureLevelMechanics(lvl);
+                    var pcx0 = x1 + GRID / 2, pcy0 = y1 + GRID / 2;
+                    var surf = nearestPortalSurface(lvl, pcx0, pcy0);
+                    if (!surf) toast('PLACE IT NEXT TO A WALL');
+                    else if (surf.blocked) toast('CANNOT PORTAL THERE');
+                    else {
+                        lvl.fixedPortals = lvl.fixedPortals.filter(function(fq) { return fq.color !== portalToolColor; });
+                        lvl.fixedPortals.push({ color: portalToolColor, x: surf.x, y: surf.y, normal: surf.normal });
+                        toast(portalToolColor.toUpperCase() + ' PORTAL PLACED');
+                    }
+                }
                 else if (editorTool === 'grid') { if (!lvl.grids) lvl.grids = []; lvl.grids.push({ x: x1, y: y1, w: w, h: h }); toast('FIZZLER ADDED'); }
                 else if (editorTool === 'hazard') { lvl.hazards.push({ x: x1, y: y1, w: w, h: h }); toast('HAZARD ADDED'); }
                 else if (editorTool === 'start') { lvl.start = { x: x1, y: y1 }; if (mode === 'edit') { player.x = x1; player.y = y1; player.vx = 0; player.vy = 0; } touchEditor(); toast('START MOVED'); }
@@ -1818,6 +1884,7 @@
                     if (lvl.plates) lvl.plates = lvl.plates.filter(keepOut);
                     if (lvl.grids) lvl.grids = lvl.grids.filter(keepOut);
                     if (lvl.portalGunUpgrades) lvl.portalGunUpgrades = lvl.portalGunUpgrades.filter(keepOut);
+                    if (lvl.fixedPortals) lvl.fixedPortals = lvl.fixedPortals.filter(function(fq) { return !(fq.x >= x1 - PORTAL_RADIUS && fq.x <= x2 + PORTAL_RADIUS && fq.y >= y1 - PORTAL_RADIUS && fq.y <= y2 + PORTAL_RADIUS && fq.x >= x1 - 1 && fq.x <= x2 + 1 && fq.y >= y1 - 1 && fq.y <= y2 + 1); });
                     if (lvl.noPortal) {
                         var eraseRect = { x: x1, y: y1, w: x2 - x1, h: y2 - y1 }, keptZ = [];
                         for (var ez = 0; ez < lvl.noPortal.length; ez++) { var ep = subtractRect(lvl.noPortal[ez], eraseRect); for (var eq = 0; eq < ep.length; eq++) keptZ.push(ep[eq]); }
@@ -1988,6 +2055,7 @@
                 { vx: -4, vy: -14, label: 'UP-LEFT' }
             ];
             var platePreset = 0;
+            var portalToolColor = 'blue';
             var upgradeStage = 1;
             function normalizeUpgradeStage(stage) {
                 stage = Number(stage);
@@ -2027,19 +2095,20 @@
                 if (tool === 'plate' && editorTool === 'plate') platePreset = (platePreset + 1) % PLATE_PRESETS.length;
                 if (tool === 'door' && editorTool === 'door') doorLogic = doorLogic === 'all' ? 'any' : 'all';
                 if (tool === 'upgrade' && editorTool === 'upgrade') upgradeStage = upgradeStage === 1 ? 2 : 1;
+                if (tool === 'portal' && editorTool === 'portal') portalToolColor = portalToolColor === 'blue' ? 'orange' : 'blue';
                 editorTool = tool;
                 var toolHint = document.getElementById('tool-hint');
                 var upgradeLabel = upgradeStage === 1 ? 'BLUE GUN' : 'DUAL GUN';
-                if (toolHint) toolHint.innerText = 'TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '') + (tool === 'upgrade' ? ' ' + upgradeLabel + ' - TAP A CELL (tap tool again to switch)' : '');
+                if (toolHint) toolHint.innerText = 'TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '') + (tool === 'upgrade' ? ' ' + upgradeLabel + ' - TAP A CELL (tap tool again to switch)' : '') + (tool === 'portal' ? ' ' + portalToolColor.toUpperCase() + ' - TAP NEXT TO A WALL (tap tool again to switch)' : '');
                 var btns = document.querySelectorAll('.btn[data-tool]');
                 for (var i = 0; i < btns.length; i++) {
                     btns[i].className = 'btn' + (btns[i].getAttribute('data-tool') === tool ? ' selected' : '');
                 }
-                toast('TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label + ' (tap again to turn)' : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '') + (tool === 'upgrade' ? ' ' + upgradeLabel + ' (tap again to switch)' : ''));
+                toast('TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label + ' (tap again to turn)' : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '') + (tool === 'upgrade' ? ' ' + upgradeLabel + ' (tap again to switch)' : '') + (tool === 'portal' ? ' ' + portalToolColor.toUpperCase() + ' (tap again to switch)' : ''));
             };
             window.editorClear = function() {
                 var lvl = levels[levelIndex];
-                lvl.platforms = []; lvl.hazards = []; lvl.buttons = []; lvl.triggers = []; lvl.doors = []; lvl.wires = []; lvl.lasers = []; lvl.plates = []; lvl.grids = []; lvl.noPortal = []; lvl.portalGunUpgrades = [];
+                lvl.platforms = []; lvl.hazards = []; lvl.buttons = []; lvl.triggers = []; lvl.doors = []; lvl.wires = []; lvl.lasers = []; lvl.plates = []; lvl.grids = []; lvl.noPortal = []; lvl.portalGunUpgrades = []; lvl.fixedPortals = [];
                 lvl.button = null; lvl.exitClosed = false; lvl.cubeStart = null; lvl.cubes = [];
                 toast('CLEARED'); touchEditor(); updateAimSnap();
             };
@@ -2692,8 +2761,8 @@
                 if (lvl.grids) {
                     for (var gi = 0; gi < lvl.grids.length; gi++) {
                         var gd = lvl.grids[gi];
-                        if ((portalA || portalB) && overlaps(player, gd)) {
-                            portalA = null; portalB = null; updatePortalCount(); toast('PORTALS CLEARED');
+                        if (hasPlayerPortals() && overlaps(player, gd)) {
+                            clearPlayerPortals(); updatePortalCount(); toast('PORTALS CLEARED');
                         }
                         for (var cgi = cubes.length - 1; cgi >= 0; cgi--) {
                             if (overlaps(cubes[cgi], gd)) {
@@ -3107,7 +3176,14 @@
                     ctx.fillStyle = '#000'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
                     ctx.fillText('[C' + (rci + 1) + ']', renderCube.x + renderCube.w/2, renderCube.y + renderCube.h/2 + 4);
                 }
-                drawPortal(portalA, '#0088ff'); drawPortal(portalB, '#ff7a00');
+                if (mode === 'edit') {
+                    var fps = lvl.fixedPortals || [];
+                    for (var fpi = 0; fpi < fps.length; fpi++) {
+                        if (fps[fpi] && fps[fpi].normal) drawPortal(fps[fpi], fps[fpi].color === 'blue' ? '#0088ff' : '#ff7a00');
+                    }
+                } else {
+                    drawPortal(portalA, '#0088ff'); drawPortal(portalB, '#ff7a00');
+                }
                 if (mode === 'play') {
                     var px0 = player.x + player.w / 2, py0 = player.y + player.h / 2;
                     if (aimSnap) {
