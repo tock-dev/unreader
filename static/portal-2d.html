@@ -11,7 +11,6 @@
         body { padding: 8px; }
         button, select, input, textarea { font-family: inherit; color: #000; }
 
-        /* ---- window + title ---- */
         .window { width: 100%; max-width: 680px; margin: 0 auto; background: #fff; border: 2px solid #000; box-shadow: 4px 4px 0 #000; }
         .title-bar { position: relative; height: 34px; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #000; background: #fff; }
         .title-stripes { position: absolute; top: 4px; bottom: 4px; left: 4px; right: 4px; background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, #000 3px, #000 4px); }
@@ -19,13 +18,11 @@
         .close-box { position: absolute; left: 8px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: #fff; border: 2px solid #000; box-shadow: 2px 2px 0 #000; font: bold 13px "Courier New", monospace; cursor: pointer; touch-action: manipulation; z-index: 2; }
         .close-box:active { background: #000; color: #fff; box-shadow: none; }
 
-        /* ---- tabs ---- */
         .mode-tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 2px solid #000; background: #ddd; }
         .mode-tab { height: 48px; display: flex; align-items: center; justify-content: center; border-right: 2px solid #000; background: #ddd; font: bold 13px "Courier New", monospace; letter-spacing: 1px; cursor: pointer; touch-action: manipulation; }
         .mode-tab:last-child { border-right: 0; }
         .mode-tab.active { background: #000; color: #fff; }
 
-        /* ---- layout: one column, order depends on mode ---- */
         .content { display: flex; flex-direction: column; align-items: center; padding: 10px; }
         .content > * { width: 100%; max-width: 640px; }
         .hud { order: 1; } .canvas-wrap { order: 2; } .aim-indicator { order: 3; } .touch-controls { order: 4; }
@@ -34,23 +31,19 @@
         body[data-mode="packs"] .canvas-wrap, body[data-mode="packs"] .hud,
         body[data-mode="online"] .canvas-wrap, body[data-mode="online"] .hud { display: none; }
 
-        /* ---- HUD ---- */
         .hud { display: flex; align-items: center; padding: 0 10px; min-height: 36px; border: 2px solid #000; border-bottom: 0; background: #f0f0f0; font: bold 12px "Courier New", monospace; white-space: nowrap; }
         .hud-name { flex: 1; min-width: 0; margin: 0 8px; overflow: hidden; text-overflow: ellipsis; font-weight: normal; }
         .hud-stats .stat { margin-left: 12px; }
 
-        /* ---- canvas (padding trick: aspect-ratio is not available on the Kindle browser) ---- */
         .canvas-wrap { position: relative; padding-top: 62.5%; border: 2px solid #000; background: #1a1a2e; }
         .canvas-wrap canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; touch-action: none; }
 
-        /* ---- aim strip ---- */
         .aim-indicator { margin-top: 6px; padding: 7px 6px; border: 2px solid #000; background: #fff; font: bold 12px "Courier New", monospace; text-align: center; }
         .aim-indicator.aiming { background: #ffcc00; }
         .aim-indicator.latched { background: #ffe89a; }
         .aim-indicator.locked { background: #b8ffb8; }
         .aim-indicator.nosurface { background: #ffb8b8; }
 
-        /* ---- buttons ---- */
         .btn { min-height: 48px; margin: 0; padding: 6px 10px; border: 2px solid #000; background: #fff; box-shadow: 2px 2px 0 #000; font: bold 12px "Courier New", monospace; text-transform: uppercase; cursor: pointer; touch-action: manipulation; }
         .btn:active, .btn.selected { background: #000; color: #fff; box-shadow: none; }
         .btn.primary { background: #000; color: #fff; }
@@ -58,12 +51,10 @@
         .btn.danger { background: #ffdddd; }
         .btn[disabled] { opacity: .45; box-shadow: none; cursor: default; }
 
-        /* ---- pack bar ---- */
         .pack-bar { align-items: center; margin-top: 6px; padding: 6px; border: 2px solid #000; background: #f0f0f0; }
         .pack-bar .btn { width: 48px; padding: 0; flex: none; }
         .pack-bar select { flex: 1; min-width: 0; height: 48px; margin: 0 6px; padding: 0 8px; border: 2px solid #000; border-radius: 0; background: #fff; font: bold 13px "Courier New", monospace; }
 
-        /* ---- touch deck ---- */
         .touch-controls { display: grid; grid-template-columns: auto 1fr auto; grid-gap: 6px; align-items: center; margin-top: 6px; padding: 8px; border: 2px solid #000; background: #d8d8d8; }
         .touch-controls.hidden, .touch-controls.desktop-hidden { display: none !important; }
         .tc-move { display: flex; }
@@ -87,7 +78,6 @@
         .aim-reset-btn { min-height: 30px; margin-top: 3px; padding: 4px 10px; border: 2px solid #000; background: #fff; box-shadow: 2px 2px 0 #000; font: bold 10px "Courier New", monospace; cursor: pointer; touch-action: manipulation; }
         .aim-reset-btn:active { background: #000; color: #fff; box-shadow: none; }
 
-        /* ---- editor ---- */
         .toolbar { flex-wrap: wrap; margin-top: 6px; }
         .toolbar > * { width: 100%; }
         .tool-hint { padding: 7px 10px; border: 2px solid #000; background: #fff; font: bold 12px "Courier New", monospace; }
@@ -98,7 +88,6 @@
         .field { display: block; padding: 8px; font: bold 11px "Courier New", monospace; }
         .field select { display: block; width: 100%; height: 48px; margin-top: 4px; padding: 0 8px; border: 2px solid #000; border-radius: 0; background: #fff; font: bold 13px "Courier New", monospace; }
 
-        /* ---- online + info panels ---- */
         .online-panel { display: none; margin-top: 6px; padding: 12px; border: 2px solid #000; background: #f0f0ff; }
         .online-panel.active { display: block; }
         .online-panel h3 { margin: 0 0 4px 0; font: bold 14px "Courier New", monospace; }
@@ -108,7 +97,6 @@
         .info { display: block; margin-top: 6px; padding: 9px 10px; border: 2px solid #000; background: #f7f7f7; font-size: 12px; line-height: 1.5; }
         #pc-controls { display: none !important; }
 
-        /* ---- pack manager (rendered into .info) ---- */
         .panel-title { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; font: bold 13px "Courier New", monospace; }
         .panel-title small { font-weight: normal; font-size: 11px; color: #555; }
         .pack-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); grid-gap: 8px; }
@@ -120,7 +108,6 @@
         .pack-card-meta { display: block; margin-top: 3px; font-size: 11px; font-weight: normal; color: #555; }
         .pack-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); grid-gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; }
 
-        /* ---- toast + modal ---- */
         .toast { display: none; position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: 90%; padding: 10px 18px; border: 2px solid #fff; background: #000; color: #fff; font: bold 13px "Courier New", monospace; text-align: center; z-index: 11000; }
         .toast.show { display: block; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; align-items: center; justify-content: center; padding: 8px; background: rgba(0,0,0,.6); z-index: 10000; }
@@ -139,7 +126,6 @@
             body { padding: 4px; }
             .content { padding: 6px; }
             .hud-stats .stat { margin-left: 8px; }
-            .touch-btn, .tc-act { }
             .tc-act { grid-template-columns: 52px 52px; }
             .touch-btn { width: 52px; height: 52px; }
             .joystick { width: 84px; height: 84px; }
@@ -350,7 +336,6 @@
             function getToken() { return readStored(['token', 'unreader-token']); }
             function getUsername() { return viewer.name || readStored(['username', 'unreader-username']); }
 
-            // cb(err, data): err is null on success, else { error: 'message' }
             function api(method, path, body, cb) {
                 var token = getToken();
                 if (!token) { cb({ error: 'You are not logged in. Log in from the home page first.' }, null); return; }
@@ -1155,6 +1140,8 @@
                 var pack = getActivePack();
                 levels = pack.levels;
                 loadLevel(0);
+                refreshPackSelect();
+                if (typeof renderPackManager === 'function') renderPackManager();
                 toast('PACK: ' + pack.name);
             };
             window.switchPack = function(id) {
@@ -1166,6 +1153,8 @@
                 levels = pack.levels;
                 levelIndex = 0;
                 loadLevel(0);
+                refreshPackSelect();
+                if (typeof renderPackManager === 'function') renderPackManager();
             };
             window.prevLevel = function() { if (levelIndex > 0) loadLevel(levelIndex - 1); else toast('FIRST LEVEL'); };
             window.nextLevel = function() { if (levelIndex < levels.length - 1) loadLevel(levelIndex + 1); else toast('LAST LEVEL'); };
@@ -1221,6 +1210,18 @@
                         lvl.wires.push({ sourceType: 'button', sourceId: 0, targetType: 'door', targetId: wi });
                     }
                 }
+            }
+            function applyPortalGunStage(stage) {
+                stage = Number(stage);
+                if (!isFinite(stage)) stage = 0;
+                if (stage < 0) stage = 0;
+                if (stage > 2) stage = 2;
+                portalGunStage = stage;
+                var gun = document.getElementById('gun-stage');
+                if (gun) gun.innerText = String(portalGunStage);
+                var yellow = document.querySelector('.touch-btn.yellow');
+                if (yellow) yellow.disabled = portalGunStage < 2;
+                return portalGunStage;
             }
             function setPortalGunStage(stage) {
                 stage = Number(stage);
@@ -1326,14 +1327,6 @@
                 return t1 >= t0;
             }
 
-            // Trace a laser as connected segments. A beam can enter either portal,
-            // emerge from its partner with the correct 2-D orientation, and continue
-            // until it hits solid geometry, a fizzler, or its range limit.
-            // Transform a ray through a portal pair. The component tangent to the
-            // entry portal is preserved, while the component along the entry
-            // normal is re-expressed as the outward direction of the exit portal.
-            // This is the calculation that makes a laser physically continue
-            // from portal A to portal B instead of merely drawing a fixed beam.
             function transformRayThroughPortal(dx, dy, entry, exit) {
                 var etx = -entry.normal.y, ety = entry.normal.x;
                 var xt = dx * etx + dy * ety;
@@ -1361,10 +1354,6 @@
                         { p: portalB, other: portalA, key: 'B' }
                     ];
 
-                    // Find the first portal opening that this ray actually crosses.
-                    // A portal is allowed when it lies on the first collision surface
-                    // (raycast sees the wall underneath the portal), so equality with
-                    // the surface hit is intentional here.
                     for (var pi = 0; pi < candidates.length; pi++) {
                         var c = candidates[pi];
                         if (!c.p || !c.other || !c.p.normal || !c.other.normal || c.key === lastPortal) continue;
@@ -1384,7 +1373,6 @@
                     }
 
                     if (portal) {
-                        // Draw exactly to the portal opening.
                         out.push({
                             x1: sx, y1: sy,
                             x2: sx + dx * portalDist,
@@ -1393,19 +1381,14 @@
 
                         remaining -= portalDist;
 
-                        // Actually calculate the beam direction after exiting the
-                        // paired portal. This is independent of the editor beam length.
                         var next = transformRayThroughPortal(dx, dy, portal.p, portal.other);
                         dx = next.x;
                         dy = next.y;
 
-                        // Start just outside the exit portal so the raycast does not
-                        // immediately collide with the wall containing the portal.
                         sx = portal.other.x + portal.other.normal.x * 4;
                         sy = portal.other.y + portal.other.normal.y * 4;
                         remaining = Math.max(0, remaining - 4);
 
-                        // Prevent an immediate re-entry into the portal we just exited.
                         lastPortal = portal.key === 'A' ? 'B' : 'A';
                         hops++;
                     } else {
@@ -1434,7 +1417,6 @@
             // ---------- Mode switching ----------
             window.switchMode = function(newMode) {
                 if (newMode === 'edit') {
-                    // the editor never opens on the built-in chambers: you need a pack of your own first
                     var ownPacks = [];
                     for (var pi = 0; pi < packs.length; pi++) if (packs[pi].id !== 'builtin') ownPacks.push(packs[pi]);
                     if (!ownPacks.length) {
@@ -1518,6 +1500,7 @@
                 levelIndex = index;
                 var lvl = levels[index];
                 ensureLevelMechanics(lvl);
+                purgeUselessUpgrades(lvl);
                 player.x = lvl.start.x; player.y = lvl.start.y;
                 player.vx = 0; player.vy = 0; player.push = 0;
                 portalA = null; portalB = null;
@@ -1525,7 +1508,7 @@
                 teleportCooldown = 0; levelClear = false;
                 portalGunStage = (typeof lvl.portalGunStage === 'number') ? Math.max(0, Math.min(2, lvl.portalGunStage)) : 0;
                 for (var pui = 0; pui < (lvl.portalGunUpgrades || []).length; pui++) lvl.portalGunUpgrades[pui].collected = false;
-                setPortalGunStage(portalGunStage);
+                applyPortalGunStage(portalGunStage);
                 syncEditorGunStage();
                 cubes = (lvl.cubes || []).map(function(cs) {
                     return { x: cs.x, y: cs.y, w: cs.w || 20, h: cs.h || 20, vx: 0, vy: 0 };
@@ -1798,9 +1781,16 @@
                 }
                 else if (editorTool === 'grid') { if (!lvl.grids) lvl.grids = []; lvl.grids.push({ x: x1, y: y1, w: w, h: h }); toast('FIZZLER ADDED'); }
                 else if (editorTool === 'hazard') { lvl.hazards.push({ x: x1, y: y1, w: w, h: h }); toast('HAZARD ADDED'); }
-                else if (editorTool === 'start') { lvl.start = { x: x1, y: y1 }; toast('START MOVED'); }
+                else if (editorTool === 'start') { lvl.start = { x: x1, y: y1 }; if (mode === 'edit') { player.x = x1; player.y = y1; player.vx = 0; player.vy = 0; } touchEditor(); toast('START MOVED'); }
                 else if (editorTool === 'exit') { lvl.exit = { x: x1, y: y1, w: w, h: h }; toast('EXIT MOVED'); }
                 else if (editorTool === 'button') { ensureLevelMechanics(lvl); lvl.buttons.push({ x: x1, y: y1, w: w, h: h, pressed: false }); lvl.button = lvl.buttons[0]; lvl.exitClosed = true; toast('BUTTON ADDED (' + lvl.buttons.length + ')'); }
+                else if (editorTool === 'upgrade') {
+                    ensureLevelMechanics(lvl);
+                    lvl.portalGunUpgrades.push({ x: x1, y: y1, w: GRID, h: GRID, stage: normalizeUpgradeStage(upgradeStage), collected: false });
+                    var placedStage = normalizeUpgradeStage(upgradeStage);
+                    var placedLabel = placedStage >= 2 ? 'DUAL GUN' : 'BLUE GUN';
+                    toast(placedLabel + ' UPGRADE PLACED');
+                }
                 else if (editorTool === 'cube') {
                     ensureLevelMechanics(lvl);
                     if (!lvl.cubes) lvl.cubes = [];
@@ -1827,6 +1817,7 @@
                     if (lvl.lasers) lvl.lasers = lvl.lasers.filter(function(lz) { return !(lz.x >= x1 && lz.x <= x2 && lz.y >= y1 && lz.y <= y2); });
                     if (lvl.plates) lvl.plates = lvl.plates.filter(keepOut);
                     if (lvl.grids) lvl.grids = lvl.grids.filter(keepOut);
+                    if (lvl.portalGunUpgrades) lvl.portalGunUpgrades = lvl.portalGunUpgrades.filter(keepOut);
                     if (lvl.noPortal) {
                         var eraseRect = { x: x1, y: y1, w: x2 - x1, h: y2 - y1 }, keptZ = [];
                         for (var ez = 0; ez < lvl.noPortal.length; ez++) { var ep = subtractRect(lvl.noPortal[ez], eraseRect); for (var eq = 0; eq < ep.length; eq++) keptZ.push(ep[eq]); }
@@ -1997,21 +1988,58 @@
                 { vx: -4, vy: -14, label: 'UP-LEFT' }
             ];
             var platePreset = 0;
+            var upgradeStage = 1;
+            function normalizeUpgradeStage(stage) {
+                stage = Number(stage);
+                if (!isFinite(stage)) stage = 1;
+                if (stage < 1) stage = 1;
+                if (stage > 2) stage = 2;
+                return stage;
+            }
+            function upgradeRelation(targetStage, currentStage) {
+                targetStage = normalizeUpgradeStage(targetStage);
+                currentStage = Number(currentStage);
+                if (!isFinite(currentStage)) currentStage = 0;
+                if (currentStage < 0) currentStage = 0;
+                if (currentStage > 2) currentStage = 2;
+                // Upgrade entities are dynamic: they always grant the next stage.
+                // Only hacked (useless) once the gun is already at max stage.
+                if (currentStage < 2) return 'UPGRADE';
+                return 'HACKED';
+            }
+            function purgeUselessUpgrades(lvl) {
+                if (!lvl || !Array.isArray(lvl.portalGunUpgrades)) return;
+                var current = typeof lvl.portalGunStage === 'number' ? lvl.portalGunStage : 0;
+                var kept = [];
+                for (var i = 0; i < lvl.portalGunUpgrades.length; i++) {
+                    var pu = lvl.portalGunUpgrades[i];
+                    var st = Number(pu.stage);
+                    if (!isFinite(st)) st = 1;
+                    if (st < 1) st = 1;
+                    if (st > 2) st = 2;
+                    if (current >= 2) continue;
+                    pu.stage = st;
+                    kept.push(pu);
+                }
+                lvl.portalGunUpgrades = kept;
+            }
             window.selectTool = function(tool) {
                 if (tool === 'plate' && editorTool === 'plate') platePreset = (platePreset + 1) % PLATE_PRESETS.length;
                 if (tool === 'door' && editorTool === 'door') doorLogic = doorLogic === 'all' ? 'any' : 'all';
+                if (tool === 'upgrade' && editorTool === 'upgrade') upgradeStage = upgradeStage === 1 ? 2 : 1;
                 editorTool = tool;
                 var toolHint = document.getElementById('tool-hint');
-                if (toolHint) toolHint.innerText = 'TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '');
+                var upgradeLabel = upgradeStage === 1 ? 'BLUE GUN' : 'DUAL GUN';
+                if (toolHint) toolHint.innerText = 'TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '') + (tool === 'upgrade' ? ' ' + upgradeLabel + ' - TAP A CELL (tap tool again to switch)' : '');
                 var btns = document.querySelectorAll('.btn[data-tool]');
                 for (var i = 0; i < btns.length; i++) {
                     btns[i].className = 'btn' + (btns[i].getAttribute('data-tool') === tool ? ' selected' : '');
                 }
-                toast('TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label + ' (tap again to turn)' : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : ''));
+                toast('TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label + ' (tap again to turn)' : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '') + (tool === 'upgrade' ? ' ' + upgradeLabel + ' (tap again to switch)' : ''));
             };
             window.editorClear = function() {
                 var lvl = levels[levelIndex];
-                lvl.platforms = []; lvl.hazards = []; lvl.buttons = []; lvl.triggers = []; lvl.doors = []; lvl.wires = []; lvl.lasers = []; lvl.plates = []; lvl.grids = []; lvl.noPortal = [];
+                lvl.platforms = []; lvl.hazards = []; lvl.buttons = []; lvl.triggers = []; lvl.doors = []; lvl.wires = []; lvl.lasers = []; lvl.plates = []; lvl.grids = []; lvl.noPortal = []; lvl.portalGunUpgrades = [];
                 lvl.button = null; lvl.exitClosed = false; lvl.cubeStart = null; lvl.cubes = [];
                 toast('CLEARED'); touchEditor(); updateAimSnap();
             };
@@ -2048,7 +2076,12 @@
                 if (!lvl) return;
                 var stage = Math.max(0, Math.min(2, parseInt(value, 10) || 0));
                 lvl.portalGunStage = stage;
-                if (mode === 'play' || mode === 'edit') setPortalGunStage(stage);
+                purgeUselessUpgrades(lvl);
+                if (mode === 'play' || mode === 'edit') {
+                    applyPortalGunStage(stage);
+                    var pus = lvl.portalGunUpgrades || [];
+                    for (var pk = 0; pk < pus.length; pk++) pus[pk].collected = false;
+                }
                 touchEditor();
                 toast('LEVEL GUN STAGE ' + stage);
             };
@@ -2067,7 +2100,6 @@
                 persistIfEditable();
                 toast('LEVEL DELETED');
             };
-            // Any edit un-verifies the level (it must be playtested again) and autosaves editable packs.
             function persistIfEditable() { if (getActivePack().id !== 'builtin') savePacksToStorage(); }
             function touchEditor() {
                 var l = levels[levelIndex];
@@ -2444,10 +2476,6 @@
                 var payload = JSON.stringify(cleanLevels(pack.levels), null, 20);
                 payload = payload.substring(1, payload.length - 1).trim();
 
-                // Export the actual game document instead of fetching a second server-side
-                // template. This keeps the exported drop-in identical to the game currently
-                // being edited, including Kindle touch controls, touch aiming, PC controls,
-                // portal-gun stages, and all current client-side mechanics.
                 var titleEl = document.getElementById('app-title');
                 var oldTitle = titleEl ? titleEl.innerText : '';
                 if (titleEl) titleEl.innerText = 'PORTAL: THE KINDLE VERSION';
@@ -2460,7 +2488,6 @@
                 var a = html.indexOf(start), b = html.indexOf(end);
                 if (a < 0 || b < 0 || b <= a) { showModal('The game template is missing its export markers.', false); return; }
 
-                // Never ship an export that silently lost Kindle controls.
                 if (html.indexOf('id=\"touch-controls\"') < 0 || html.indexOf('function touchDown') < 0 || html.indexOf('function touchFire') < 0) {
                     showModal('Export failed: Kindle touch controls are missing from the game template.', false);
                     return;
@@ -2495,7 +2522,6 @@
                 if (color === 'blue') portalA = newPortal; else portalB = newPortal;
                 updatePortalCount(); toast(color.toUpperCase() + ' PORTAL');
             }
-            // Platforms plus any door whose wire inputs are currently inactive.
             function solids() {
                 var l = levels[levelIndex];
                 ensureLevelMechanics(l);
@@ -2510,7 +2536,6 @@
                 return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
             }
 
-            // Painted "no portal" zones: any surface point inside one cannot take a portal.
             function inNoPortal(l, x, y) {
                 var zs = l.noPortal;
                 if (!zs) return false;
@@ -2686,9 +2711,15 @@
                 for (var pui2 = 0; pui2 < lvl.portalGunUpgrades.length; pui2++) {
                     var pu = lvl.portalGunUpgrades[pui2];
                     if (!pu.collected && overlaps(player, pu)) {
+                        var pickupStage = Math.min(2, portalGunStage + 1);
+                        var rel = upgradeRelation(pickupStage, portalGunStage);
                         pu.collected = true;
-                        setPortalGunStage(pu.stage);
-                        toast('PORTAL GUN STAGE ' + portalGunStage);
+                        if (rel === 'UPGRADE') {
+                            applyPortalGunStage(pickupStage);
+                            toast('UPGRADE: PORTAL GUN STAGE ' + portalGunStage);
+                        } else {
+                            toast('HACKED ENTITY: IGNORING UPGRADE');
+                        }
                     }
                 }
                 for (var bi = 0; bi < lvl.buttons.length; bi++) {
@@ -2700,11 +2731,9 @@
                     var tr = lvl.triggers[tri];
                     tr.active = overlaps(player, tr);
                 }
-                // Laser triggers are driven by the actual traced laser path.
                 updateLaserTriggers(lvl);
                 lvl.button = lvl.buttons.length ? lvl.buttons[0] : null;
 
-                // A door that closes on you pushes you back to the nearest side (never through it).
                 for (var dk = 0; dk < lvl.doors.length; dk++) {
                     if (doorIsOpen(lvl, dk)) continue;
                     var dz = lvl.doors[dk];
@@ -2973,11 +3002,79 @@
                 for (var pdi = 0; pdi < upgrades.length; pdi++) {
                     var pu2 = upgrades[pdi];
                     if (pu2.collected) continue;
-                    ctx.fillStyle = pu2.stage >= 2 ? '#ff7a00' : '#0088ff';
-                    ctx.fillRect(pu2.x, pu2.y, pu2.w, pu2.h);
-                    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(pu2.x, pu2.y, pu2.w, pu2.h);
-                    ctx.fillStyle = '#000'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
-                    ctx.fillText('GUN ' + pu2.stage, pu2.x + pu2.w / 2, pu2.y + pu2.h / 2 + 4);
+
+                    var authoredStage = Number(pu2.stage);
+                    if (!isFinite(authoredStage)) authoredStage = 1;
+                    if (authoredStage < 1) authoredStage = 1;
+                    if (authoredStage > 2) authoredStage = 2;
+                    pu2.stage = authoredStage;
+
+                    var currentStage = Number(portalGunStage);
+                    if (!isFinite(currentStage)) currentStage = 0;
+                    if (currentStage < 0) currentStage = 0;
+                    if (currentStage > 2) currentStage = 2;
+
+                    // Visual preview: what stage would the player end up at?
+                    // At stage 0 -> show blue gun. At stage 1 -> show dual gun.
+                    // At stage 2 -> entity is hacked; show whatever the authored stage is.
+                    var previewStage = Math.min(2, currentStage + 1);
+
+                    var relation = upgradeRelation(authoredStage, currentStage);
+
+                    var ux = pu2.x + pu2.w / 2;
+                    var uy = pu2.y + pu2.h / 2;
+
+                    var ringColor = relation === 'UPGRADE' ? '#00ff66' : '#ff4444';
+
+                    ctx.beginPath();
+                    ctx.arc(ux, uy, 19, 0, Math.PI * 2);
+                    ctx.strokeStyle = ringColor;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([3, 4]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.beginPath();
+                    ctx.arc(ux, uy, 15, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                    ctx.strokeStyle = ringColor;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#222';
+                    ctx.fillRect(ux - 10, uy - 3, 13, 7);
+                    ctx.fillRect(ux - 6, uy + 3, 5, 7);
+                    ctx.fillRect(ux - 12, uy - 5, 3, 5);
+
+                    ctx.fillStyle = '#0088ff';
+                    ctx.fillRect(ux + 3, uy - 5, 7, 10);
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(ux + 3, uy - 5, 7, 10);
+                    if (previewStage >= 2) {
+                        ctx.fillStyle = '#ff7a00';
+                        ctx.fillRect(ux + 3, uy, 7, 5);
+                    }
+
+                    if (mode === 'edit') {
+                        var stageLabel = previewStage >= 2 ? 'DUAL GUN' : 'BLUE GUN';
+                        ctx.font = 'bold 10px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.lineWidth = 3;
+                        ctx.strokeStyle = '#000';
+                        ctx.strokeText(stageLabel, ux, uy + 31);
+                        ctx.fillStyle = '#fff';
+                        ctx.fillText(stageLabel, ux, uy + 31);
+
+                        var relText = relation + ' ' + currentStage + '>' + previewStage;
+                        ctx.font = 'bold 8px monospace';
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = '#000';
+                        ctx.strokeText(relText, ux, uy + 41);
+                        ctx.fillStyle = relation === 'HACKED' ? '#ff8888' : '#7cff7c';
+                        ctx.fillText(relText, ux, uy + 41);
+                    }
                 }
                 var bts = lvl.buttons || (lvl.button ? [lvl.button] : []);
                 for (var br = 0; br < bts.length; br++) {
