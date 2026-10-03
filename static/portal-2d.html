@@ -217,6 +217,7 @@
                         <button class="btn" data-tool="clean" onclick="selectTool('clean')">CLEAN PAINT</button>
                         <button class="btn" data-tool="grid" onclick="selectTool('grid')">FIZZLER</button>
                         <button class="btn" data-tool="plate" onclick="selectTool('plate')">LAUNCH PLATE</button>
+                        <button class="btn" data-tool="target" onclick="selectTool('target')">PLATE LANDING</button>
                         <button class="btn" data-tool="erase" onclick="selectTool('erase')">ERASE</button>
                     </div>
                 </div>
@@ -1533,7 +1534,8 @@
                 ensureLevelMechanics(lvl);
                 purgeUselessUpgrades(lvl);
                 player.x = lvl.start.x; player.y = lvl.start.y;
-                player.vx = 0; player.vy = 0; player.push = 0;
+                player.vx = 0; player.vy = 0; player.push = 0; player.lockPush = false;
+                plateTargetSource = null;
                 applyFixedPortals(lvl);
                 heldCube = -1; cube = null; cubes = [];
                 teleportCooldown = 0; levelClear = false;
@@ -1685,10 +1687,66 @@
                 toast('WIRE CANCELLED');
             }
 
+            // Aerial faith plate: with a landing target (tx, ty = where the feet touch down) the launch is
+            // solved so the player lands exactly there, whatever the distance. Without one, the old preset applies.
+            function planFaithLaunch(sx, sy, pl, pts) {
+                if (typeof pl.tx !== 'number' || typeof pl.ty !== 'number') return { vx: pl.vx, vy: pl.vy, locked: false };
+                var arc = (typeof pl.arc === 'number' && pl.arc > 0) ? pl.arc : 80;
+                var apex = Math.min(sy, pl.ty) - arc;
+                var vy0 = -Math.sqrt(2 * GRAVITY * (sy - apex));
+                var y = sy, vy = vy0, n = 0, ys = [];
+                while (n < 400) {
+                    vy += GRAVITY; if (vy > MAX_FALL_SPEED) vy = MAX_FALL_SPEED;
+                    y += vy; n++; ys.push(y);
+                    if (vy > 0 && y >= pl.ty) break;
+                }
+                var vx = (pl.tx - sx) / n;
+                if (pts) for (var i = 0; i < ys.length; i++) pts.push({ x: sx + vx * (i + 1), y: ys[i] });
+                return { vx: vx, vy: vy0, locked: true };
+            }
+            function surfaceBelow(lvl, x, y) {
+                var best = null;
+                for (var i = 0; i < lvl.platforms.length; i++) {
+                    var p = lvl.platforms[i];
+                    if (x >= p.x && x <= p.x + p.w && p.y + p.h > y && (best === null || p.y < best)) best = p.y;
+                }
+                return best === null ? y : best;
+            }
+            function editorPlateTargetClick(coords) {
+                var lvl = levels[levelIndex];
+                var plates = lvl.plates || [];
+                if (plateTargetSource !== null && !plates[plateTargetSource]) plateTargetSource = null;
+                var hit = -1;
+                for (var i = plates.length - 1; i >= 0; i--) {
+                    var p = plates[i];
+                    if (coords.x >= p.x - 8 && coords.x <= p.x + p.w + 8 && coords.y >= p.y - 14 && coords.y <= p.y + p.h + 8) { hit = i; break; }
+                }
+                if (plateTargetSource === null) {
+                    if (hit < 0) { toast('TAP A LAUNCH PLATE FIRST'); return; }
+                    plateTargetSource = hit;
+                    toast('PLATE ' + (hit + 1) + ' - NOW TAP WHERE IT SHOULD LAND');
+                    return;
+                }
+                if (hit === plateTargetSource) {
+                    var pc = plates[hit];
+                    delete pc.tx; delete pc.ty; delete pc.arc;
+                    plateTargetSource = null; touchEditor();
+                    toast('TARGET CLEARED - PRESET LAUNCH');
+                    return;
+                }
+                if (hit >= 0) { plateTargetSource = hit; toast('PLATE ' + (hit + 1) + ' SELECTED'); return; }
+                var tx = Math.floor(coords.x / GRID) * GRID + GRID / 2;
+                var tp = plates[plateTargetSource];
+                tp.tx = tx; tp.ty = surfaceBelow(lvl, tx, coords.y); tp.arc = ARC_PRESETS[arcPreset].h;
+                plateTargetSource = null; touchEditor();
+                toast('LANDING SET (ARC ' + ARC_PRESETS[arcPreset].label + ')');
+            }
+
             function canvasPointerDown(clientX, clientY) {
                 if (mode === 'edit') {
                     var coords = getCanvasCoords(clientX, clientY);
                     if (editorTool === 'wire') { editorWireClick(coords); return; }
+                    if (editorTool === 'target') { editorPlateTargetClick(coords); return; }
                     if (editorTool === 'select') {
                         editorSelection = editorHitEntity(levels[levelIndex], coords.x, coords.y);
                         if (editorSelection) {
@@ -1884,7 +1942,10 @@
                     if (lvl.cubes) lvl.cubes = lvl.cubes.filter(keepOut);
                     lvl.cubeStart = lvl.cubes && lvl.cubes.length ? lvl.cubes[0] : null;
                     if (lvl.lasers) lvl.lasers = lvl.lasers.filter(function(lz) { return !(lz.x >= x1 && lz.x <= x2 && lz.y >= y1 && lz.y <= y2); });
-                    if (lvl.plates) lvl.plates = lvl.plates.filter(keepOut);
+                    if (lvl.plates) {
+                        for (var ept = 0; ept < lvl.plates.length; ept++) { var pt = lvl.plates[ept]; if (typeof pt.tx === 'number' && pt.tx >= x1 && pt.tx <= x2 && pt.ty >= y1 && pt.ty <= y2) { delete pt.tx; delete pt.ty; delete pt.arc; } }
+                        lvl.plates = lvl.plates.filter(keepOut);
+                    }
                     if (lvl.grids) lvl.grids = lvl.grids.filter(keepOut);
                     if (lvl.portalGunUpgrades) lvl.portalGunUpgrades = lvl.portalGunUpgrades.filter(keepOut);
                     if (lvl.fixedPortals) lvl.fixedPortals = lvl.fixedPortals.filter(function(fq) { return !(fq.x >= x1 - PORTAL_RADIUS && fq.x <= x2 + PORTAL_RADIUS && fq.y >= y1 - PORTAL_RADIUS && fq.y <= y2 + PORTAL_RADIUS && fq.x >= x1 - 1 && fq.x <= x2 + 1 && fq.y >= y1 - 1 && fq.y <= y2 + 1); });
@@ -2058,6 +2119,9 @@
                 { vx: -4, vy: -14, label: 'UP-LEFT' }
             ];
             var platePreset = 0;
+            var ARC_PRESETS = [{ h: 40, label: 'LOW' }, { h: 80, label: 'MED' }, { h: 140, label: 'HIGH' }];
+            var arcPreset = 1;
+            var plateTargetSource = null;
             var portalToolColor = 'blue';
             var upgradeStage = 1;
             function normalizeUpgradeStage(stage) {
@@ -2096,18 +2160,20 @@
             }
             window.selectTool = function(tool) {
                 if (tool === 'plate' && editorTool === 'plate') platePreset = (platePreset + 1) % PLATE_PRESETS.length;
+                if (tool === 'target' && editorTool === 'target') arcPreset = (arcPreset + 1) % ARC_PRESETS.length;
+                if (tool !== 'target') plateTargetSource = null;
                 if (tool === 'door' && editorTool === 'door') doorLogic = doorLogic === 'all' ? 'any' : 'all';
                 if (tool === 'upgrade' && editorTool === 'upgrade') upgradeStage = upgradeStage === 1 ? 2 : 1;
                 if (tool === 'portal' && editorTool === 'portal') portalToolColor = portalToolColor === 'blue' ? 'orange' : 'blue';
                 editorTool = tool;
                 var toolHint = document.getElementById('tool-hint');
                 var upgradeLabel = upgradeStage === 1 ? 'BLUE GUN' : 'DUAL GUN';
-                if (toolHint) toolHint.innerText = 'TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '') + (tool === 'upgrade' ? ' ' + upgradeLabel + ' - TAP A CELL (tap tool again to switch)' : '') + (tool === 'portal' ? ' ' + portalToolColor.toUpperCase() + ' - TAP NEXT TO A WALL (tap tool again to switch)' : '');
+                if (toolHint) toolHint.innerText = 'TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '') + (tool === 'upgrade' ? ' ' + upgradeLabel + ' - TAP A CELL (tap tool again to switch)' : '') + (tool === 'portal' ? ' ' + portalToolColor.toUpperCase() + ' - TAP NEXT TO A WALL (tap tool again to switch)' : '') + (tool === 'target' ? ' - TAP A PLATE, THEN THE LANDING SPOT. ARC ' + ARC_PRESETS[arcPreset].label + ' (tap tool again to change)' : '');
                 var btns = document.querySelectorAll('.btn[data-tool]');
                 for (var i = 0; i < btns.length; i++) {
                     btns[i].className = 'btn' + (btns[i].getAttribute('data-tool') === tool ? ' selected' : '');
                 }
-                toast('TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label + ' (tap again to turn)' : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '') + (tool === 'upgrade' ? ' ' + upgradeLabel + ' (tap again to switch)' : '') + (tool === 'portal' ? ' ' + portalToolColor.toUpperCase() + ' (tap again to switch)' : ''));
+                toast('TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label + ' (tap again to turn)' : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '') + (tool === 'upgrade' ? ' ' + upgradeLabel + ' (tap again to switch)' : '') + (tool === 'portal' ? ' ' + portalToolColor.toUpperCase() + ' (tap again to switch)' : '') + (tool === 'target' ? ' ARC ' + ARC_PRESETS[arcPreset].label : ''));
             };
             window.editorClear = function() {
                 var lvl = levels[levelIndex];
@@ -2695,19 +2761,21 @@
                 if (keys['a'] || keys['arrowleft']) player.vx = -MOVE_SPEED;
                 else if (keys['d'] || keys['arrowright']) player.vx = MOVE_SPEED;
                 else { player.vx *= 0.8; if (Math.abs(player.vx) < 0.1) player.vx = 0; }
-                if ((keys['w'] || keys['arrowup'] || keys[' ']) && player.onGround) { player.vy = JUMP_FORCE; player.onGround = false; }
+                if ((keys['w'] || keys['arrowup'] || keys[' ']) && player.onGround && !player.lockPush) { player.vy = JUMP_FORCE; player.onGround = false; }
                 player.vy += GRAVITY;
                 if (player.vy > MAX_FALL_SPEED) player.vy = MAX_FALL_SPEED;
                 checkPortalTeleport();
                 var keyVx = player.vx;
-                if (player.push) player.vx = keyVx + player.push;
+                if (player.push) player.vx = (player.lockPush ? 0 : keyVx) + player.push;
                 player.x += player.vx; resolveCollisions('x');
                 if (player.push) {
                     if (player.vx === 0) player.push = 0;
                     player.vx = keyVx;
                 }
                 player.y += player.vy; resolveCollisions('y');
-                if (player.onGround) player.push = 0; else player.push *= 0.985;
+                // a targeted flight only ends on a real touchdown (vy 0), not on the 2px "near ground" test
+                if (player.onGround && (!player.lockPush || player.vy === 0)) player.push = 0; else if (!player.lockPush) player.push *= 0.985;
+                if (!player.push) player.lockPush = false;
                 var lvl = levels[levelIndex];
                 if (!Array.isArray(lvl.cubes)) lvl.cubes = [];
                 for (var ci = cubes.length - 1; ci >= 0; ci--) {
@@ -2756,7 +2824,8 @@
                     for (var pi = 0; pi < lvl.plates.length; pi++) {
                         var pl = lvl.plates[pi];
                         if (player.vy >= 0 && overlaps(player, pl)) {
-                            player.vy = pl.vy; player.push = pl.vx; player.onGround = false;
+                            var plan = planFaithLaunch(player.x + player.w / 2, player.y + player.h, pl);
+                            player.vy = plan.vy; player.push = plan.vx; player.lockPush = plan.locked; player.onGround = false;
                             toast('LAUNCH!');
                         }
                     }
@@ -3060,10 +3129,28 @@
                 var pls = lvl.plates || [];
                 for (var pr = 0; pr < pls.length; pr++) {
                     var pq = pls[pr];
+                    var hasTarget = typeof pq.tx === 'number' && typeof pq.ty === 'number';
+                    var arcPts = (hasTarget && mode === 'edit') ? [] : null;
+                    var pplan = planFaithLaunch(pq.x + pq.w / 2, pq.y + pq.h, pq, arcPts);
+                    if (hasTarget) {
+                        if (arcPts) {
+                            ctx.strokeStyle = '#ffee00'; ctx.lineWidth = 2; ctx.setLineDash([3, 5]);
+                            ctx.beginPath(); ctx.moveTo(pq.x + pq.w / 2, pq.y);
+                            for (var ap = 0; ap < arcPts.length; ap += 2) ctx.lineTo(arcPts[ap].x, arcPts[ap].y);
+                            ctx.lineTo(pq.tx, pq.ty); ctx.stroke(); ctx.setLineDash([]);
+                        }
+                        ctx.fillStyle = '#ffee00'; ctx.fillRect(pq.tx - 16, pq.ty - 3, 32, 3);
+                        ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(pq.tx - 16, pq.ty - 3, 32, 3);
+                        ctx.strokeStyle = '#ffee00'; ctx.lineWidth = 3;
+                        ctx.beginPath(); ctx.arc(pq.tx, pq.ty - 3, 11, Math.PI, 0); ctx.stroke();
+                    }
                     ctx.fillStyle = '#ffee00'; ctx.fillRect(pq.x, pq.y, pq.w, pq.h);
                     ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(pq.x, pq.y, pq.w, pq.h);
+                    if (mode === 'edit' && editorTool === 'target' && plateTargetSource === pr) {
+                        ctx.strokeStyle = '#ff2222'; ctx.lineWidth = 3; ctx.strokeRect(pq.x - 3, pq.y - 3, pq.w + 6, pq.h + 6);
+                    }
                     var pcx = pq.x + pq.w / 2, pcy = pq.y - 4;
-                    var pdx = pq.vx > 0.5 ? 1 : (pq.vx < -0.5 ? -1 : 0);
+                    var pdx = pplan.vx > 0.5 ? 1 : (pplan.vx < -0.5 ? -1 : 0);
                     ctx.strokeStyle = '#ffee00'; ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.moveTo(pcx, pcy); ctx.lineTo(pcx + pdx * 12, pcy - 14);
