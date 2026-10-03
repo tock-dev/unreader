@@ -6,603 +6,148 @@
     <title>Portal: The Kindle Version</title>
     <script src="common.js"></script>
     <style>
-        * {
-            transition: none !important;
-            animation: none !important;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { transition: none !important; animation: none !important; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { margin: 0; padding: 0; background: #e5e5e5; font-family: Verdana, Geneva, sans-serif; color: #000; user-select: none; -webkit-user-select: none; }
+        body { padding: 8px; }
+        button, select, input, textarea { font-family: inherit; color: #000; }
 
-        html, body {
-            margin: 0;
-            padding: 0;
-            background-color: #e5e5e5;
-            font-family: "Geneva", "Verdana", sans-serif;
-            image-rendering: pixelated;
-            user-select: none;
-            -webkit-user-select: none;
-        }
+        /* ---- window + title ---- */
+        .window { width: 100%; max-width: 680px; margin: 0 auto; background: #fff; border: 2px solid #000; box-shadow: 4px 4px 0 #000; }
+        .title-bar { position: relative; height: 34px; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #000; background: #fff; }
+        .title-stripes { position: absolute; top: 4px; bottom: 4px; left: 4px; right: 4px; background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, #000 3px, #000 4px); }
+        .title-text { position: relative; background: #fff; padding: 0 14px; font-weight: bold; font-size: 14px; }
+        .close-box { position: absolute; left: 8px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: #fff; border: 2px solid #000; box-shadow: 2px 2px 0 #000; font: bold 13px "Courier New", monospace; cursor: pointer; touch-action: manipulation; z-index: 2; }
+        .close-box:active { background: #000; color: #fff; box-shadow: none; }
 
-        body {
-            min-height: 100vh;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            padding: 8px;
-        }
+        /* ---- tabs ---- */
+        .mode-tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 2px solid #000; background: #ddd; }
+        .mode-tab { height: 48px; display: flex; align-items: center; justify-content: center; border-right: 2px solid #000; background: #ddd; font: bold 13px "Courier New", monospace; letter-spacing: 1px; cursor: pointer; touch-action: manipulation; }
+        .mode-tab:last-child { border-right: 0; }
+        .mode-tab.active { background: #000; color: #fff; }
 
-        .window {
-            background: white;
-            border: 2px solid black;
-            box-shadow: 4px 4px 0px #000000;
-            width: 100%;
-            max-width: 680px;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
+        /* ---- layout: one column, order depends on mode ---- */
+        .content { display: flex; flex-direction: column; align-items: center; padding: 10px; }
+        .content > * { width: 100%; max-width: 640px; }
+        .hud { order: 1; } .canvas-wrap { order: 2; } .aim-indicator { order: 3; } .touch-controls { order: 4; }
+        .pack-bar { order: 5; } .online-panel { order: 6; } .toolbar { order: 7; } #user-editor-actions { order: 8; } .info { order: 9; }
+        body[data-mode="edit"] .pack-bar { order: 3; }
+        body[data-mode="packs"] .canvas-wrap, body[data-mode="packs"] .hud,
+        body[data-mode="online"] .canvas-wrap, body[data-mode="online"] .hud { display: none; }
 
-        /* Refined compact desktop/Kindle UI */
-        .window {
-            max-width: 760px;
-        }
-        .content {
-            padding: 10px;
-            gap: 0;
-        }
-        .canvas-wrap, .row, .toolbar, .aim-indicator, .touch-controls {
-            max-width: 720px;
-        }
-        .game-meta {
-            display: grid;
-            grid-template-columns: 1.35fr repeat(3, .75fr) 1fr;
-            gap: 0;
-            overflow: hidden;
-            padding: 0;
-        }
-        .game-meta .cell {
-            padding: 7px 8px;
-            margin: 0;
-            border-right: 1px solid #999;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .game-meta .cell:last-child { border-right: 0; text-align: right; }
-        .pack-bar {
-            display: grid;
-            grid-template-columns: auto minmax(0, 1fr) auto auto;
-            gap: 5px;
-            align-items: center;
-            padding: 5px;
-        }
-        .pack-bar .label { margin: 0 2px 0 4px; }
-        .pack-bar select { min-width: 0; margin: 0; }
-        .pack-bar .btn { margin: 0; }
-        .panel-title {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 8px;
-            margin-bottom: 6px;
-        }
-        .panel-title small {
-            font-size: .62rem;
-            font-weight: normal;
-            color: #555;
-        }
-        .pack-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-            gap: 6px;
-            width: 100%;
-        }
-        .pack-card {
-            border: 2px solid #000;
-            background: #fff;
-            padding: 7px;
-            display: grid;
-            grid-template-columns: minmax(0,1fr) auto;
-            gap: 6px;
-            align-items: center;
-        }
-        .pack-card.active { background: #ededed; }
-        .pack-card-name {
-            min-width: 0;
-            font-family: "Courier New", monospace;
-            font-weight: bold;
-            font-size: .72rem;
-        }
-        .pack-card-meta {
-            display: block;
-            margin-top: 2px;
-            font-size: .6rem;
-            font-weight: normal;
-            color: #555;
-        }
-        .pack-card-actions { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
-        .pack-card-actions .btn { margin: 0; }
-        .pack-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-top: 7px;
-            padding-top: 7px;
-            border-top: 1px solid #999;
-        }
-        .pack-actions .btn { margin: 0; }
-        @media (max-width: 560px) {
-            .game-meta { grid-template-columns: 1fr 1fr; }
-            .game-meta .cell { border-bottom: 1px solid #999; }
-            .game-meta .cell:last-child { text-align: left; }
-            .pack-bar { grid-template-columns: auto minmax(0,1fr) auto auto; }
-        }
+        /* ---- HUD ---- */
+        .hud { display: flex; align-items: center; padding: 0 10px; min-height: 36px; border: 2px solid #000; border-bottom: 0; background: #f0f0f0; font: bold 12px "Courier New", monospace; white-space: nowrap; }
+        .hud-name { flex: 1; min-width: 0; margin: 0 8px; overflow: hidden; text-overflow: ellipsis; font-weight: normal; }
+        .hud-stats .stat { margin-left: 12px; }
 
-        .title-bar {
-            height: 34px;
-            border-bottom: 2px solid black;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: white;
-            position: relative;
-            flex-shrink: 0;
-        }
-        .title-stripes {
-            position: absolute;
-            top: 4px; bottom: 4px; left: 4px; right: 4px;
-            background-image: repeating-linear-gradient(
-                0deg, transparent, transparent 2px, #000 3px, #000 4px
-            );
-            z-index: 0;
-        }
-        .title-text {
-            background: white;
-            padding: 0 14px;
-            font-weight: bold;
-            font-size: 0.95rem;
-            z-index: 1;
-        }
-        .close-box {
-            position: absolute;
-            left: 8px;
-            width: 22px; height: 22px;
-            border: 2px solid black;
-            background: white;
-            z-index: 2;
-            box-shadow: 2px 2px 0 black;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-family: monospace; font-weight: bold; font-size: 13px;
-            touch-action: manipulation;
-        }
-        .close-box:active {
-            transform: translate(2px, 2px);
-            box-shadow: none; background: black; color: white;
-        }
+        /* ---- canvas (padding trick: aspect-ratio is not available on the Kindle browser) ---- */
+        .canvas-wrap { position: relative; padding-top: 62.5%; border: 2px solid #000; background: #1a1a2e; }
+        .canvas-wrap canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; touch-action: none; }
 
-        .mode-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            border-bottom: 2px solid black;
-            background: #ddd;
-            flex-shrink: 0;
-        }
-        .mode-tab {
-            flex: 1 1 25%;
-            min-width: 80px;
-            padding: 10px 4px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 0.72rem;
-            font-family: "Courier New", monospace;
-            border-right: 2px solid black;
-            border-bottom: 2px solid black;
-            cursor: pointer;
-            background: #ddd;
-            touch-action: manipulation;
-            box-sizing: border-box;
-        }
-        .mode-tab:last-child { border-right: none; }
-            #user-editor-toolbar, #user-editor-actions { flex-wrap: wrap; }
-            #user-editor-toolbar .btn, #user-editor-actions .btn { margin: 2px; }
-        .mode-tab.active {
-            background: white;
-            border-bottom-color: white;
-        }
-        .mode-tab:active { background: #bbb; }
-
-        .content {
-            padding: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            overflow-y: auto;
-            max-height: calc(100vh - 90px);
-        }
-
-        .canvas-wrap {
-            width: 100%;
-            max-width: 640px;
-            aspect-ratio: 16 / 10;
-            position: relative;
-            border: 2px solid black;
-            background: #1a1a2e;
-        }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            image-rendering: pixelated;
-            touch-action: none;
-        }
-
-        .row {
-            width: 100%;
-            max-width: 640px;
-            margin-top: 6px;
-            border: 2px solid black;
-            background: white;
-            padding: 5px 6px;
-            font-family: "Courier New", monospace;
-            font-size: 0.7rem;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-        }
-        .row.gray { background: #f0f0f0; }
-        .row.blue { background: #e0e8ff; }
-
-        .row .label {
-            margin-right: 6px;
-            white-space: nowrap;
-        }
-        .row .spacer { flex: 1; }
-        .row .cell {
-            white-space: nowrap;
-            margin-right: 10px;
-        }
-
-        .row select {
-            flex: 1;
-            border: 2px solid black;
-            border-radius: 0;
-            background: white;
-            font-family: inherit;
-            font-size: 0.75rem;
-            padding: 4px 2px;
-            margin-right: 4px;
-            min-height: 30px;
-            touch-action: manipulation;
-        }
-
-        .row input[type=text] {
-            flex: 1;
-            border: 2px solid black;
-            border-radius: 0;
-            background: white;
-            font-family: inherit;
-            font-size: 0.75rem;
-            padding: 6px 4px;
-            margin-right: 4px;
-            min-height: 32px;
-            touch-action: manipulation;
-        }
-
-        .btn {
-            border: 2px solid black;
-            background: white;
-            padding: 6px 10px;
-            margin: 2px;
-            font-family: "Courier New", monospace;
-            font-weight: bold;
-            font-size: 0.68rem;
-            box-shadow: 2px 2px 0 black;
-            cursor: pointer;
-            touch-action: manipulation;
-            min-height: 30px;
-            white-space: nowrap;
-        }
-        .btn:active {
-            transform: translate(2px, 2px);
-            box-shadow: none;
-            background: black; color: white;
-        }
-        .btn.selected { background: black; color: white; }
-        .btn.danger { background: #ffdddd; }
-        .btn[disabled] {
-            opacity: 0.5;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-
-        .toolbar {
-            display: none;
-            width: 100%;
-            max-width: 640px;
-            margin-top: 6px;
-            border: 2px solid black;
-            background: #f0f0f0;
-            padding: 4px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .toolbar.active { display: flex; }
-
-        .aim-indicator {
-            width: 100%;
-            max-width: 640px;
-            margin-top: 6px;
-            border: 2px solid black;
-            background: #fff;
-            padding: 5px 6px;
-            font-family: "Courier New", monospace;
-            font-size: 0.68rem;
-            font-weight: bold;
-            text-align: center;
-        }
+        /* ---- aim strip ---- */
+        .aim-indicator { margin-top: 6px; padding: 7px 6px; border: 2px solid #000; background: #fff; font: bold 12px "Courier New", monospace; text-align: center; }
         .aim-indicator.aiming { background: #ffcc00; }
         .aim-indicator.latched { background: #ffe89a; }
         .aim-indicator.locked { background: #b8ffb8; }
         .aim-indicator.nosurface { background: #ffb8b8; }
 
-        .touch-controls {
-            display: flex;
-            width: 100%;
-            max-width: 640px;
-            margin-top: 6px;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px;
-            border: 2px solid black;
-            background: #d8d8d8;
-            flex-wrap: wrap;
-        }
-        .touch-controls.hidden { display: none; }
-        .touch-controls.desktop-hidden { display: none !important; }
+        /* ---- buttons ---- */
+        .btn { min-height: 48px; margin: 0; padding: 6px 10px; border: 2px solid #000; background: #fff; box-shadow: 2px 2px 0 #000; font: bold 12px "Courier New", monospace; text-transform: uppercase; cursor: pointer; touch-action: manipulation; }
+        .btn:active, .btn.selected { background: #000; color: #fff; box-shadow: none; }
+        .btn.primary { background: #000; color: #fff; }
+        .btn.primary:active { background: #fff; color: #000; }
+        .btn.danger { background: #ffdddd; }
+        .btn[disabled] { opacity: .45; box-shadow: none; cursor: default; }
 
-        .touch-cluster {
-            display: flex;
-            align-items: center;
-        }
+        /* ---- pack bar ---- */
+        .pack-bar { align-items: center; margin-top: 6px; padding: 6px; border: 2px solid #000; background: #f0f0f0; }
+        .pack-bar .btn { width: 48px; padding: 0; flex: none; }
+        .pack-bar select { flex: 1; min-width: 0; height: 48px; margin: 0 6px; padding: 0 8px; border: 2px solid #000; border-radius: 0; background: #fff; font: bold 13px "Courier New", monospace; }
 
-        .touch-btn {
-            width: 56px; height: 56px;
-            min-width: 56px; min-height: 56px;
-            border: 2px solid black;
-            background: white;
-            box-shadow: 2px 2px 0 black;
-            margin: 3px;
-            font-family: "Courier New", monospace;
-            font-weight: bold;
-            font-size: 1.15rem;
-            cursor: pointer;
-            touch-action: none;
-            -webkit-user-select: none;
-            user-select: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            line-height: 1;
-        }
-        .touch-btn:active, .touch-btn.pressed {
-            transform: translate(2px, 2px);
-            box-shadow: none;
-            background: black; color: white;
-        }
-        .touch-btn.small-label { font-size: 0.7rem; }
+        /* ---- touch deck ---- */
+        .touch-controls { display: grid; grid-template-columns: auto 1fr auto; grid-gap: 6px; align-items: center; margin-top: 6px; padding: 8px; border: 2px solid #000; background: #d8d8d8; }
+        .touch-controls.hidden, .touch-controls.desktop-hidden { display: none !important; }
+        .tc-move { display: flex; }
+        .tc-move .touch-btn + .touch-btn { margin-left: 6px; }
+        .tc-act { display: grid; grid-template-columns: 56px 56px; grid-gap: 6px; }
+        .touch-btn { width: 56px; height: 56px; padding: 0; display: flex; align-items: center; justify-content: center; border: 2px solid #000; background: #fff; box-shadow: 2px 2px 0 #000; font: bold 20px "Courier New", monospace; line-height: 1; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+        .touch-btn:active, .touch-btn.pressed { background: #000; color: #fff; box-shadow: none; }
+        .touch-btn.small-label { font-size: 11px; }
         .touch-btn.blue { background: #cce0ff; }
-        .touch-btn.yellow:disabled { opacity: 0.35; }
-        .touch-btn.yellow { background: #fff5cc; }
+        .touch-btn.yellow { background: #fff0b8; }
+        .touch-btn.yellow:disabled { opacity: .35; }
         .touch-btn.red { background: #ffcccc; }
         .touch-btn.green { background: #ccffcc; }
-
-        .joystick-wrap {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 0 4px;
-        }
-        .joystick {
-            width: 90px; height: 90px;
-            border: 2px solid black;
-            border-radius: 50%;
-            background: #f0f0f0;
-            position: relative;
-            touch-action: none;
-            box-shadow: inset 2px 2px 0 rgba(0,0,0,0.1);
-        }
-        .joystick-stick {
-            position: absolute;
-            width: 40px; height: 40px;
-            border: 2px solid black;
-            border-radius: 50%;
-            background: white;
-            left: 25px; top: 25px;
-            pointer-events: none;
-            box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
-        }
+        .joystick-wrap { display: flex; flex-direction: column; align-items: center; }
+        .joystick { position: relative; width: 96px; height: 96px; border: 2px solid #000; border-radius: 50%; background: #f0f0f0; touch-action: none; }
+        .joystick.latched { background: #fff0b8; }
+        .joystick-stick { position: absolute; left: 28px; top: 28px; width: 40px; height: 40px; border: 2px solid #000; border-radius: 50%; background: #fff; pointer-events: none; }
         .joystick-stick.active { background: #222; }
-        .joystick.latched { background: #fff5cc; }
-        .joystick-crosshair {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-family: "Courier New", monospace;
-            font-size: 10px;
-            color: #666;
-            pointer-events: none;
-        }
-        .joystick-label {
-            font-family: "Courier New", monospace;
-            font-size: 0.55rem;
-            font-weight: bold;
-            margin-top: 2px;
-            text-align: center;
-        }
-        .aim-reset-btn {
-            border: 2px solid black;
-            background: white;
-            padding: 4px 6px;
-            margin-top: 3px;
-            font-family: "Courier New", monospace;
-            font-weight: bold;
-            font-size: 0.55rem;
-            box-shadow: 2px 2px 0 black;
-            cursor: pointer;
-            touch-action: manipulation;
-            min-height: 26px;
-        }
-        .aim-reset-btn:active {
-            transform: translate(2px, 2px);
-            box-shadow: none;
-            background: black; color: white;
-        }
+        .joystick-crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font: 10px "Courier New", monospace; color: #666; pointer-events: none; }
+        .joystick-label { margin-top: 3px; font: bold 10px "Courier New", monospace; }
+        .aim-reset-btn { min-height: 30px; margin-top: 3px; padding: 4px 10px; border: 2px solid #000; background: #fff; box-shadow: 2px 2px 0 #000; font: bold 10px "Courier New", monospace; cursor: pointer; touch-action: manipulation; }
+        .aim-reset-btn:active { background: #000; color: #fff; box-shadow: none; }
 
-        .online-panel {
-            display: none;
-            width: 100%;
-            max-width: 640px;
-            margin-top: 6px;
-            border: 2px solid black;
-            background: #f0f0ff;
-            padding: 12px;
-            font-family: "Courier New", monospace;
-            font-size: 0.72rem;
-            text-align: center;
-        }
+        /* ---- editor ---- */
+        .toolbar { flex-wrap: wrap; margin-top: 6px; }
+        .toolbar > * { width: 100%; }
+        .tool-hint { padding: 7px 10px; border: 2px solid #000; background: #fff; font: bold 12px "Courier New", monospace; }
+        .tool-group { margin-top: 6px; border: 2px solid #000; background: #f0f0f0; }
+        .group-title { padding: 3px 10px; background: #000; color: #fff; font: bold 11px "Courier New", monospace; letter-spacing: 1px; }
+        .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); grid-gap: 6px; padding: 8px; }
+        .tool-grid .btn { width: 100%; padding: 4px; }
+        .field { display: block; padding: 8px; font: bold 11px "Courier New", monospace; }
+        .field select { display: block; width: 100%; height: 48px; margin-top: 4px; padding: 0 8px; border: 2px solid #000; border-radius: 0; background: #fff; font: bold 13px "Courier New", monospace; }
+
+        /* ---- online + info panels ---- */
+        .online-panel { display: none; margin-top: 6px; padding: 12px; border: 2px solid #000; background: #f0f0ff; }
         .online-panel.active { display: block; }
-        .online-panel h3 {
-            margin: 0 0 8px 0;
-            font-size: 0.9rem;
-        }
-        .online-panel p {
-            margin: 6px 0;
-            line-height: 1.5;
-        }
+        .online-panel h3 { margin: 0 0 4px 0; font: bold 14px "Courier New", monospace; }
+        .online-status { margin: 0 0 10px 0; font-size: 12px; }
+        .online-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); grid-gap: 8px; }
+        .online-note { margin: 10px 0 0 0; font-size: 11px; line-height: 1.45; color: #444; }
+        .info { display: block; margin-top: 6px; padding: 9px 10px; border: 2px solid #000; background: #f7f7f7; font-size: 12px; line-height: 1.5; }
+        #pc-controls { display: none !important; }
 
-        .toast {
-            position: fixed;
-            bottom: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: black;
-            color: white;
-            border: 2px solid white;
-            padding: 8px 16px;
-            font-family: "Courier New", monospace;
-            font-weight: bold;
-            font-size: 0.75rem;
-            z-index: 11000;
-            display: none;
-            max-width: 90%;
-            text-align: center;
-        }
+        /* ---- pack manager (rendered into .info) ---- */
+        .panel-title { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; font: bold 13px "Courier New", monospace; }
+        .panel-title small { font-weight: normal; font-size: 11px; color: #555; }
+        .pack-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); grid-gap: 8px; }
+        .pack-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-gap: 8px; align-items: center; padding: 8px; border: 2px solid #000; background: #fff; }
+        .pack-card.active { background: #000; color: #fff; }
+        .pack-card.active .pack-card-meta { color: #ccc; }
+        .pack-card.active .btn { color: #000; }
+        .pack-card-name { min-width: 0; font: bold 13px "Courier New", monospace; overflow-wrap: break-word; }
+        .pack-card-meta { display: block; margin-top: 3px; font-size: 11px; font-weight: normal; color: #555; }
+        .pack-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); grid-gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000; }
+
+        /* ---- toast + modal ---- */
+        .toast { display: none; position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: 90%; padding: 10px 18px; border: 2px solid #fff; background: #000; color: #fff; font: bold 13px "Courier New", monospace; text-align: center; z-index: 11000; }
         .toast.show { display: block; }
-
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6);
-            z-index: 10000;
-            align-items: center;
-            justify-content: center;
-            padding: 8px;
-        }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; align-items: center; justify-content: center; padding: 8px; background: rgba(0,0,0,.6); z-index: 10000; }
         .modal-overlay.active { display: flex; }
-        .modal-box {
-            background: white;
-            border: 2px solid black;
-            box-shadow: 4px 4px 0 black;
-            padding: 16px;
-            max-width: 420px;
-            width: 100%;
-            text-align: center;
-            font-family: "Geneva", "Verdana", sans-serif;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .modal-box p {
-            margin: 0 0 12px 0;
-            font-size: 0.85rem;
-            line-height: 1.4;
-        }
-        .modal-box input, .modal-box textarea, .modal-box select {
-            border: 2px solid black;
-            border-radius: 0;
-            font-family: inherit;
-            font-size: 0.85rem;
-            padding: 8px;
-            width: 100%;
-            margin-bottom: 10px;
-            min-height: 40px;
-            touch-action: manipulation;
-        }
-        .modal-box textarea {
-            height: 130px;
-            resize: none;
-            font-family: "Courier New", monospace;
-            font-size: 0.75rem;
-        }
-        .modal-box button {
-            border: 2px solid black;
-            background: white;
-            padding: 10px 18px;
-            margin: 3px;
-            font-family: inherit;
-            font-weight: bold;
-            font-size: 0.85rem;
-            box-shadow: 2px 2px 0 black;
-            cursor: pointer;
-            touch-action: manipulation;
-            min-height: 44px;
-            min-width: 80px;
-        }
-        .modal-box button:active {
-            transform: translate(2px, 2px);
-            box-shadow: none;
-            background: black; color: white;
-        }
-        .modal-box .list-item {
-            border: 2px solid black;
-            background: #f0f0f0;
-            padding: 8px;
-            margin: 5px 0;
-            text-align: left;
-            font-size: 0.72rem;
-            font-family: "Courier New", monospace;
-        }
-        .modal-box .list-item b { font-size: 0.78rem; }
-        .modal-box .list-item button {
-            margin-top: 6px;
-            padding: 8px 12px;
-            font-size: 0.72rem;
-            min-height: 48px;
-        }
-        .modal-box .list-item { overflow-wrap: break-word; word-wrap: break-word; }
-        .online-panel .btn {
-            min-height: 48px;
-            padding: 8px 12px;
-            margin: 4px;
-        }
+        .modal-box { width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto; padding: 16px; border: 2px solid #000; background: #fff; box-shadow: 4px 4px 0 #000; text-align: center; }
+        .modal-box p { margin: 0 0 12px 0; font-size: 14px; line-height: 1.45; }
+        .modal-box input, .modal-box textarea, .modal-box select { display: block; width: 100%; min-height: 48px; margin-bottom: 10px; padding: 8px; border: 2px solid #000; border-radius: 0; background: #fff; font-size: 14px; touch-action: manipulation; }
+        .modal-box textarea { height: 140px; resize: none; font: 12px "Courier New", monospace; }
+        .modal-box button { min-width: 88px; min-height: 48px; margin: 3px; padding: 8px 18px; border: 2px solid #000; background: #fff; box-shadow: 2px 2px 0 #000; font: bold 14px Verdana, Geneva, sans-serif; cursor: pointer; touch-action: manipulation; }
+        .modal-box button:active { background: #000; color: #fff; box-shadow: none; }
+        .modal-box .list-item { margin: 6px 0; padding: 8px; border: 2px solid #000; background: #f0f0f0; text-align: left; font: 12px "Courier New", monospace; overflow-wrap: break-word; }
+        .modal-box .list-item b { font-size: 13px; }
+        .modal-box .list-item button { min-width: 0; margin: 6px 6px 0 0; padding: 8px 12px; font-size: 12px; }
 
-        @media (max-width: 520px) {
-            .mode-tab { font-size: 0.68rem; padding: 9px 2px; }
-            .touch-btn { width: 48px; height: 48px; min-width: 48px; min-height: 48px; font-size: 1rem; }
-            .touch-btn.small-label { font-size: 0.58rem; }
-            .joystick { width: 78px; height: 78px; }
-            .joystick-stick { width: 34px; height: 34px; left: 22px; top: 22px; }
-            .row { font-size: 0.64rem; }
+        @media (max-width: 460px) {
+            body { padding: 4px; }
+            .content { padding: 6px; }
+            .hud-stats .stat { margin-left: 8px; }
+            .touch-btn, .tc-act { }
+            .tc-act { grid-template-columns: 52px 52px; }
+            .touch-btn { width: 52px; height: 52px; }
+            .joystick { width: 84px; height: 84px; }
+            .joystick-stick { left: 22px; top: 22px; }
         }
-    /* PC browsers hide the Kindle/touch control deck; touch-capable devices keep it.
-       Do not use hover/pointer media queries here: Kindle browsers can advertise
-       a fine/hover pointer while still being touch-first. */
-        </style>
+    </style>
 </head>
-<body>
+<body data-mode="play">
 
     <div class="window">
         <div class="title-bar">
@@ -614,83 +159,29 @@
         <div class="mode-tabs">
             <div class="mode-tab active" id="tab-play" onclick="switchMode('play')">PLAY</div>
             <div class="mode-tab" id="tab-packs" onclick="switchMode('packs')">PACKS</div>
-            <div class="mode-tab" id="tab-online" onclick="switchMode('online')">ONLINE LEVELS</div>
+            <div class="mode-tab" id="tab-online" onclick="switchMode('online')">ONLINE</div>
             <div class="mode-tab" id="tab-edit" onclick="switchMode('edit')">EDIT</div>
         </div>
 
         <div class="content">
 
+            <div class="hud">
+                <span>LVL <span id="level-display">1</span></span>
+                <span class="hud-name" id="level-name-display"></span>
+                <span class="hud-stats">
+                    <span class="stat">PORTALS <b id="portal-count">0/2</b></span>
+                    <span class="stat">GUN <b id="gun-stage">2</b>/2</span>
+                </span>
+            </div>
+
             <div class="canvas-wrap">
                 <canvas id="game" width="640" height="400"></canvas>
-            </div>
-
-            <div class="row gray game-meta">
-                <span class="cell">LVL: <span id="level-display">1</span> <span id="level-name-display"></span></span>
-                <span class="cell">PORTALS: <span id="portal-count">0</span>/2</span>
-                <span class="cell">GUN: <span id="gun-stage">2</span>/2</span>
-                <span class="spacer"></span>
-                <span class="cell">STATUS: <span id="status-display">READY</span></span>
-            </div>
-
-            <div class="row pack-bar" id="pack-bar">
-                <span class="label">PACK:</span>
-                <select id="pack-select" onchange="onPackChange()"></select>
-                <button class="btn" onclick="prevLevel()">&lt;</button>
-                <button class="btn" onclick="nextLevel()">&gt;</button>
-            </div>
-
-
-            <div class="toolbar" id="user-editor-toolbar" style="display:none;">
-                <button class="btn selected" data-user-tool="select" onclick="selectTool('select')">SELECT</button>
-                <button class="btn" data-user-tool="platform" onclick="selectTool('platform')">PLATFORM</button>
-                <button class="btn" data-user-tool="hazard" onclick="selectTool('hazard')">HAZARD</button>
-                <button class="btn" data-user-tool="button" onclick="selectTool('button')">BUTTON</button>
-                <button class="btn" data-user-tool="trigger" onclick="selectTool('trigger')">TOUCH TRIGGER</button>
-                <button class="btn" data-user-tool="laserTrigger" onclick="selectTool('laserTrigger')">LASER TRIGGER</button>
-                <button class="btn" data-user-tool="door" onclick="selectTool('door')">DOOR</button>
-                <button class="btn" data-user-tool="laser" onclick="selectTool('laser')">LASER</button>
-                <button class="btn" data-user-tool="wire" onclick="selectTool('wire')">WIRE</button>
-                <button class="btn" data-user-tool="upgrade" onclick="selectTool('upgrade')">UPGRADE</button>
-                <button class="btn" data-user-tool="cube" onclick="selectTool('cube')">CUBE</button>
-                <button class="btn" data-user-tool="start" onclick="selectTool('start')">START</button>
-                <button class="btn" data-user-tool="exit" onclick="selectTool('exit')">EXIT</button>
-                <button class="btn" data-user-tool="metal" onclick="selectTool('metal')">NO PORTAL</button>
-                <button class="btn" data-user-tool="erase" onclick="selectTool('erase')">ERASE</button>
-            </div>
-            <div class="toolbar" id="user-editor-actions" style="display:none;">
-                <button class="btn" onclick="editorNewLevel()">NEW LEVEL</button>
-                <button class="btn" onclick="editorDeleteLevel()">DELETE LEVEL</button>
-                <button class="btn" onclick="editorClear()">CLEAR</button>
-                <button class="btn" onclick="editorSavePack()">SAVE</button>
-                <button class="btn" onclick="editorTest()">TEST</button>
-                <button class="btn" onclick="editorCopyPack()">COPY PACK</button>
-                <button class="btn" onclick="editorRenameLevel()">RENAME LEVEL</button>
-                <label class="btn" style="display:inline-flex;align-items:center;gap:4px;cursor:default;">GUN STAGE
-                    <select id="editor-gun-stage" onchange="editorSetGunStage(this.value)" style="font:inherit;background:#111;color:#fff;border:1px solid #777;">
-                        <option value="0">0 - No Portals</option>
-                        <option value="1">1 - Blue Portal only</option>
-                        <option value="2">2 - Both Orange and Blue</option>
-                    </select>
-                </label>
-                <button class="btn" onclick="onlinePublish()">PUBLISH / UPDATE</button>
-                <button class="btn dev-only" style="display:none;" onclick="editorExportGame()">EXPORT DROP-IN HTML</button>
-            </div>
-
-            <div class="online-panel" id="online-panel">
-                <h3>ONLINE LEVELS</h3>
-                <p id="online-status">Checking login...</p>
-                <div>
-                    <button class="btn" onclick="onlineBrowse(0, false)">BROWSE</button>
-                    <button class="btn" onclick="onlineBrowse(0, true)">MY PACKS</button>
-                    <button class="btn" onclick="onlineImportById()">IMPORT BY ID</button>
-                </div>
-                <p>Published packs are shared with every Un-Reader user. Importing saves a local copy you can play.</p>
             </div>
 
             <div class="aim-indicator" id="aim-indicator">AIM: centered</div>
 
             <div class="touch-controls" id="touch-controls">
-                <div class="touch-cluster">
+                <div class="tc-move">
                     <button class="touch-btn"
                             ontouchstart="touchDown('a', event)" ontouchend="touchUp('a', event)" ontouchcancel="touchUp('a', event)"
                             onmousedown="touchDown('a', event)" onmouseup="touchUp('a', event)" onmouseleave="touchUp('a', event)">&#8592;</button>
@@ -706,15 +197,13 @@
                     <div class="joystick-label">AIM</div>
                     <button class="aim-reset-btn" onclick="resetAim()">RESET</button>
                 </div>
-                <div class="touch-cluster">
+                <div class="tc-act">
                     <button class="touch-btn blue small-label"
                             ontouchstart="touchFire('blue', event)" ontouchend="touchFireEnd(event)" ontouchcancel="touchFireEnd(event)"
                             onmousedown="touchFire('blue', event)" onmouseup="touchFireEnd(event)">BLUE</button>
                     <button class="touch-btn yellow small-label"
                             ontouchstart="touchFire('yellow', event)" ontouchend="touchFireEnd(event)" ontouchcancel="touchFireEnd(event)"
                             onmousedown="touchFire('yellow', event)" onmouseup="touchFireEnd(event)">ORANGE</button>
-                </div>
-                <div class="touch-cluster">
                     <button class="touch-btn green small-label"
                             ontouchstart="touchDown('w', event)" ontouchend="touchUp('w', event)" ontouchcancel="touchUp('w', event)"
                             onmousedown="touchDown('w', event)" onmouseup="touchUp('w', event)" onmouseleave="touchUp('w', event)">JUMP</button>
@@ -724,8 +213,88 @@
                 </div>
             </div>
 
-            <div class="row gray" id="pc-controls" style="display:none;">PC: A/D or ←/→ move · W/Space jump · Mouse aims · Left click / Q = BLUE · Right click / E = ORANGE · F = grab · R = clear portals · P = restart</div>
-            <div class="row gray" id="instructions">
+            <div class="pack-bar" id="pack-bar" style="display:flex;">
+                <button class="btn" onclick="prevLevel()">&lt;</button>
+                <select id="pack-select" onchange="onPackChange()"></select>
+                <button class="btn" onclick="nextLevel()">&gt;</button>
+            </div>
+
+            <div class="toolbar" id="user-editor-toolbar" style="display:none;">
+                <div class="tool-hint" id="tool-hint">TOOL: SELECT</div>
+                <div class="tool-group">
+                    <div class="group-title">DRAW</div>
+                    <div class="tool-grid">
+                        <button class="btn selected" data-tool="select" onclick="selectTool('select')">SELECT</button>
+                        <button class="btn" data-tool="platform" onclick="selectTool('platform')">PLATFORM</button>
+                        <button class="btn" data-tool="hazard" onclick="selectTool('hazard')">HAZARD</button>
+                        <button class="btn" data-tool="metal" onclick="selectTool('metal')">NO PORTAL</button>
+                        <button class="btn" data-tool="erase" onclick="selectTool('erase')">ERASE</button>
+                    </div>
+                </div>
+                <div class="tool-group">
+                    <div class="group-title">LOGIC</div>
+                    <div class="tool-grid">
+                        <button class="btn" data-tool="button" onclick="selectTool('button')">BUTTON</button>
+                        <button class="btn" data-tool="trigger" onclick="selectTool('trigger')">TOUCH TRIGGER</button>
+                        <button class="btn" data-tool="laserTrigger" onclick="selectTool('laserTrigger')">LASER TRIGGER</button>
+                        <button class="btn" data-tool="door" onclick="selectTool('door')">DOOR</button>
+                        <button class="btn" data-tool="laser" onclick="selectTool('laser')">LASER</button>
+                        <button class="btn" data-tool="wire" onclick="selectTool('wire')">WIRE</button>
+                    </div>
+                </div>
+                <div class="tool-group">
+                    <div class="group-title">PLACE</div>
+                    <div class="tool-grid">
+                        <button class="btn" data-tool="start" onclick="selectTool('start')">START</button>
+                        <button class="btn" data-tool="exit" onclick="selectTool('exit')">EXIT</button>
+                        <button class="btn" data-tool="cube" onclick="selectTool('cube')">CUBE</button>
+                        <button class="btn" data-tool="upgrade" onclick="selectTool('upgrade')">UPGRADE</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="toolbar" id="user-editor-actions" style="display:none;">
+                <div class="tool-group">
+                    <div class="group-title">LEVEL</div>
+                    <div class="tool-grid">
+                        <button class="btn primary" onclick="editorTest()">TEST</button>
+                        <button class="btn" onclick="editorNewLevel()">NEW LEVEL</button>
+                        <button class="btn" onclick="editorRenameLevel()">RENAME LEVEL</button>
+                        <button class="btn danger" onclick="editorClear()">CLEAR</button>
+                        <button class="btn danger" onclick="editorDeleteLevel()">DELETE LEVEL</button>
+                    </div>
+                    <label class="field">GUN STAGE
+                        <select id="editor-gun-stage" onchange="editorSetGunStage(this.value)">
+                            <option value="0">0 - No Portals</option>
+                            <option value="1">1 - Blue Portal only</option>
+                            <option value="2">2 - Both Orange and Blue</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="tool-group">
+                    <div class="group-title">PACK</div>
+                    <div class="tool-grid">
+                        <button class="btn" onclick="editorSavePack()">SAVE</button>
+                        <button class="btn" onclick="editorCopyPack()">COPY PACK</button>
+                        <button class="btn" onclick="onlinePublish()">PUBLISH / UPDATE</button>
+                        <button class="btn dev-only" style="display:none;" onclick="editorExportGame()">EXPORT DROP-IN HTML</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="online-panel" id="online-panel">
+                <h3>ONLINE LEVELS</h3>
+                <p class="online-status" id="online-status">Checking login...</p>
+                <div class="online-actions">
+                    <button class="btn" onclick="onlineBrowse(0, false)">BROWSE</button>
+                    <button class="btn" onclick="onlineBrowse(0, true)">MY PACKS</button>
+                    <button class="btn" onclick="onlineImportById()">IMPORT BY ID</button>
+                </div>
+                <p class="online-note">Published packs are shared with every Un-Reader user. Importing saves a local copy you can play.</p>
+            </div>
+
+            <div class="info" id="pc-controls" style="display:none;"></div>
+            <div class="info" id="instructions">
                 Drag joystick to aim. Crosshair snaps to nearest surface. Tap BLUE / ORANGE to fire.
             </div>
         </div>
@@ -747,7 +316,7 @@
 
     <div id="toast" class="toast"></div>
 
-    <script>
+<script>
         // ============================================================
         //  PORTAL: THE KINDLE VERSION
         //  Local packs live in localStorage; published packs live in the
@@ -1864,9 +1433,24 @@
 
             // ---------- Mode switching ----------
             window.switchMode = function(newMode) {
+                if (newMode === 'edit') {
+                    // the editor never opens on the built-in chambers: you need a pack of your own first
+                    var ownPacks = [];
+                    for (var pi = 0; pi < packs.length; pi++) if (packs[pi].id !== 'builtin') ownPacks.push(packs[pi]);
+                    if (!ownPacks.length) {
+                        showConfirm('You need a pack of your own before you can edit. Create one now?', function(yes) {
+                            if (!yes) return;
+                            switchMode('packs');
+                            packNew();
+                        });
+                        return;
+                    }
+                    if (getActivePack().id === 'builtin') switchPack(ownPacks[ownPacks.length - 1].id);
+                }
                 testMode = false;
                 if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
                 mode = newMode;
+                document.body.setAttribute('data-mode', newMode);
                 document.getElementById('tab-play').className = 'mode-tab' + (mode === 'play' ? ' active' : '');
                 document.getElementById('tab-packs').className = 'mode-tab' + (mode === 'packs' ? ' active' : '');
                 document.getElementById('tab-online').className = 'mode-tab' + (mode === 'online' ? ' active' : '');
@@ -1900,10 +1484,6 @@
                     onlineRefreshStatus();
                     toast('ONLINE LEVELS');
                 } else if (mode === 'edit') {
-                    if (getActivePack().id === 'builtin') {
-                        copyActivePack(function() { switchMode('edit'); });
-                        return;
-                    }
                     packBar.style.display = 'flex';
                     userToolbar.style.display = 'flex';
                     userActions.style.display = 'flex';
@@ -1921,7 +1501,7 @@
                     pcControls.style.display = 'block';
                     instructions.innerText = hasTouch
                         ? 'TOUCH: drag the AIM pad to aim. Tap BLUE or ORANGE to fire. Use LEFT/RIGHT to move, JUMP, and GRAB.'
-                        : 'PC: mouse aims automatically. Left click fires BLUE; right click fires ORANGE. Q/E also fire portals. A/D or arrows move, W/Space jumps, F grabs, R clears portals.';
+                        : 'PC: mouse aims automatically. Left click fires BLUE; right click fires ORANGE. Q/E also fire portals. A/D or arrows move, W/Space jumps, F grabs, R clears portals, P restarts.';
                     loadLevel(levelIndex);
                     toast('PLAY MODE');
                     updateAimSnap();
@@ -2421,6 +2001,8 @@
                 if (tool === 'plate' && editorTool === 'plate') platePreset = (platePreset + 1) % PLATE_PRESETS.length;
                 if (tool === 'door' && editorTool === 'door') doorLogic = doorLogic === 'all' ? 'any' : 'all';
                 editorTool = tool;
+                var toolHint = document.getElementById('tool-hint');
+                if (toolHint) toolHint.innerText = 'TOOL: ' + tool.toUpperCase() + (tool === 'plate' ? ' ' + PLATE_PRESETS[platePreset].label : '') + (tool === 'door' ? ' ' + doorLogic.toUpperCase() + ' (tap again to toggle)' : '');
                 var btns = document.querySelectorAll('.btn[data-tool]');
                 for (var i = 0; i < btns.length; i++) {
                     btns[i].className = 'btn' + (btns[i].getAttribute('data-tool') === tool ? ' selected' : '');
