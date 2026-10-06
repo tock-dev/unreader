@@ -1549,7 +1549,7 @@ wss.on('connection', (ws, req) => {
             43200,
           ); // Max 30 days
           const reason =
-            data.reason ||
+            sanitize(data.reason || '') ||
             (userRoles.role.role === 'admin'
               ? "Admin doesn't need any reasons"
               : sanitize('No reason provided'));
@@ -1610,7 +1610,8 @@ wss.on('connection', (ws, req) => {
           // Bans
           if (data.type === 'mod_ban') {
             const target = sanitizeUsername(data.target);
-            const reason = "Admin doesn't need any reasons";
+            const reason =
+              sanitize(data.reason || '') || "Admin doesn't need any reasons";
             log(`ADMIN BAN: target=${target}, by=${authUser}`);
             await db.query(
               'UPDATE users SET is_banned = true WHERE username = $1;',

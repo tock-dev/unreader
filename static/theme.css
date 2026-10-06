@@ -1,0 +1,101 @@
+body.dark-mode {
+  color-scheme: dark;
+  --bg-color: #121212;
+  --text-color: #ffffff;
+  --border-color: #ffffff;
+  --border: 2px solid #ffffff;
+  --shadow: 4px 4px 0 #ffffff;
+  --panel-bg: #191919;
+  --header-bg: #222222;
+  --bg: #121212;
+  --fg: #ffffff;
+  --card: #191919;
+  --muted: #c0c0c0;
+  background-color: #121212 !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode button,
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+  background: #191919 !important;
+  background-color: #191919 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+  border-color: #ffffff !important;
+}
+
+body.dark-mode input:-webkit-autofill,
+body.dark-mode input:-webkit-autofill:hover,
+body.dark-mode input:-webkit-autofill:focus,
+body.dark-mode textarea:-webkit-autofill,
+body.dark-mode select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #191919 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+  color: #bdbdbd !important;
+  opacity: 1;
+}
+
+body.dark-mode .window,
+body.dark-mode .title-bar,
+body.dark-mode .title-text,
+body.dark-mode .panel-header,
+body.dark-mode .calc-container,
+body.dark-mode .calc-screen,
+body.dark-mode .calc-btn,
+body.dark-mode .pokedex-container,
+body.dark-mode #pokemon-list,
+body.dark-mode #detail-content,
+body.dark-mode .settings-panel,
+body.dark-mode .msg,
+body.dark-mode .user,
+body.dark-mode .ai,
+body.dark-mode .app-frame,
+body.dark-mode .panel,
+body.dark-mode .card,
+body.dark-mode .hud,
+body.dark-mode .toolbar,
+body.dark-mode .content,
+body.dark-mode .mode-tabs,
+body.dark-mode .mode-tab {
+  background-color: #191919 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+body.dark-mode .user,
+body.dark-mode .mode-tabs,
+body.dark-mode .mode-tab {
+  background-color: #222222 !important;
+}
+
+body.dark-mode .message-text,
+body.dark-mode .message-meta,
+body.dark-mode #dm-list,
+body.dark-mode .info-body,
+body.dark-mode #profile-view,
+body.dark-mode #info-bio,
+body.dark-mode .paper-input,
+body.dark-mode .paper-btn,
+body.dark-mode .pkmn-thumb,
+body.dark-mode .detail-sprite {
+  background-color: #191919 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+body.dark-mode .purged-msg {
+  background-color: #222222 !important;
+}
+
+body.dark-mode #info-bio {
+  background: #191919 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}

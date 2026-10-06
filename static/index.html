@@ -452,8 +452,10 @@
     document.getElementById('settings-trigger').onclick = () => document.getElementById('settings-view').style.display = 'block';
 
     document.getElementById('theme-toggle').onclick = () => {
-      document.body.classList.toggle('dark-mode');
-      setStorageItem('dark-mode', document.body.classList.contains('dark-mode'));
+      const enabled = !document.body.classList.contains('dark-mode');
+      document.body.classList.toggle('dark-mode', enabled);
+      setStorageItem('dark-mode', enabled);
+      localStorage.setItem('unreader-darkmode', enabled ? 'enabled' : 'disabled');
     };
 
     document.getElementById('font-toggle').onclick = () => {

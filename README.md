@@ -16,7 +16,7 @@ go to: https://unreader-v4yf.onrender.com
 - **Neighbourhood Forum**: Classic message board for structured posts and nested comment trees.
 - **Moderation Console**: Admin search tools, system bans, timeouts, and live auditor activity logs.
 - **Inline Mod Mode**: Dedicated float controls across Chat, Topics, and Neighbourhood allowing authorized moderators to purge/restore posts inline.
-- **Display Adaptability**: Direct theme synchronization including ~~Dark Mode, Bold High-Contrast~~, and Monospace Typography. (Both of these are currently disabled by Kodi, unknown reasons)
+- **Display Adaptability**: Direct theme synchronization including Dark Mode, Bold High-Contrast, and Monospace Typography. (@SuprUsr123 rewired them back now, god that took so long to implement them back in)
 
 ---
 
@@ -48,7 +48,7 @@ Special thanks and appreciation to:
 - **[KodiGamingYT](https://github.com/KodiGamingYT)** — Designed and developed the updated homepage dashboard (`index.html`), introducing unified styling, preferences, and modular portal cards.
 On another note, he added a streaming system. It's not in use right now, and probably never will. Just like the dark mode.
 
-- **[SuprUsr124](https://github.com/SuprUsr123)** — Beta Tester, Maintainer (tock almost left the site 4 dead, at least he got his mac back and fixed bugs), Oregon Trail (Kindle Web Port), Reversi (Kindle Web Port), Portal: The Kindle Version (a remake), Rewrote Pokedex, and very minor additions.
+- **[SuprUsr124](https://github.com/SuprUsr123)** — Beta Tester, Maintainer (tock almost left the site 4 dead, at least he got his mac back and fixed bugs), Oregon Trail (Kindle Web Port), Reversi (Kindle Web Port), Portal: The Kindle Version (a remake), Rewrote Pokedex, fixed Dark Mode, and very minor additions.
 
 
 ## Also when can we recruit more this is might put some stress on full time maintenance later (hinting at @blockwobble and @snipecut13 and their RK fork)

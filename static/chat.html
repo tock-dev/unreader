@@ -240,6 +240,8 @@
                 TIMEOUT (MINS)
               </button>
             </div>
+            <input type="text" id="admin-action-note" class="paper-input" maxlength="500"
+              placeholder="Ban or timeout note" style="width: calc(100% - 12px); margin: 0 6px 6px; box-sizing: border-box;" />
           </div>
 
           <button id="info-dm-btn" class='paper-btn' style="
@@ -1252,9 +1254,11 @@
           show('#admin-timeout-btn')
           document.getElementById("admin-ban-btn").onclick = async function () {
             if (await unConfirm("Ban " + p.username + "?"))
-              socket.send(
-                JSON.stringify({ type: "mod_ban", target: p.username }),
-              );
+              socket.send(JSON.stringify({
+                type: "mod_ban",
+                target: p.username,
+                reason: document.getElementById("admin-action-note").value.trim(),
+              }));
           };
           document.getElementById("admin-pardon-btn").onclick = function () {
             socket.send(
@@ -1263,15 +1267,15 @@
           };
           document.getElementById("admin-timeout-btn").onclick = async function () {
             var dur = document.getElementById("admin-timeout-dur").value;
-            var r = isAdminUser(userRoles)
-              ? "Admin doesn't need any reasons"
-              : await unPrompt('Reason for timeout?');
+            var r = document.getElementById("admin-action-note").value.trim();
+            if (!r && !isAdminUser(userRoles))
+              return await unAlert("Moderators must provide a timeout note.");
             socket.send(
               JSON.stringify({
                 type: "mod_timeout",
                 target: p.username,
                 duration: dur,
-                reason: r,
+                reason: r || undefined,
               }),
             );
           };
@@ -1282,9 +1286,9 @@
           show('#admin-timeout-btn')
           document.getElementById("admin-timeout-btn").onclick = async function () {
             var dur = document.getElementById("admin-timeout-dur").value;
-            var r = isAdminUser(userRoles)
-              ? "Admin doesn't need any reasons"
-              : await unPrompt('Reason for timeout?');
+            var r = document.getElementById("admin-action-note").value.trim();
+            if (!r)
+              return await unAlert("Moderators must provide a timeout note.");
             if (r)
               socket.send(
                 JSON.stringify({

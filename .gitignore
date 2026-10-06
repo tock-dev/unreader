@@ -248,3 +248,5 @@ pnpm-lock.yaml
 run.sh
 
 .kilo
+
+COMPATIBILITY.md

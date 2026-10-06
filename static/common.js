@@ -46,8 +46,14 @@ function applySavedPreferences() {
     localStorage.setItem('unreader-username', localStorage.getItem('username'));
   }
 
-  if (localStorage.getItem('unreader-darkmode') === 'enabled') {
+  const savedDarkMode = localStorage.getItem('unreader-darkmode');
+  if (
+    savedDarkMode === 'enabled' ||
+    (savedDarkMode === null && localStorage.getItem('dark-mode') === 'true')
+  ) {
     document.body.classList.add('dark-mode');
+  } else {
+    document.body.classList.remove('dark-mode');
   }
   const savedContrast = localStorage.getItem('unreader-contrast') || 'normal';
   if (savedContrast !== 'normal') {
@@ -59,6 +65,19 @@ function applySavedPreferences() {
     document.body.style.fontFamily = 'monospace';
   }
 }
+
+function installSharedThemeStyles() {
+  applySavedPreferences();
+  if (!document.getElementById('shared-theme-styles')) {
+    const themeStyles = document.createElement('link');
+    themeStyles.id = 'shared-theme-styles';
+    themeStyles.rel = 'stylesheet';
+    themeStyles.href = 'theme.css';
+    document.head.appendChild(themeStyles);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', installSharedThemeStyles);
 
 function parseMarkdownForKindle(text) {
   if (!text) return '';

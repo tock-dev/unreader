@@ -452,6 +452,8 @@
               <div style="border-top: 1px dotted var(--border-color); padding-top:8px; margin-top:8px;">
                 <strong>Operator Timeout:</strong><br>
                 Duration (mins): <input type="number" id="admin-timeout-dur" value="60" style="width: 50px; padding:4px; border:var(--border-width) solid var(--border-color); background:var(--bg-color); color:var(--text-color);">
+                <label for="admin-action-note" style="display:block; margin-top:8px;">Note / reason:</label>
+                <input type="text" id="admin-action-note" class="retro-input" maxlength="500" placeholder="Optional for admins; required for moderators">
                 <button class="retro-btn" onclick="submitTimeout('${safeUsername}')">TIMEOUT</button>
               </div>`;
               if (isAdminUser(userRoles)) {
@@ -484,8 +486,9 @@
         var dur = document.getElementById('admin-timeout-dur').value;
         if (!socket || socket.readyState !== WebSocket.OPEN)
           return await unAlert('Socket offline.');
-        var reason = isAdminUser(userRoles) ? 'Admin doesn\'t need any reasons' : await unPrompt('Reason for timeout?');
-        if (!(isAdminUser(userRoles)) && !reason) return;
+        var reason = document.getElementById('admin-action-note').value.trim();
+        if (!isAdminUser(userRoles) && !reason)
+          return await unAlert('Moderators must provide a timeout note.');
         var payload = {
           type: 'mod_timeout',
           target: targetUser,
@@ -519,7 +522,12 @@
         )
           return;
         log('Sending administrative action packet:', type);
-        socket.send(JSON.stringify({ type: type, target: target }));
+        var payload = { type: type, target: target };
+        if (type === 'mod_ban') {
+          var note = document.getElementById('admin-action-note').value.trim();
+          if (note) payload.reason = note;
+        }
+        socket.send(JSON.stringify(payload));
         setTimeout(function () {
           searchUserAction();
           openModLogs();
