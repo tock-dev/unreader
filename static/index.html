@@ -71,14 +71,23 @@
       font-weight: bold;
     }
 
-    .settings-btn {
+    .header-actions {
       position: absolute;
-      top: 20px;
+      top: 15px;
       right: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .settings-btn,
+    .discord-btn {
       cursor: pointer;
       font-weight: 900;
-      font-size: 14px;
+      font-size: 13px;
       text-decoration: underline;
+      color: inherit;
     }
 
     /* Featured App Container Grid */
@@ -266,7 +275,10 @@
   <div class="header-container">
     <div class="title">UN-READER</div>
     <div class="subtitle" id="user-status">Guest Mode</div>
-    <div class="settings-btn" id="settings-trigger">[SETTINGS]</div>
+    <div class="header-actions">
+      <div class="settings-btn" id="settings-trigger">[SETTINGS]</div>
+      <a class="discord-btn" href="https://discord.gg/wGpdg3ND7T" target="_blank" rel="noopener noreferrer">[DISCORD]</a>
+    </div>
   </div>
 
   <div class="featured-box">
@@ -277,6 +289,11 @@
   <div class="featured-box" style="margin-top: 0;">
     <div class="featured-title">APPLICATIONS</div>
     <div class="apps-grid" id="platform-apps-container"></div>
+  </div>
+
+  <div class="featured-box" style="margin-top: 0;">
+    <div class="featured-title">GAMES</div>
+    <div class="apps-grid" id="games-apps-container"></div>
   </div>
 
 
@@ -399,43 +416,29 @@
 
     const PLATFORM_DATABASE = [
       { name: 'REKINDLE', desc: 'Shortcut to what made this all possible in the first place!', url: 'rekindle.html' },
-      { name: 'DISCORD', desc: 'The Official unreader Discord Server.', url: 'https://discord.gg/wGpdg3ND7T', external: true },
       { name: 'UNREADER DESKTOP', desc: '(BETA) Desktop client for unreader! Enjoy!', url: 'https://github.com/SuprUsr123/UnReader.NET/releases/', external: true },
       { name: 'SUGGESTIONS', desc: "Suggestions! Just please don't suggest stupid things...", url: 'suggestions.html' },
       { name: 'CALCULATOR', desc: 'A simple calculator, what did you expect?', url: 'calc.html' },
-      { name: 'POKEDEX', desc: "Gotta catch 'em all! (Optimized!)", url: 'pokedex.html' },
+      { name: 'POKEDEX', desc: "Gotta catch 'em all! (Optimized!)", url: 'pokedex.html' }
+    ];
+
+    const GAMES_DATABASE = [
       { name: 'OREGON TRAIL', desc: "Play the original 1970 teletext version on your E-reader!", url: 'oregon_trail.html' },
       { name: 'REVERSI', desc: 'A remake of Reversi.', url: 'reversi.html' },
       { name: 'PORTAL: THE KINDLE VERSION', desc: "Why don't we think with portals for a bit?", url: 'portal-2d.html' },
       { name: 'SLEDGEHAMMER EDITOR (DEV ONLY)', desc: "GLaDOS' lair (Helper Cores may access), all test subjects forbidden.", url: 'portal-2d-editor.html', req: 'admin' },
-      { name: 'CUBE DASH REWRITTEN (BETA)', desc: "Cube Dash, by @ukiyoau and @snipecut13rk, rewritten.", url: 'https://cube-dash-rewritten.ai.studio' },
+      { name: 'CUBE DASH REWRITTEN (BETA)', desc: "Cube Dash, by @ukiyoau and @snipecut13rk, rewritten.", url: 'https://cube-dash-rewritten.ai.studio', external: true },
       { name: 'GAME OF LIFE', desc: 'Easiest thing ever, wow!', url: 'cwol.html' },
       { name: 'EMBERKEEP ULTIMATE', desc: "Emberkeep, now stripped from KindleHub! (WARNING: THIS USES KINDLEHUB'S ACCOUNT SYSTEM! YOU MUST HAVE AN ACCOUNT BEFOREHAND!)", url: 'EmberkeepUltimate.html' }
     ];
 
-    // Build functional home UI grid layout
-    function buildDashboardGrid() {
-      const featuredContainer = document.getElementById('apps-container');
-      const platformContainer = document.getElementById('platform-apps-container');
-      const currentRank = getStorageItem('unreader-rank') || 'user';
-
-      featuredContainer.innerHTML = '';
-      platformContainer.innerHTML = '';
-
-      // Render Featured Array
-      FEATURED_DATABASE.forEach(app => {
+    // Helper renderer
+    function renderAppList(container, appsList, currentRank) {
+      container.innerHTML = '';
+      appsList.forEach(app => {
         if (app.req === 'admin' && currentRank !== 'admin') return;
         if (app.req === 'mod' && currentRank !== 'mod' && currentRank !== 'admin') return;
 
-        const div = document.createElement('div');
-        div.className = 'app-item';
-        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
-        div.onclick = () => { window.location.href = app.url; };
-        featuredContainer.appendChild(div);
-      });
-
-      // Render Platform Extras Array
-      PLATFORM_DATABASE.forEach(app => {
         const div = document.createElement('div');
         div.className = 'app-item';
         div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
@@ -446,8 +449,20 @@
             window.location.href = app.url;
           }
         };
-        platformContainer.appendChild(div);
+        container.appendChild(div);
       });
+    }
+
+    // Build functional home UI grid layout
+    function buildDashboardGrid() {
+      const featuredContainer = document.getElementById('apps-container');
+      const platformContainer = document.getElementById('platform-apps-container');
+      const gamesContainer = document.getElementById('games-apps-container');
+      const currentRank = getStorageItem('unreader-rank') || 'user';
+
+      renderAppList(featuredContainer, FEATURED_DATABASE, currentRank);
+      renderAppList(platformContainer, PLATFORM_DATABASE, currentRank);
+      renderAppList(gamesContainer, GAMES_DATABASE, currentRank);
     }
 
     // Interface Dynamic Handlers
