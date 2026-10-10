@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile Picture Moderation</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="bbs.css">
+  <script src="common.js"></script>
+  <style>
+    .window { max-width: 900px; overflow-y: auto; }
+    .close-menu { position: absolute; left: 10px; z-index: 2; }
+    .close-menu summary { cursor: pointer; list-style: none; border: var(--border); padding: 6px 10px; background: var(--bg-color); }
+    .close-menu summary::-webkit-details-marker { display: none; }
+    .close-options { position: absolute; top: 100%; left: 0; display: grid; min-width: 130px; background: var(--bg-color); border: var(--border); }
+    .close-options a { padding: 8px 10px; color: inherit; text-decoration: none; }
+    .close-options a:hover { text-decoration: underline; }
+    .manager-content { padding: 12px; overflow-y: auto; }
+    .manager-controls { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; }
+    .manager-controls input { min-width: 0; min-height: 48px; }
+    .picture-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; border-bottom: var(--border); padding: 6px; }
+    .picture-row img { width: 32px; height: 32px; image-rendering: pixelated; }
+    .picture-name { overflow-wrap: anywhere; }
+    #picture-list { margin-top: 8px; border: var(--border); }
+    #picture-editor { border: var(--border); padding: 10px; margin-top: 12px; }
+    #picture-status { min-height: 24px; }
+    #picture-editor .profile-picture-editor { grid-template-columns: 1fr 1fr; }
+    button, .paper-btn { min-height: 48px; }
+    @media (max-width: 540px) {
+      .manager-controls { grid-template-columns: 1fr 1fr; }
+      .manager-controls input { grid-column: 1 / -1; }
+      .picture-row { grid-template-columns: 40px minmax(0, 1fr) 1fr; }
+      .picture-row .delete-picture { grid-column: 2 / 4; }
+    }
+  </style>
+</head>
+<body>
+  <main class="window">
+    <header class="title-bar">
+      <div class="title-stripes"></div>
+      <details class="close-menu">
+        <summary>CLOSE</summary>
+        <nav class="close-options" aria-label="Close destination">
+          <a href="index.html">HOME</a>
+          <a href="modmenu.html">MODERATION</a>
+        </nav>
+      </details>
+      <div class="title-text">PROFILE PICTURE MODERATION</div>
+    </header>
+    <section class="manager-content">
+      <p>Moderators can review profiles and replace or remove profile pictures.</p>
+      <div class="manager-controls">
+        <input id="picture-search" class="paper-input" type="search" placeholder="Search username">
+        <button id="search-pictures" class="paper-btn" type="button">SEARCH</button>
+        <button id="previous-page" class="paper-btn" type="button">NEWER</button>
+        <button id="next-page" class="paper-btn" type="button">OLDER</button>
+      </div>
+      <p id="picture-status" role="status">Loading profiles...</p>
+      <div id="picture-list"></div>
+      <section id="picture-editor" class="hide">
+        <h2>Edit picture for <span id="edit-target"></span></h2>
+        <fieldset class="profile-picture-editor">
+          <legend>Profile picture</legend>
+          <label>Size <select id="edit-picture-size"><option>8</option><option selected>16</option><option>32</option><option>64</option></select></label>
+          <div class="profile-rgb-picker" aria-label="RGB color picker">
+            <label>R <input id="edit-picture-red" type="range" min="0" max="255" value="0"><output id="edit-picture-red-value">0</output></label>
+            <label>G <input id="edit-picture-green" type="range" min="0" max="255" value="0"><output id="edit-picture-green-value">0</output></label>
+            <label>B <input id="edit-picture-blue" type="range" min="0" max="255" value="0"><output id="edit-picture-blue-value">0</output></label>
+            <span id="edit-picture-color-preview" aria-label="Selected color"></span>
+          </div>
+          <input id="edit-picture-file" type="file" accept="image/*" aria-label="Import a picture">
+          <button id="edit-picture-clear" type="button" class="paper-btn">CLEAR PICTURE</button>
+          <div class="profile-picture-grid"><canvas id="edit-picture-canvas" width="16" height="16" aria-label="Edit the selected user's profile picture"></canvas></div>
+        </fieldset>
+        <button id="save-picture" type="button" class="paper-btn">SAVE PICTURE</button>
+        <button id="delete-picture" type="button" class="paper-btn">DELETE PICTURE</button>
+      </section>
+    </section>
+  </main>
+  <script>
+    applySavedPreferences();
+    var token = localStorage.getItem('token');
+    var page = 0;
+    var selectedUser = '';
+
+    function request(method, path, body, done) {
+      var xhr = new XMLHttpRequest();
+      xhr.open(method, BACKEND_URL + path, true);
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      if (body) xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        var data = {};
+        try { data = JSON.parse(xhr.responseText || '{}'); } catch (err) {}
+        done(xhr.status >= 200 && xhr.status < 300 ? null : (data.error || 'Request failed (' + xhr.status + ').'), data);
+      };
+      xhr.send(body ? JSON.stringify(body) : null);
+    }
+
+    function loadPictures() {
+      var query = encodeURIComponent(document.getElementById('picture-search').value.trim());
+      request('GET', '/api/mod/profile-images?index=' + page + '&search=' + query, null, function (error, result) {
+        var list = document.getElementById('picture-list');
+        while (list.firstChild) list.removeChild(list.firstChild);
+        if (error) {
+          document.getElementById('picture-status').textContent = error;
+          return;
+        }
+        var images = result.images || [];
+        document.getElementById('picture-status').textContent = images.length ? 'Profiles ' + (page * 20 + 1) + '–' + (page * 20 + images.length) : 'No profiles found.';
+        document.getElementById('previous-page').disabled = page === 0;
+        document.getElementById('next-page').disabled = !result.hasMore;
+        images.forEach(function (entry) {
+          var row = document.createElement('div');
+          row.className = 'picture-row';
+          row.appendChild(createProfilePicture(entry.image_data, 32));
+          var name = document.createElement('span');
+          name.className = 'picture-name';
+          name.textContent = '@' + entry.username.replace(/^@+/, '');
+          row.appendChild(name);
+          var edit = document.createElement('button');
+          edit.className = 'paper-btn';
+          edit.textContent = 'EDIT';
+          edit.onclick = function () { editPicture(entry); };
+          row.appendChild(edit);
+          var remove = document.createElement('button');
+          remove.className = 'paper-btn delete-picture';
+          remove.textContent = 'DELETE';
+          remove.disabled = !entry.image_data;
+          remove.onclick = function () { deletePicture(entry.username); };
+          row.appendChild(remove);
+          list.appendChild(row);
+        });
+      });
+    }
+
+    function editPicture(entry) {
+      selectedUser = entry.username;
+      document.getElementById('edit-target').textContent = '@' + entry.username.replace(/^@+/, '');
+      document.getElementById('picture-editor').classList.remove('hide');
+      setupProfilePictureEditor(entry.image_data || '');
+      document.getElementById('picture-editor').scrollIntoView();
+    }
+
+    document.getElementById('save-picture').onclick = function () {
+      if (!selectedUser) return;
+      var imageData = getProfilePictureBase64();
+      if (!imageData) { document.getElementById('picture-status').textContent = 'Draw or import a picture before saving.'; return; }
+      request('PUT', '/api/mod/profile-images/' + encodeURIComponent(selectedUser), { image_data: imageData }, function (error) {
+        document.getElementById('picture-status').textContent = error ? 'Save failed: ' + error : 'Picture saved for @' + selectedUser.replace(/^@+/, '') + '.';
+        if (!error) loadPictures();
+      });
+    };
+
+    async function deletePicture(username) {
+      if (!(await unConfirm('Delete the profile picture for @' + username.replace(/^@+/, '') + '?'))) return;
+      request('DELETE', '/api/mod/profile-images/' + encodeURIComponent(username), null, function (error) {
+        document.getElementById('picture-status').textContent = error ? 'Delete failed: ' + error : 'Picture deleted.';
+        if (!error) {
+          document.getElementById('picture-editor').classList.add('hide');
+          selectedUser = '';
+          loadPictures();
+        }
+      });
+    }
+
+    document.getElementById('search-pictures').onclick = function () { page = 0; loadPictures(); };
+    document.getElementById('picture-search').onkeydown = function (event) {
+      if (event.key === 'Enter') { page = 0; loadPictures(); }
+    };
+    document.getElementById('previous-page').onclick = function () { if (page > 0) { page--; loadPictures(); } };
+    document.getElementById('next-page').onclick = function () { page++; loadPictures(); };
+    loadPictures();
+  </script>
+</body>
+</html>

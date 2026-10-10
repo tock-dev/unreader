@@ -243,3 +243,33 @@ body.contrast-high {
 .hide {
   display: none;
 }
+
+.profile-picture-editor {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+.profile-picture-editor canvas {
+  width: 256px;
+  height: 256px;
+  max-width: 100%;
+  image-rendering: pixelated;
+  border: 1px solid #777;
+  touch-action: none;
+  cursor: crosshair;
+}
+.profile-picture-grid { position: relative; width: 256px; height: 256px; max-width: 100%; }
+.profile-picture-grid:after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; background-image: linear-gradient(to right, rgba(0, 0, 0, .35) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, .35) 1px, transparent 1px); background-size: var(--pixel-cell-size, 16px) var(--pixel-cell-size, 16px); }
+.profile-picture-grid canvas { display: block; width: 100%; height: 100%; }
+.profile-picture-editor p { grid-column: 1 / -1; margin: 0; }
+.profile-picture { display: inline-block; width: 24px; height: 24px; vertical-align: middle; margin-right: 6px; image-rendering: pixelated; }
+.profile-picture-file { display: inline-block; max-width: 100%; }
+.profile-picture-file .paper-btn { margin-right: 8px; }
+.profile-picture-file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.profile-rgb-picker { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 48px; gap: 6px; align-items: center; }
+.profile-rgb-picker label { display: grid; grid-template-columns: 16px 1fr 30px; align-items: center; }
+.profile-rgb-picker input[type="range"] { width: 100%; height: 48px; margin: 0; }
+.profile-rgb-picker output { text-align: right; font-family: monospace; }
+.profile-rgb-picker #edit-picture-color-preview { width: 48px; height: 48px; border: var(--border); background: #000; }

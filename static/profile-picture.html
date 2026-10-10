@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile Picture Editor</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="bbs.css">
+  <script src="common.js"></script>
+  <style>
+    .window { max-width: 560px; overflow-y: auto; }
+    .editor-content { padding: 16px; }
+    .profile-picture-editor { grid-template-columns: 1fr 1fr; }
+    .profile-picture-editor input[type="file"] { max-width: 100%; }
+    .editor-content button { min-height: 48px; }
+    #picture-status { min-height: 24px; margin: 8px 0; }
+    #picture-preview { width: 64px; height: 64px; image-rendering: pixelated; border: var(--border); }
+  </style>
+</head>
+<body>
+  <main class="window">
+    <header class="title-bar">
+      <div class="title-stripes"></div>
+      <a id="back-btn" href="chat.html">&lt; CHAT</a>
+      <div class="title-text">PROFILE PICTURE EDITOR</div>
+    </header>
+    <section class="editor-content">
+      <p id="picture-status" role="status">Loading your profile...</p>
+      <fieldset class="profile-picture-editor">
+        <legend>Picture for <span id="picture-username"></span></legend>
+        <label>Size <select id="edit-picture-size"><option>8</option><option selected>16</option><option>32</option><option>64</option></select></label>
+        <div class="profile-rgb-picker" aria-label="RGB color picker">
+          <label>R <input id="edit-picture-red" type="range" min="0" max="255" value="0"><output id="edit-picture-red-value">0</output></label>
+          <label>G <input id="edit-picture-green" type="range" min="0" max="255" value="0"><output id="edit-picture-green-value">0</output></label>
+          <label>B <input id="edit-picture-blue" type="range" min="0" max="255" value="0"><output id="edit-picture-blue-value">0</output></label>
+          <span id="edit-picture-color-preview" aria-label="Selected color"></span>
+        </div>
+        <input id="edit-picture-file" type="file" accept="image/*" aria-label="Import a picture">
+        <button id="edit-picture-clear" type="button" class="paper-btn">CLEAR PICTURE</button>
+        <div class="profile-picture-grid"><canvas id="edit-picture-canvas" width="16" height="16" aria-label="Draw your profile picture"></canvas></div>
+        <p>Draw with the selected RGB color or import an image. Changing the size resamples the current picture.</p>
+      </fieldset>
+      <p>Current picture: <img id="picture-preview" alt="Current profile picture"></p>
+      <button id="save-picture" type="button" class="paper-btn" disabled>SAVE PROFILE PICTURE</button>
+    </section>
+  </main>
+  <script>
+    applySavedPreferences();
+    var token = localStorage.getItem('token');
+    var username = localStorage.getItem('username');
+    var profile = null;
+    var status = document.getElementById('picture-status');
+
+    function setPictureStatus(message) {
+      status.textContent = message;
+    }
+
+    function requestProfile(method, body, callback) {
+      var xhr = new XMLHttpRequest();
+      xhr.open(method, BACKEND_URL + (method === 'GET' ? '/api/profile/' + encodeURIComponent(username) : '/api/profile'), true);
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      if (body) xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        var data = {};
+        try { data = JSON.parse(xhr.responseText || '{}'); } catch (err) {}
+        callback(xhr.status >= 200 && xhr.status < 300 ? null : (data.error || 'Request failed (' + xhr.status + ').'), data);
+      };
+      xhr.send(body ? JSON.stringify(body) : null);
+    }
+
+    function loadProfile() {
+      if (!token || !username) {
+        setPictureStatus('Sign in first, then open this editor from your profile.');
+        return;
+      }
+      document.getElementById('picture-username').textContent = '@' + username;
+      requestProfile('GET', null, function (error, data) {
+        if (error) { setPictureStatus(error); return; }
+        profile = data;
+        setupProfilePictureEditor(data.image_data || '');
+        document.getElementById('picture-preview').src = profilePictureDataUrl(data.image_data) || createProfilePicture('').src;
+        document.getElementById('save-picture').disabled = false;
+        setPictureStatus('Edit your picture, then save it to your profile.');
+      });
+    }
+
+    document.getElementById('save-picture').onclick = function () {
+      if (!profile) return;
+      var updated = {
+        bio: profile.bio,
+        location: profile.location,
+        avatar_emoji: profile.avatar_emoji,
+        image_data: getProfilePictureBase64()
+      };
+      document.getElementById('save-picture').disabled = true;
+      requestProfile('POST', updated, function (error) {
+        document.getElementById('save-picture').disabled = false;
+        if (error) { setPictureStatus('Save failed: ' + error); return; }
+        profile.image_data = updated.image_data;
+        document.getElementById('picture-preview').src = profilePictureDataUrl(updated.image_data) || createProfilePicture('').src;
+        setPictureStatus('Profile picture saved.');
+      });
+    };
+
+    loadProfile();
+  </script>
+</body>
+</html>

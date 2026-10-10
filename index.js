@@ -104,6 +104,12 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS profiles (
         username TEXT PRIMARY KEY REFERENCES users(username) ON DELETE CASCADE, bio TEXT DEFAULT 'Hello world.', location TEXT DEFAULT 'Cyberspace', avatar_emoji TEXT DEFAULT '👤'
       );
+      CREATE TABLE IF NOT EXISTS profile_images (
+        username TEXT PRIMARY KEY REFERENCES users(username) ON DELETE CASCADE,
+        image_data TEXT NOT NULL,
+        "user" TEXT NOT NULL DEFAULT 'user'
+      );
+      ALTER TABLE profile_images ADD COLUMN IF NOT EXISTS "user" TEXT NOT NULL DEFAULT 'user';
       CREATE TABLE IF NOT EXISTS topics (
         id SERIAL PRIMARY KEY, slug TEXT UNIQUE NOT NULL, title TEXT NOT NULL, username TEXT NOT NULL, timestamp TEXT NOT NULL
       );
@@ -196,7 +202,7 @@ initDatabase();
 const app = express();
 app.set('trust proxy', true);
 app.use(cors({ origin: '*' }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 async function blockBannedIPs(req, res, next) {
   try {
     const clientIp = req.ip;
@@ -437,31 +443,49 @@ app.post('/api/change-password', authenticateToken, async (req, res) => {
 app.get('/api/profile/:username', authenticateToken, async (req, res) => {
   const targetUsername = sanitizeUsername(req.params.username);
   const r = await db.query(
-    `SELECT p.*, ${adminUserSql('u')} AS is_admin, ${moderatorUserSql('u')} AS is_moderator FROM profiles p JOIN users u ON p.username = u.username WHERE p.username = $1;`,
+    `SELECT u.username, COALESCE(p.bio, 'Hello world.') AS bio, COALESCE(p.location, 'Cyberspace') AS location, COALESCE(p.avatar_emoji, '👤') AS avatar_emoji, i.image_data, ${adminUserSql('u')} AS is_admin, ${moderatorUserSql('u')} AS is_moderator FROM users u LEFT JOIN profiles p ON p.username = u.username LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(u.username) ORDER BY (username = u.username) DESC LIMIT 1) i ON true WHERE u.username = $1;`,
     [targetUsername],
   );
-  if (!r.rows[0])
+  if (!r.rows[0]) {
+    const image = await db.query(
+      `SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER($1) ORDER BY (username = $1) DESC LIMIT 1;`,
+      [targetUsername],
+    );
     return res.json({
       username: targetUsername,
       bio: 'Hello world.',
       location: 'Cyberspace',
       avatar_emoji: '👤',
+      image_data: image.rows[0]?.image_data || null,
       is_admin: false,
       is_moderator: false,
     });
+  }
   res.json(r.rows[0]);
 });
 
 app.post('/api/profile', authenticateToken, async (req, res) => {
-  let { bio, location, avatar_emoji } = req.body;
+  let { bio, location, avatar_emoji, image_data } = req.body;
   bio = sanitize(bio);
   location = sanitize(location);
   avatar_emoji = sanitize(avatar_emoji);
+
+  if (image_data !== undefined && image_data !== null && image_data !== '') {
+    if (!validProfileImage(image_data)) return res.status(400).json({ error: 'Profile picture must be a valid base64 PNG under 512 KB.' });
+  }
 
   await db.query(
     'INSERT INTO profiles (username, bio, location, avatar_emoji) VALUES ($4, $1, $2, $3) ON CONFLICT (username) DO UPDATE SET bio=$1, location=$2, avatar_emoji=$3;',
     [bio, location, avatar_emoji, req.user.username],
   );
+  if (image_data === '') {
+    await db.query('DELETE FROM profile_images WHERE username = $1;', [req.user.username]);
+  } else if (image_data !== undefined && image_data !== null) {
+    await db.query(
+      'INSERT INTO profile_images (username, image_data, "user") VALUES ($1, $2, \'user\') ON CONFLICT (username) DO UPDATE SET image_data = EXCLUDED.image_data;',
+      [req.user.username, image_data],
+    );
+  }
   res.json({ success: true });
 });
 
@@ -487,6 +511,88 @@ app.get('/api/mod-logs', authenticateToken, async (req, res) => {
     rows.push(row);
   }
   res.json(rows);
+});
+
+function canManageProfilePictures(user) {
+  return user.role.role === 'admin' || user.role.role === 'moderator';
+}
+
+function validProfileImage(imageData) {
+  if (typeof imageData !== 'string' || imageData.length > 700000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(imageData)) return false;
+  const bytes = Buffer.from(imageData, 'base64');
+  return bytes.length > 0 && bytes.length <= 512000 && bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a';
+}
+
+app.get('/api/mod/profile-images', authenticateToken, async (req, res) => {
+  if (!canManageProfilePictures(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  const page = Math.max(0, parseInt(req.query.index, 10) || 0);
+  const search = String(req.query.search || '').trim().replace(/^@+/, '').slice(0, 32);
+  const result = await db.query(
+    `WITH pictures AS (
+       SELECT u.username, pi.image_data
+       FROM users u
+       LEFT JOIN LATERAL (
+         SELECT image_data FROM profile_images
+         WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(u.username)
+         ORDER BY (username = u.username) DESC LIMIT 1
+       ) pi ON true
+       UNION ALL
+       SELECT pi.username, pi.image_data FROM profile_images pi
+       WHERE NOT EXISTS (
+         SELECT 1 FROM users u
+         WHERE LOWER(TRIM(LEADING '@' FROM pi.username)) = LOWER(u.username)
+       )
+     )
+     SELECT username, image_data FROM pictures
+     WHERE $1 = '' OR username ILIKE '%' || $1 || '%'
+     ORDER BY LOWER(username), username
+     LIMIT 21 OFFSET $2;`,
+    [search, page * 20],
+  );
+  res.json({ images: result.rows.slice(0, 20), hasMore: result.rows.length > 20 });
+});
+
+app.put('/api/mod/profile-images/:username', authenticateToken, async (req, res) => {
+  if (!canManageProfilePictures(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  const target = sanitizeUsername(req.params.username);
+  const imageData = req.body.image_data;
+  if (!validProfileImage(imageData)) return res.status(400).json({ error: 'A valid PNG profile picture under 512 KB is required.' });
+  const existing = await db.query(
+    `SELECT username FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER($1) ORDER BY (username = $1) DESC LIMIT 1;`,
+    [target],
+  );
+  const row = existing.rows[0];
+  if (row) {
+    await db.query('UPDATE profile_images SET image_data = $1 WHERE username = $2;', [imageData, row.username]);
+  } else {
+    const user = await db.query('SELECT username FROM users WHERE LOWER(username) = LOWER($1);', [target]);
+    if (!user.rows[0]) return res.status(404).json({ error: 'User not found.' });
+    await db.query(
+      'INSERT INTO profile_images (username, image_data, "user") VALUES ($1, $2, \'user\');',
+      [user.rows[0].username, imageData],
+    );
+  }
+  await db.query(
+    'INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);',
+    [req.user.username, 'profile_picture_change', target, 'Moderator updated profile picture', Date.now()],
+  );
+  res.json({ success: true });
+});
+
+app.delete('/api/mod/profile-images/:username', authenticateToken, async (req, res) => {
+  if (!canManageProfilePictures(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  const target = sanitizeUsername(req.params.username);
+  const existing = await db.query(
+    `SELECT username FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER($1) ORDER BY (username = $1) DESC LIMIT 1;`,
+    [target],
+  );
+  if (!existing.rows[0]) return res.status(404).json({ error: 'Profile picture not found.' });
+  await db.query('DELETE FROM profile_images WHERE username = $1;', [existing.rows[0].username]);
+  await db.query(
+    'INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);',
+    [req.user.username, 'profile_picture_delete', target, 'Moderator deleted profile picture', Date.now()],
+  );
+  res.json({ success: true });
 });
 
 app.get(
@@ -645,9 +751,10 @@ app.get('/history', authenticateToken, async (req, res) => {
   log(`history called by ${req.user.username} (${req.user.role.role})`);
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const r = await db.query(
-    `SELECT m.*, json_build_object('role', COALESCE(rr.role, ''), 'prefix', COALESCE(rr.prefix, ''), 'style', COALESCE(rr.style, ''), 'class', COALESCE(rr.class, '')) AS role
+    `SELECT m.*, pi.image_data, json_build_object('role', COALESCE(rr.role, ''), 'prefix', COALESCE(rr.prefix, ''), 'style', COALESCE(rr.style, ''), 'class', COALESCE(rr.class, '')) AS role
        FROM messages m
        LEFT JOIN users u ON m.username = u.username
+       LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(m.username) ORDER BY (username = m.username) DESC LIMIT 1) pi ON true
        LEFT JOIN LATERAL (
          SELECT role, prefix, style, class FROM roles
          WHERE role = ANY (SELECT jsonb_array_elements_text(COALESCE(u.roles, '[]')::jsonb))
@@ -663,9 +770,10 @@ app.get('/dm-history', authenticateToken, async (req, res) => {
   // FIX: Force ALIAS and explicit join for name consistency
   const r = await db.query(
     `
-    SELECT d.id, d.sender AS username, d.receiver, d.timestamp, d.content, d.is_deleted, d.deleted_by 
+    SELECT d.id, d.sender AS username, d.receiver, d.timestamp, d.content, d.is_deleted, d.deleted_by, pi.image_data
     FROM dms d 
     LEFT JOIN users u ON d.sender = u.username 
+    LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(d.sender) ORDER BY (username = d.sender) DESC LIMIT 1) pi ON true
     WHERE (d.sender = $1 AND d.receiver = $2) OR (d.sender = $2 AND d.receiver = $1) 
     ORDER BY d.id DESC LIMIT 10 OFFSET $3;
   `,
@@ -679,7 +787,7 @@ app.get('/topic-history', authenticateToken, async (req, res) => {
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const slug = sanitize(req.query.slug);
   const r = await db.query(
-    'SELECT tm.* FROM topic_messages tm LEFT JOIN users u ON tm.username = u.username WHERE tm.topic_slug = $1 ORDER BY tm.id DESC LIMIT 10 OFFSET $2;',
+    'SELECT tm.*, pi.image_data FROM topic_messages tm LEFT JOIN users u ON tm.username = u.username LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(tm.username) ORDER BY (username = tm.username) DESC LIMIT 1) pi ON true WHERE tm.topic_slug = $1 ORDER BY tm.id DESC LIMIT 10 OFFSET $2;',
     [slug, off],
   );
   for (const row of r.rows) row.role = (await getUserRoles(row.username)).role;
@@ -689,13 +797,15 @@ app.get('/topic-history', authenticateToken, async (req, res) => {
 app.get('/neighborhood-history', authenticateToken, async (req, res) => {
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const query = `
-    SELECT p.*, 
-    COALESCE(json_agg(json_build_object('id', c.id, 'username', c.username, 'content', c.content, 'timestamp', c.timestamp, 'is_deleted', c.is_deleted, 'deleted_by', c.deleted_by, 'is_admin', ${adminUserSql('cu')}, 'is_moderator', ${moderatorUserSql('cu')}) ORDER BY c.id ASC) FILTER (WHERE c.id IS NOT NULL), '[]') as comments 
+    SELECT p.*, pi.image_data,
+    COALESCE(json_agg(json_build_object('id', c.id, 'username', c.username, 'content', c.content, 'timestamp', c.timestamp, 'is_deleted', c.is_deleted, 'deleted_by', c.deleted_by, 'image_data', ci.image_data, 'is_admin', ${adminUserSql('cu')}, 'is_moderator', ${moderatorUserSql('cu')}) ORDER BY c.id ASC) FILTER (WHERE c.id IS NOT NULL), '[]') as comments
     FROM neighborhood_posts p 
     LEFT JOIN users u ON p.username = u.username
     LEFT JOIN neighborhood_comments c ON p.id = c.post_id 
     LEFT JOIN users cu ON c.username = cu.username
-    GROUP BY p.id, u.id ORDER BY p.id DESC LIMIT 10 OFFSET $1;`;
+    LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(p.username) ORDER BY (username = p.username) DESC LIMIT 1) pi ON true
+    LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(c.username) ORDER BY (username = c.username) DESC LIMIT 1) ci ON true
+    GROUP BY p.id, u.id, pi.image_data ORDER BY p.id DESC LIMIT 10 OFFSET $1;`;
   const posts = await db.query(query, [off]);
   let result = [];
   for (let row of posts.rows) {
@@ -725,7 +835,7 @@ app.get('/suggestions-history', authenticateToken, async (req, res) => {
     const limit = Math.min(30, Math.max(1, parseInt(req.query.limit, 10) || 10));
     const off = Math.max(0, (parseInt(req.query.index ?? '0', 10) || 0) * limit);
     const r = await db.query(
-      'SELECT id, date::text AS date, suggestions, username, admin_filter, completion FROM suggestions ORDER BY id DESC LIMIT $2 OFFSET $1;',
+      'SELECT s.id, s.date::text AS date, s.suggestions, s.username, s.admin_filter, s.completion, pi.image_data FROM suggestions s LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(s.username) ORDER BY (username = s.username) DESC LIMIT 1) pi ON true ORDER BY s.id DESC LIMIT $2 OFFSET $1;',
       [off, limit],
     );
     res.json(r.rows.reverse());
@@ -1007,14 +1117,14 @@ app.get('/api/portal2d/levels', authenticateToken, async (req, res) => {
     const page = Math.max(0, parseInt(req.query.index ?? '0', 10) || 0);
     const mine = req.query.mine === '1';
     const params = [P2D_PAGE_SIZE + 1, page * P2D_PAGE_SIZE, P2D_OFFICIAL];
-    let where = 'WHERE "username" <> $3';
+    let where = 'WHERE p."username" <> $3';
     if (mine) {
       params.push(req.user.username);
-      where += ' AND "username" = $4';
+      where += ' AND p."username" = $4';
     }
     const r = await db.query(
-      `SELECT "level-id" AS id, "level-name" AS name, "username"
-       FROM "portal-2d" ${where}
+      `SELECT p."level-id" AS id, p."level-name" AS name, p."username", pi.image_data
+       FROM "portal-2d" p LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(p."username") ORDER BY (username = p."username") DESC LIMIT 1) pi ON true ${where}
        ORDER BY "level-id" DESC LIMIT $1 OFFSET $2;`,
       params,
     );
@@ -1041,8 +1151,8 @@ app.get('/api/portal2d/levels/:id', authenticateToken, async (req, res) => {
     const id = p2dParseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid pack ID.' });
     const r = await db.query(
-      `SELECT "level-id" AS id, "level-name" AS name, "username", "level-data" AS data
-       FROM "portal-2d" WHERE "level-id" = $1;`,
+      `SELECT p."level-id" AS id, p."level-name" AS name, p."username", p."level-data" AS data, pi.image_data
+       FROM "portal-2d" p LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(p."username") ORDER BY (username = p."username") DESC LIMIT 1) pi ON true WHERE p."level-id" = $1;`,
       [id],
     );
     if (!r.rows[0]) return res.status(404).json({ error: 'No pack with that ID.' });
@@ -1421,19 +1531,19 @@ wss.on('connection', (ws, req) => {
         let livePayload = null;
         if (data.type === 'message') {
           const role = (await getUserRoles(authUser)).role;
-          const latest = await db.query('SELECT id, username, timestamp, content, is_deleted, deleted_by, sender FROM messages WHERE username = $1 AND timestamp = $2 ORDER BY id DESC LIMIT 1;', [authUser, tStr]);
+          const latest = await db.query('SELECT m.id, m.username, m.timestamp, m.content, m.is_deleted, m.deleted_by, m.sender, pi.image_data FROM messages m LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(m.username) ORDER BY (username = m.username) DESC LIMIT 1) pi ON true WHERE m.username = $1 AND m.timestamp = $2 ORDER BY m.id DESC LIMIT 1;', [authUser, tStr]);
           if (latest.rows[0]) livePayload = { type: 'live_message', channel: 'public', message: { ...latest.rows[0], role } };
         } else if (data.type === 'topic_message') {
           const role = (await getUserRoles(authUser)).role;
-          const latest = await db.query('SELECT id, username, timestamp, content, is_deleted, deleted_by, sender, topic_slug FROM topic_messages WHERE username = $1 AND timestamp = $2 AND topic_slug = $3 ORDER BY id DESC LIMIT 1;', [authUser, tStr, target]);
+          const latest = await db.query('SELECT m.id, m.username, m.timestamp, m.content, m.is_deleted, m.deleted_by, m.sender, m.topic_slug, pi.image_data FROM topic_messages m LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(m.username) ORDER BY (username = m.username) DESC LIMIT 1) pi ON true WHERE m.username = $1 AND m.timestamp = $2 AND m.topic_slug = $3 ORDER BY m.id DESC LIMIT 1;', [authUser, tStr, target]);
           if (latest.rows[0]) livePayload = { type: 'live_message', channel: 'topic', target, message: { ...latest.rows[0], role } };
         } else if (data.type === 'dm') {
           const role = (await getUserRoles(authUser)).role;
-          const latest = await db.query('SELECT id, sender AS username, receiver, timestamp, content, is_deleted, deleted_by FROM dms WHERE sender = $1 AND receiver = $2 AND timestamp = $3 ORDER BY id DESC LIMIT 1;', [authUser, target, tStr]);
+          const latest = await db.query('SELECT d.id, d.sender AS username, d.receiver, d.timestamp, d.content, d.is_deleted, d.deleted_by, pi.image_data FROM dms d LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(d.sender) ORDER BY (username = d.sender) DESC LIMIT 1) pi ON true WHERE d.sender = $1 AND d.receiver = $2 AND d.timestamp = $3 ORDER BY d.id DESC LIMIT 1;', [authUser, target, tStr]);
           if (latest.rows[0]) livePayload = { type: 'live_message', channel: 'dm', target, receiver: target, sender: authUser, message: { ...latest.rows[0], role } };
         } else if (data.type === 'neighborhood_post') {
           const role = (await getUserRoles(authUser)).role;
-          const latest = await db.query('SELECT id, username, title, content, timestamp, is_deleted, deleted_by, sender FROM neighborhood_posts WHERE username = $1 AND timestamp = $2 ORDER BY id DESC LIMIT 1;', [authUser, tStr]);
+          const latest = await db.query('SELECT p.id, p.username, p.title, p.content, p.timestamp, p.is_deleted, p.deleted_by, p.sender, pi.image_data FROM neighborhood_posts p LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(p.username) ORDER BY (username = p.username) DESC LIMIT 1) pi ON true WHERE p.username = $1 AND p.timestamp = $2 ORDER BY p.id DESC LIMIT 1;', [authUser, tStr]);
           if (latest.rows[0]) livePayload = { type: 'live_neighborhood_post', message: { ...latest.rows[0], role, comments: [] } };
         }
 

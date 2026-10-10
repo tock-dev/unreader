@@ -2548,7 +2548,7 @@
                     for (var i = 0; i < res.levels.length; i++) {
                         var r = res.levels[i];
                         var id = parseInt(r.id, 10);
-                        html += '<div class="list-item"><b>' + escapeHtml(r.name) + '</b><br>by @' + escapeHtml(r.username) + ' (#' + id + ')<br>' +
+                        html += '<div class="list-item"><b>' + escapeHtml(r.name) + '</b><br><img width="24" height="24" alt="' + (profilePictureDataUrl(r.image_data) ? 'Profile picture' : '') + '" style="vertical-align:middle;image-rendering:pixelated" src="' + (profilePictureDataUrl(r.image_data) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=') + '"> by @' + escapeHtml(r.username) + ' (#' + id + ')<br>' +
                             '<button onclick="onlineImport(' + id + ')">IMPORT</button>';
                         if (r.canDelete) html += ' <button onclick="onlineDeleteMine(' + id + ')">DELETE</button>';
                         html += '</div>';

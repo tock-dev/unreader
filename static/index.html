@@ -145,6 +145,13 @@
       line-height: 1.2;
     }
 
+    .app-requirement {
+      margin-top: 6px;
+      font-size: 9px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
     /* --- CONTROL PANEL WINDOW (Ref: 32784.jpg) --- */
     .fullscreen-view {
       display: none;
@@ -411,7 +418,9 @@
       { name: 'NEIGHBOURHOOD', desc: 'Posts! Share your thoughts!', url: 'neighbourhood.html' },
       { name: 'Un-Cloud', desc: 'Run virtual machines online! (BETA) (Warning - does not work on kindles)', url: 'https://undroid-server.onrender.com/' },
       { name: 'AI ASSISTANT', desc: 'AI Assistant (Beta)', url: 'chatai.html' },
-      { name: 'MODERATION', desc: 'Moderation Dashboard.', url: 'modmenu.html', req: 'mod' }
+      { name: 'MODERATION', desc: 'Moderation Dashboard.', url: 'modmenu.html', req: 'mod' },
+      { name: 'PROFILE MODERATION', desc: 'Moderation Dashboard: Elsewhere.', url: 'mod-pfps.html', req: 'mod' },
+      { name: 'PROFILE PICTURE EDITOR', desc: 'Draw or import your profile picture.', url: 'profile-picture.html', req: 'user' }
     ];
 
     const PLATFORM_DATABASE = [
@@ -432,16 +441,28 @@
       { name: 'EMBERKEEP ULTIMATE', desc: "Emberkeep, now stripped from KindleHub! (WARNING: THIS USES KINDLEHUB'S ACCOUNT SYSTEM! YOU MUST HAVE AN ACCOUNT BEFOREHAND!)", url: 'EmberkeepUltimate.html' }
     ];
 
+    const ROLE_LEVEL = { guest: 0, user: 1, mod: 2, moderator: 2, admin: 3 };
+
+    function meetsRoleRequirement(currentRole, requirement) {
+      if (!requirement) return true;
+      const roleLevel = ROLE_LEVEL[String(currentRole || 'guest').toLowerCase()];
+      const requiredRoles = Array.isArray(requirement) ? requirement : [requirement];
+      return requiredRoles.some(function (requiredRole) {
+        const requiredLevel = ROLE_LEVEL[String(requiredRole).toLowerCase()];
+        return requiredLevel !== undefined && roleLevel !== undefined && roleLevel >= requiredLevel;
+      });
+    }
+
     // Helper renderer
     function renderAppList(container, appsList, currentRank) {
       container.innerHTML = '';
       appsList.forEach(app => {
-        if (app.req === 'admin' && currentRank !== 'admin') return;
-        if (app.req === 'mod' && currentRank !== 'mod' && currentRank !== 'admin') return;
+        if (!meetsRoleRequirement(currentRank, app.req)) return;
 
         const div = document.createElement('div');
         div.className = 'app-item';
-        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
+        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>' +
+          (app.req ? '<div class="app-requirement">Requires: ' + (Array.isArray(app.req) ? app.req.join(' / ') : app.req).toUpperCase() + '</div>' : '');
         div.onclick = () => {
           if (app.external) {
             window.open(app.url, '_blank');
@@ -454,15 +475,39 @@
     }
 
     // Build functional home UI grid layout
-    function buildDashboardGrid() {
+    function buildDashboardGrid(currentRank) {
       const featuredContainer = document.getElementById('apps-container');
       const platformContainer = document.getElementById('platform-apps-container');
       const gamesContainer = document.getElementById('games-apps-container');
-      const currentRank = getStorageItem('unreader-rank') || 'user';
+      currentRank = currentRank || 'guest';
 
       renderAppList(featuredContainer, FEATURED_DATABASE, currentRank);
       renderAppList(platformContainer, PLATFORM_DATABASE, currentRank);
       renderAppList(gamesContainer, GAMES_DATABASE, currentRank);
+    }
+
+    function loadDashboardRole() {
+      if (!token || !myUsername) {
+        buildDashboardGrid('guest');
+        return;
+      }
+      buildDashboardGrid('user');
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', window.location.origin + '/api/profile/' + encodeURIComponent(myUsername), true);
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        let role = 'user';
+        if (xhr.status === 200) {
+          try {
+            const profile = JSON.parse(xhr.responseText);
+            role = profile.is_admin ? 'admin' : profile.is_moderator ? 'mod' : 'user';
+          } catch (err) {}
+        }
+        setStorageItem('unreader-rank', role);
+        buildDashboardGrid(role);
+      };
+      xhr.send();
     }
 
     // Interface Dynamic Handlers
@@ -519,9 +564,6 @@
               setStorageItem("token", data.token);
               setStorageItem("username", data.username);
 
-              var loginName = data.username.toLowerCase();
-              setStorageItem("unreader-rank", (loginName === 'admin' || loginName === 'lmaokasdf') ? 'admin' : (loginName === 'mod' ? 'mod' : 'user'));
-
               location.reload();
             } catch (e) {
               errorDisplay.textContent = "Whoops! Server returned an unexpected response!";
@@ -541,11 +583,6 @@
       xhr.send(JSON.stringify({ username: usernameInput, password: passwordInput }));
     };
 
-    // Identity Engine Authentication Check
-    if (myUsername) {
-      var knownAdminName = myUsername.toLowerCase();
-      if (knownAdminName === 'admin' || knownAdminName === 'lmaokasdf') setStorageItem('unreader-rank', 'admin');
-    }
     if (token && myUsername) {
       document.getElementById('auth-status').textContent = 'User: ' + myUsername;
       document.getElementById('auth-btn').textContent = 'Log Out';
@@ -566,7 +603,7 @@
     }
 
     // Run layout deployment logic
-    buildDashboardGrid();
+    loadDashboardRole();
   </script>
 </body>
 

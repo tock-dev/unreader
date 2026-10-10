@@ -242,6 +242,7 @@
       }
 
       card.innerHTML = html;
+      card.querySelector('.card-header > div').prepend(createProfilePicture(post.image_data));
       return card;
     }
 

@@ -20,6 +20,170 @@ function show(selector) {
   document.querySelector(selector).classList.remove('hide');
 }
 
+function profilePictureDataUrl(imageData) {
+  return typeof imageData === 'string' && imageData.length <= 700000 && /^[A-Za-z0-9+/]+={0,2}$/.test(imageData)
+    ? `data:image/png;base64,${imageData}`
+    : '';
+}
+
+function profilePictureDimensions(imageData) {
+  if (!profilePictureDataUrl(imageData)) return 0;
+  try {
+    const bytes = atob(imageData.slice(0, 32));
+    return bytes.length >= 24 ? new DataView(Uint8Array.from(bytes, (char) => char.charCodeAt(0)).buffer).getUint32(16) : 0;
+  } catch (error) {
+    return 0;
+  }
+}
+
+function createProfilePicture(imageData, size) {
+  const image = document.createElement('img');
+  const displaySize = size === undefined ? 24 : size;
+  image.className = 'profile-picture';
+  image.alt = profilePictureDataUrl(imageData) ? 'Profile picture' : '';
+  image.width = image.height = displaySize;
+  image.style.width = image.style.height = displaySize + 'px';
+  image.style.imageRendering = 'pixelated';
+  image.src = profilePictureDataUrl(imageData) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+  return image;
+}
+
+function setupProfilePictureEditor(imageData = '') {
+  const canvas = document.getElementById('edit-picture-canvas');
+  const size = document.getElementById('edit-picture-size');
+  const red = document.getElementById('edit-picture-red');
+  const green = document.getElementById('edit-picture-green');
+  const blue = document.getElementById('edit-picture-blue');
+  const colorPreview = document.getElementById('edit-picture-color-preview');
+  const file = document.getElementById('edit-picture-file');
+  const clear = document.getElementById('edit-picture-clear');
+  const ctx = canvas.getContext('2d');
+  let selectedColor = '#000000';
+  let original = document.createElement('canvas');
+  let hasOriginal = false;
+  const updateColor = () => {
+    const channels = [red, green, blue].map((input) => Math.max(0, Math.min(255, Number(input.value) || 0)));
+    selectedColor = 'rgb(' + channels.join(',') + ')';
+    colorPreview.style.backgroundColor = selectedColor;
+    ['red', 'green', 'blue'].forEach((name, index) => {
+      document.getElementById('edit-picture-' + name + '-value').textContent = channels[index];
+    });
+  };
+  [red, green, blue].forEach((input) => input.oninput = updateColor);
+  updateColor();
+  const resize = (width, height, preserve) => {
+    canvas.width = width;
+    canvas.height = height;
+    ctx.imageSmoothingEnabled = false;
+    if (preserve) ctx.drawImage(preserve, 0, 0, width, height);
+    canvas.parentElement.style.setProperty('--pixel-cell-size', (256 / width) + 'px');
+  };
+  const remember = () => {
+    original = document.createElement('canvas');
+    original.width = canvas.width;
+    original.height = canvas.height;
+    original.getContext('2d').drawImage(canvas, 0, 0);
+    hasOriginal = true;
+  };
+  resize(Number(size.value), Number(size.value));
+  size.onchange = () => resize(Number(size.value), Number(size.value), hasOriginal ? original : canvas);
+
+  let drawing = false;
+  const paint = (event) => {
+    const bounds = canvas.getBoundingClientRect();
+    const x = Math.floor((event.clientX - bounds.left) * canvas.width / bounds.width);
+    const y = Math.floor((event.clientY - bounds.top) * canvas.height / bounds.height);
+    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
+    ctx.fillStyle = selectedColor;
+    ctx.fillRect(x, y, 1, 1);
+    remember();
+  };
+  canvas.onpointerdown = (event) => { drawing = true; canvas.setPointerCapture(event.pointerId); paint(event); };
+  canvas.onpointermove = (event) => { if (drawing) paint(event); };
+  canvas.onpointerup = canvas.onpointercancel = () => { drawing = false; };
+  clear.onclick = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); remember(); };
+
+  let picker = file.parentElement;
+  if (!picker.classList.contains('profile-picture-file')) {
+    const wrapper = document.createElement('span');
+    wrapper.className = 'profile-picture-file';
+    file.parentNode.insertBefore(wrapper, file);
+    wrapper.appendChild(file);
+    file.classList.add('profile-picture-file-input');
+    const browse = document.createElement('button');
+    browse.type = 'button';
+    browse.className = 'paper-btn';
+    browse.textContent = 'CHOOSE IMAGE';
+    browse.onclick = () => file.click();
+    const name = document.createElement('span');
+    name.textContent = 'No image selected';
+    name.setAttribute('role', 'status');
+    wrapper.appendChild(browse);
+    wrapper.appendChild(name);
+  }
+  picker = file.parentElement;
+  picker.querySelector('button').onclick = () => file.click();
+  file.onchange = () => {
+    const selected = file.files[0];
+    if (!selected) return;
+    picker.querySelector('[role="status"]').textContent = selected.name;
+    const image = new Image();
+    image.onload = () => {
+      const dimensions = [8, 16, 32, 64];
+      if (image.naturalWidth === image.naturalHeight && dimensions.indexOf(image.naturalWidth) !== -1) {
+        size.value = String(image.naturalWidth);
+        resize(image.naturalWidth, image.naturalHeight);
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const scale = Math.min(canvas.width / image.width, canvas.height / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      ctx.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+      remember();
+      URL.revokeObjectURL(image.src);
+      file.value = '';
+    };
+    image.onerror = () => { URL.revokeObjectURL(image.src); unAlert('Could not import that image.'); };
+    image.src = URL.createObjectURL(selected);
+  };
+
+  if (imageData) {
+    const image = new Image();
+    image.onload = () => {
+      const dimensions = [8, 16, 32, 64];
+      const nativeSize = image.naturalWidth === image.naturalHeight && dimensions.indexOf(image.naturalWidth) !== -1 ? image.naturalWidth : 16;
+      size.value = String(nativeSize);
+      resize(nativeSize, nativeSize);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      remember();
+    };
+    image.src = `data:image/png;base64,${imageData}`;
+  } else {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    remember();
+  }
+}
+
+function getProfilePictureBase64() {
+  const canvas = document.getElementById('edit-picture-canvas');
+  const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  if (!pixels.some((value, index) => index % 4 === 3 && value !== 0)) return '';
+  return canvas.toDataURL('image/png').split(',')[1];
+}
+
+function showProfilePicture(imageData, fallback) {
+  const element = document.getElementById('info-avatar');
+  element.replaceChildren();
+  if (!profilePictureDataUrl(imageData)) return;
+  const image = document.createElement('img');
+  image.src = profilePictureDataUrl(imageData);
+  image.alt = 'Profile picture';
+  image.width = image.height = 64;
+  image.style.width = image.style.height = image.width + 'px';
+  image.style.imageRendering = 'pixelated';
+  element.appendChild(image);
+}
+
 function applySavedPreferences() {
   if (
     localStorage.getItem('unreader-token') &&
