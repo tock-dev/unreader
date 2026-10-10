@@ -233,6 +233,9 @@ const adminUserSql = (alias) =>
 const moderatorUserSql = (alias) =>
   `(${alias}.is_moderator OR ${alias}.roles::jsonb @> '["moderator"]')`;
 
+const hasAdminPrivileges = (user) => !!(user && user.is_admin);
+const hasModeratorPrivileges = (user) => !!(user && user.is_moderator);
+
 // const getUserRolesCache = {};
 async function getUserRoles(username) {
   const cacheKey = String(username || '').toLowerCase();
@@ -251,7 +254,8 @@ async function getUserRoles(username) {
          SELECT r.role, r.prefix, r.style, r.class
          FROM roles r
          WHERE r.role = ANY (SELECT jsonb_array_elements_text(u.roles::jsonb))
-         ORDER BY r.priority DESC
+         ORDER BY CASE WHEN r.role IN ('admin', 'moderator') THEN 1 ELSE 0 END,
+                  r.priority DESC
          LIMIT 1
        ) best ON true
       WHERE u.username = $1;`,
@@ -272,8 +276,8 @@ async function getUserRoles(username) {
   res.is_admin = !!res.is_admin || adminEntity || roleList.includes('admin');
   res.is_moderator = !!res.is_moderator || roleList.includes('moderator');
   res.role = {
-    role: res.is_admin ? 'admin' : res.is_moderator ? 'moderator' : res.role_name,
-    prefix: res.is_admin ? 'ADMIN' : res.is_moderator ? 'MOD' : res.role_prefix,
+    role: res.role_name || (res.is_admin ? 'admin' : res.is_moderator ? 'moderator' : ''),
+    prefix: res.role_name ? res.role_prefix : res.is_admin ? 'ADMIN' : res.is_moderator ? 'MOD' : '',
     style: res.role_style || '',
     class: res.role_class || '',
   };
@@ -490,7 +494,7 @@ app.post('/api/profile', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/mod-logs', authenticateToken, async (req, res) => {
-  if (!['admin', 'moderator'].includes(req.user.role.role))
+  if (!hasAdminPrivileges(req.user) && !hasModeratorPrivileges(req.user))
     return res.status(403).json({ error: 'Unauthorized' });
   const r = await db.query('SELECT * FROM mod_logs ORDER BY id DESC LIMIT 50;');
   const tr = r.rows;
@@ -599,7 +603,7 @@ app.get(
   '/api/admin/find-user/:username',
   authenticateToken,
   async (req, res) => {
-    if (!['admin', 'moderator'].includes(req.user.role.role))
+    if (!hasAdminPrivileges(req.user) && !hasModeratorPrivileges(req.user))
       return res.status(403).json({ error: 'Unauthorized' });
     const targetUsername = sanitizeUsername(req.params.username);
     log(
@@ -638,7 +642,7 @@ app.get(
     }
 
     // Redact IP for moderators (non-admins)
-    if (req.user.role.role !== 'admin') {
+    if (!hasAdminPrivileges(req.user)) {
       userInfo.last_ip = '[redacted]';
     }
     res.json({ ...userInfo, alts });
@@ -646,7 +650,7 @@ app.get(
 );
 
 app.post('/api/admin/set-role', authenticateToken, async (req, res) => {
-  if (req.user.role.role !== 'admin')
+  if (!hasAdminPrivileges(req.user))
     return res.status(403).json({ error: 'Unauthorized' });
   let { target, is_moderator } = req.body;
   target = sanitizeUsername(target);
@@ -672,7 +676,7 @@ app.post('/api/admin/set-role', authenticateToken, async (req, res) => {
 
 app.post('/api/admin/ban-ip', authenticateToken, async (req, res) => {
   try {
-    if (req?.user?.role?.role !== 'admin') {
+    if (!hasAdminPrivileges(req.user)) {
       return res
         .status(403)
         .json({ error: 'Forbidden: Requires administrator privileges.' });
@@ -758,7 +762,8 @@ app.get('/history', authenticateToken, async (req, res) => {
        LEFT JOIN LATERAL (
          SELECT role, prefix, style, class FROM roles
          WHERE role = ANY (SELECT jsonb_array_elements_text(COALESCE(u.roles, '[]')::jsonb))
-         ORDER BY priority DESC LIMIT 1
+         ORDER BY CASE WHEN role IN ('admin', 'moderator') THEN 1 ELSE 0 END,
+                  priority DESC LIMIT 1
        ) rr ON true
        ORDER BY m.id DESC LIMIT 10 OFFSET $1;`, [off]);
   res.json(r.rows.reverse());
@@ -868,7 +873,7 @@ app.post('/api/suggestions', authenticateToken, async (req, res) => {
 // Staff annotation: admin_filter = status tag, completion = done flag.
 app.put('/api/suggestions/:id', authenticateToken, async (req, res) => {
   try {
-    if (!['admin', 'moderator'].includes(req.user.role.role))
+    if (!hasAdminPrivileges(req.user) && !hasModeratorPrivileges(req.user))
       return res.status(403).json({ error: 'Staff only.' });
     const id = p2dParseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid suggestion ID.' });
@@ -953,7 +958,7 @@ const P2D_OFFICIAL_MAX_LEVELS = 80;
 const P2D_OFFICIAL_MAX_CHARS = 400000;
 
 const p2dIsAdmin = (user) => !!(user && (user.is_admin || ADMIN_ENTITY_USERNAMES.has(String(user.username || '').toLowerCase())));
-const p2dIsStaff = (user) => p2dIsAdmin(user) || !!(user && ['moderator'].includes(user.role && user.role.role));
+const p2dIsStaff = (user) => p2dIsAdmin(user) || hasModeratorPrivileges(user);
 
 function p2dName(value, fallback, maxLen) {
   const cleaned = String(value ?? '')
@@ -1392,7 +1397,7 @@ wss.on('connection', (ws, req) => {
           authUser = sanitizeUsername(decoded.username);
           userRoles = await getUserRoles(authUser);
           log(
-            `WS Auth Session Established: ${authUser} (Admin: ${userRoles.role.role === 'admin'}, Mod: ${userRoles.role.role === 'moderator'})`,
+            `WS Auth Session Established: ${authUser} (Admin: ${userRoles.is_admin}, Mod: ${userRoles.is_moderator})`,
           );
           if (userRoles.is_banned) {
             log(`WS Termination Triggered: Banned or Timed out user session`);
@@ -1589,19 +1594,19 @@ wss.on('connection', (ws, req) => {
 
         const isOwner = owner === authUser;
         const canUndo =
-          userRoles.role.role === 'admin' ||
-          (userRoles.role.role === 'moderator' &&
+          hasAdminPrivileges(userRoles) ||
+          (hasModeratorPrivileges(userRoles) &&
             targetObj.deleted_by === authUser);
         const canDelete =
           isOwner ||
-          userRoles.role.role === 'admin' ||
-          userRoles.role.role === 'moderator';
+          hasAdminPrivileges(userRoles) ||
+          hasModeratorPrivileges(userRoles);
 
         // Deletes
         if (data.type === 'mod_delete' && canDelete) {
           const reason =
             data.reason ||
-            (userRoles.role.role === 'admin'
+            (hasAdminPrivileges(userRoles)
               ? "Admin doesn't need any reasons"
               : sanitize('No reason provided'));
           log(
@@ -1612,8 +1617,8 @@ wss.on('connection', (ws, req) => {
             [authUser, data.id],
           );
           if (
-            userRoles.role.role === 'moderator' ||
-            userRoles.role.role === 'admin'
+            hasModeratorPrivileges(userRoles) ||
+            hasAdminPrivileges(userRoles)
           ) {
             await db.query(
               'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
@@ -1640,14 +1645,14 @@ wss.on('connection', (ws, req) => {
 
       // Moderating users
       if (
-        userRoles.role.role === 'admin' ||
-        userRoles.role.role === 'moderator'
+        hasAdminPrivileges(userRoles) ||
+        hasModeratorPrivileges(userRoles)
       ) {
         // Timeouts
         if (data.type === 'mod_timeout') {
           const target = sanitizeUsername(data.target);
           const targetRoles = await getUserRoles(target);
-          if (targetRoles.role.role === 'admin')
+          if (hasAdminPrivileges(targetRoles))
             return ws.send(
               JSON.stringify({
                 type: 'error_alert',
@@ -1660,7 +1665,7 @@ wss.on('connection', (ws, req) => {
           ); // Max 30 days
           const reason =
             sanitize(data.reason || '') ||
-            (userRoles.role.role === 'admin'
+            (hasAdminPrivileges(userRoles)
               ? "Admin doesn't need any reasons"
               : sanitize('No reason provided'));
           log(
@@ -1690,15 +1695,15 @@ wss.on('connection', (ws, req) => {
             return log(`KICK TARGET ${data.target} NOT CONNECTED`, data.target);
           const targetRoles = await getUserRoles(data.target);
           if (
-            userRoles.role.role === 'admin' ||
-            (userRoles.role.role === 'moderator' &&
-              targetRoles.role.role !== 'admin' &&
+            hasAdminPrivileges(userRoles) ||
+            (hasModeratorPrivileges(userRoles) &&
+              !hasAdminPrivileges(targetRoles) &&
               data.target !== authUser)
           ) {
             const client = activeClients.get(data.target);
             const reason =
               data.reason ||
-              (userRoles.role.role === 'admin'
+              (hasAdminPrivileges(userRoles)
                 ? "Admin doesn't need any reasons"
                 : sanitize('No reason provided'));
             client.ws.send(
@@ -1716,7 +1721,7 @@ wss.on('connection', (ws, req) => {
             );
           }
         }
-        if (userRoles.role.role === 'admin') {
+        if (hasAdminPrivileges(userRoles)) {
           // Bans
           if (data.type === 'mod_ban') {
             const target = sanitizeUsername(data.target);

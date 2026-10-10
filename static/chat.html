@@ -645,7 +645,8 @@
 
       function appendMessage(data) {
         // --- CLIENT-SIDE INTERCEPTION SPOOFING FLAG ---
-        if (data.content && data.content.startsWith("\u200B[SYSTEM_BOT]\u200B")) {
+        var isSystemBotMessage = data.content && data.content.startsWith("\u200B[SYSTEM_BOT]\u200B");
+        if (isSystemBotMessage) {
           data.username = "system"; // Forces UI to parse identity as system
           data.content = data.content.replace("\u200B[SYSTEM_BOT]\u200B", ""); // Clear raw tag block
           data.role = { role: 'bot', prefix: 'BOT', style: 'border: 3px solid #808080 !important;box-shadow: 4px 4px 0px #80808050 !important;', priority: 10 };
@@ -659,6 +660,7 @@
         var msgDiv = document.createElement("div");
         msgDiv.id = "msg-id-" + data.id;
         var effectiveUsername = data.username || data.sender || "UNKNOWN_NODE";
+        msgDiv.dataset.username = effectiveUsername;
         var isMe = effectiveUsername === myUsername;
         msgDiv.style.float = isMe ? "right" : "left";
         msgDiv.style.cssText += data.role.style
@@ -677,7 +679,14 @@
         meta.style.cursor = "pointer";
 
         var nameDisplay = (data.role.prefix || '') + " @" + effectiveUsername;
-        meta.appendChild(createProfilePicture(data.image_data));
+        var profilePicture = createProfilePicture(isSystemBotMessage ? null : data.image_data);
+        meta.appendChild(profilePicture);
+        if (isSystemBotMessage) {
+          loadSystemProfilePicture().then(function (imageData) {
+            var imageUrl = profilePictureDataUrl(imageData);
+            if (imageUrl) profilePicture.src = imageUrl;
+          });
+        }
         meta.appendChild(document.createTextNode(nameDisplay.trim() + " • " + timeStr));
         (function (username) {
           meta.onclick = function () {
@@ -864,7 +873,7 @@
 
           // 2. Extract your query and run it through the decentralized generator link
           var query = text.substring(7).trim();
-          processGlobalAICore(query, currentMode, currentTarget);
+          processGlobalAICore(query, currentMode, currentTarget, text);
           return;
         }
 
@@ -881,6 +890,56 @@
 
       var aiMemory = localStorage.getItem("unreader-ai-memory") || "";
       var aiHistory = [];
+      var systemProfilePictureRequest = null;
+
+      function loadSystemProfilePicture() {
+        if (!systemProfilePictureRequest) {
+          systemProfilePictureRequest = fetch(BACKEND_URL + "/api/profile/system", {
+            headers: { "Authorization": "Bearer " + token }
+          }).then(function (response) {
+            return response.ok ? response.json() : null;
+          }).then(function (profile) {
+            return profile ? profile.image_data : null;
+          }).catch(function (error) {
+            log("System profile picture lookup failed:", error);
+            return null;
+          });
+        }
+        return systemProfilePictureRequest;
+      }
+
+      function getCurrentPageConversation(currentMessage) {
+        var conversation = [];
+        var messages = document.querySelectorAll("#chat-scroll-wrapper .message");
+        for (var i = 0; i < messages.length; i++) {
+          if (messages[i].classList.contains("purged-msg")) continue;
+          var username = messages[i].dataset.username || "unknown";
+          var messageText = messages[i].querySelector(".message-text");
+          var content = messageText ? messageText.textContent.trim() : "";
+          if (!content) continue;
+          conversation.push({
+            role: username === "system" ? "assistant" : "user",
+            content: username === "system" ? content : "@" + username + ": " + content,
+            username: username
+          });
+        }
+
+        if (currentMessage) {
+          var lastMessage = conversation[conversation.length - 1];
+          if (!lastMessage || lastMessage.username !== myUsername || lastMessage.content.indexOf(currentMessage) === -1) {
+            conversation.push({
+              role: "user",
+              content: "@" + myUsername + ": " + currentMessage,
+              username: myUsername
+            });
+          }
+        }
+
+        return conversation.slice(-40).map(function (message) {
+          return { role: message.role, content: message.content };
+        });
+      }
+
       function generateSystemPrompt() {
         var users = "";
         for (var user of onlineUsers) {
@@ -934,14 +993,14 @@
       }
 
       // ---- DECENTRALIZED GLOBAL AI RUNNER (CLIENT-SIDE) ----
-      async function processGlobalAICore(query, mode, target) {
+      async function processGlobalAICore(query, mode, target, currentMessage) {
         if (!query) return;
 
         var t1 = "gsk_YBuYi4R3exl";
         var t2 = "Wj5dMZG87WGdyb3FYVt6SIkkk";
         var t3 = "zGeKv4KRp3KYlL6m";
 
-        aiHistory.push({ role: "user", content: query });
+        aiHistory = getCurrentPageConversation(currentMessage);
 
         try {
           var response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -956,11 +1015,7 @@
                   "role": "system",
                   "content": generateSystemPrompt()
                 },
-                ...aiHistory,
-                {
-                  "role": "user",
-                  "content": query
-                }
+                ...aiHistory
               ],
               "model": "openai/gpt-oss-120b", // "llama-3.1-8b-instant",
               "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
@@ -983,11 +1038,7 @@
                   "role": "system",
                   "content": generateSystemPrompt()
                 },
-                ...aiHistory,
-                {
-                  "role": "user",
-                  "content": query
-                }
+                ...aiHistory
               ],
               "model": "qwen/qwen3.8-27b",
               "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
@@ -1098,7 +1149,7 @@
         var t2 = "Wj5dMZG87WGdyb3FYVt6SIkkk";
         var t3 = "zGeKv4KRp3KYlL6m";
 
-        aiHistory.push({ role: "user", content: query });
+        aiHistory = getCurrentPageConversation();
 
         try {
           var response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -1113,10 +1164,7 @@
                   "role": "system",
                   "content": generateSystemPrompt()
                 },
-                {
-                  "role": "user",
-                  "content": query
-                }
+                ...aiHistory
               ],
               "model": "llama-3.1-8b-instant",
               "max_completion_tokens": 4096, // Fixed parameter key name and set a safe token limit
