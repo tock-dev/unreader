@@ -8,13 +8,30 @@
   <link rel="stylesheet" href="bbs.css">
   <script src="common.js"></script>
   <style>
-    .window { max-width: 560px; overflow-y: auto; }
-    .editor-content { padding: 16px; }
-    .profile-picture-editor { grid-template-columns: 1fr 1fr; }
+    .window { max-width: 560px; overflow: hidden; }
+    .editor-content { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
+    .profile-picture-editor { grid-template-columns: minmax(0, 1fr); margin: 8px 0 14px; }
+    .profile-picture-grid { width: 320px; height: 320px; max-width: 100%; padding: 0; }
+    .profile-rgb-picker { grid-template-columns: minmax(0, 1fr); }
+    .profile-rgb-picker label { min-height: 48px; }
     .profile-picture-editor input[type="file"] { max-width: 100%; }
-    .editor-content button { min-height: 48px; }
+    .editor-content button, .editor-content select { min-height: 48px; }
+    #edit-picture-clear, #save-picture { width: 100%; }
+    .picture-actions { display: grid; grid-template-columns: 1fr 1fr; margin: 8px 0; }
+    .picture-actions button:first-child { margin-right: 6px; }
+    .picture-swatches { display: grid; grid-template-columns: repeat(4, minmax(48px, 1fr)); margin: 4px -2px 8px; }
+    .picture-swatches button { min-width: 48px; min-height: 48px; margin: 2px; padding: 5px; }
+    .picture-swatches button span { display: block; width: 100%; height: 100%; min-height: 32px; border: 1px solid #000; }
     #picture-status { min-height: 24px; margin: 8px 0; }
     #picture-preview { width: 64px; height: 64px; image-rendering: pixelated; border: var(--border); }
+    @media (max-width: 360px) {
+      .editor-content { padding: 8px; }
+      .picture-swatches { grid-template-columns: repeat(4, minmax(48px, 1fr)); }
+      .profile-picture-grid { width: 256px; height: 256px; }
+    }
+    @media (max-width: 320px) {
+      .profile-picture-grid { width: 224px; height: 224px; }
+    }
   </style>
 </head>
 <body>
@@ -34,6 +51,20 @@
           <label>G <input id="edit-picture-green" type="range" min="0" max="255" value="0"><output id="edit-picture-green-value">0</output></label>
           <label>B <input id="edit-picture-blue" type="range" min="0" max="255" value="0"><output id="edit-picture-blue-value">0</output></label>
           <span id="edit-picture-color-preview" aria-label="Selected color"></span>
+        </div>
+        <div class="picture-swatches" aria-label="Quick colors">
+          <button type="button" class="profile-color-swatch" data-color="#000000" aria-label="Black"><span style="background:#000000"></span></button>
+          <button type="button" class="profile-color-swatch" data-color="#ffffff" aria-label="White"><span style="background:#ffffff"></span></button>
+          <button type="button" class="profile-color-swatch" data-color="#ff0000" aria-label="Red"><span style="background:#ff0000"></span></button>
+          <button type="button" class="profile-color-swatch" data-color="#00aa00" aria-label="Green"><span style="background:#00aa00"></span></button>
+          <button type="button" class="profile-color-swatch" data-color="#0000ff" aria-label="Blue"><span style="background:#0000ff"></span></button>
+          <button type="button" class="profile-color-swatch" data-color="#ffff00" aria-label="Yellow"><span style="background:#ffff00"></span></button>
+          <button type="button" class="profile-color-swatch" data-color="#ff00ff" aria-label="Magenta"><span style="background:#ff00ff"></span></button>
+          <button type="button" class="profile-color-swatch" data-color="#00ffff" aria-label="Cyan"><span style="background:#00ffff"></span></button>
+        </div>
+        <div class="picture-actions">
+          <button id="edit-picture-undo" type="button" class="paper-btn" disabled>UNDO</button>
+          <button id="edit-picture-redo" type="button" class="paper-btn" disabled>REDO</button>
         </div>
         <input id="edit-picture-file" type="file" accept="image/*" aria-label="Import a picture">
         <button id="edit-picture-clear" type="button" class="paper-btn">CLEAR PICTURE</button>

@@ -57,19 +57,39 @@ function setupProfilePictureEditor(imageData = '') {
   const colorPreview = document.getElementById('edit-picture-color-preview');
   const file = document.getElementById('edit-picture-file');
   const clear = document.getElementById('edit-picture-clear');
+  const undoButton = document.getElementById('edit-picture-undo');
+  const redoButton = document.getElementById('edit-picture-redo');
+  const preview = document.getElementById('picture-preview');
+  const swatches = document.querySelectorAll('.profile-color-swatch');
   const ctx = canvas.getContext('2d');
   let selectedColor = '#000000';
   let original = document.createElement('canvas');
   let hasOriginal = false;
+  let drawing = false;
+  let lastPoint = null;
+  let history = [];
+  let historyIndex = -1;
+  let historyLimit = 20;
   const updateColor = () => {
     const channels = [red, green, blue].map((input) => Math.max(0, Math.min(255, Number(input.value) || 0)));
     selectedColor = 'rgb(' + channels.join(',') + ')';
     colorPreview.style.backgroundColor = selectedColor;
+    const hexColor = '#' + channels.map((value) => value.toString(16).padStart(2, '0')).join('');
     ['red', 'green', 'blue'].forEach((name, index) => {
       document.getElementById('edit-picture-' + name + '-value').textContent = channels[index];
     });
+    swatches.forEach((swatch) => swatch.setAttribute('aria-pressed', String(swatch.dataset.color.toLowerCase() === hexColor)));
   };
   [red, green, blue].forEach((input) => input.oninput = updateColor);
+  swatches.forEach((swatch) => {
+    swatch.onclick = () => {
+      const color = swatch.dataset.color;
+      red.value = parseInt(color.slice(1, 3), 16);
+      green.value = parseInt(color.slice(3, 5), 16);
+      blue.value = parseInt(color.slice(5, 7), 16);
+      updateColor();
+    };
+  });
   updateColor();
   const resize = (width, height, preserve) => {
     canvas.width = width;
@@ -85,23 +105,90 @@ function setupProfilePictureEditor(imageData = '') {
     original.getContext('2d').drawImage(canvas, 0, 0);
     hasOriginal = true;
   };
+  const updatePreview = () => {
+    if (preview) preview.src = canvas.toDataURL('image/png');
+  };
+  const updateHistoryButtons = () => {
+    if (undoButton) undoButton.disabled = historyIndex <= 0;
+    if (redoButton) redoButton.disabled = historyIndex < 0 || historyIndex >= history.length - 1;
+  };
+  const recordHistory = () => {
+    const snapshot = document.createElement('canvas');
+    snapshot.width = canvas.width;
+    snapshot.height = canvas.height;
+    snapshot.getContext('2d').drawImage(canvas, 0, 0);
+    history = history.slice(0, historyIndex + 1);
+    history.push(snapshot);
+    if (history.length > historyLimit) history.shift();
+    historyIndex = history.length - 1;
+    updateHistoryButtons();
+    updatePreview();
+  };
+  const restoreHistory = (index) => {
+    if (index < 0 || index >= history.length) return;
+    historyIndex = index;
+    const snapshot = history[historyIndex];
+    size.value = String(snapshot.width);
+    resize(snapshot.width, snapshot.height, snapshot);
+    remember();
+    updateHistoryButtons();
+    updatePreview();
+  };
   resize(Number(size.value), Number(size.value));
-  size.onchange = () => resize(Number(size.value), Number(size.value), hasOriginal ? original : canvas);
+  size.onchange = () => {
+    resize(Number(size.value), Number(size.value), hasOriginal ? original : canvas);
+    remember();
+    recordHistory();
+  };
 
-  let drawing = false;
-  const paint = (event) => {
+  const getPoint = (event) => {
     const bounds = canvas.getBoundingClientRect();
     const x = Math.floor((event.clientX - bounds.left) * canvas.width / bounds.width);
     const y = Math.floor((event.clientY - bounds.top) * canvas.height / bounds.height);
-    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
-    ctx.fillStyle = selectedColor;
-    ctx.fillRect(x, y, 1, 1);
-    remember();
+    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null;
+    return { x: x, y: y };
   };
-  canvas.onpointerdown = (event) => { drawing = true; canvas.setPointerCapture(event.pointerId); paint(event); };
-  canvas.onpointermove = (event) => { if (drawing) paint(event); };
-  canvas.onpointerup = canvas.onpointercancel = () => { drawing = false; };
-  clear.onclick = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); remember(); };
+  const paintLine = (start, end) => {
+    const steps = Math.max(Math.abs(end.x - start.x), Math.abs(end.y - start.y));
+    ctx.fillStyle = selectedColor;
+    for (let step = 0; step <= steps; step++) {
+      const progress = steps ? step / steps : 0;
+      const x = Math.round(start.x + (end.x - start.x) * progress);
+      const y = Math.round(start.y + (end.y - start.y) * progress);
+      ctx.fillRect(x, y, 1, 1);
+    }
+  };
+  const finishStroke = () => {
+    if (!drawing) return;
+    drawing = false;
+    lastPoint = null;
+    remember();
+    recordHistory();
+  };
+  canvas.onpointerdown = (event) => {
+    event.preventDefault();
+    drawing = true;
+    lastPoint = getPoint(event);
+    if (canvas.setPointerCapture && event.pointerId !== undefined) canvas.setPointerCapture(event.pointerId);
+    if (lastPoint) paintLine(lastPoint, lastPoint);
+  };
+  canvas.onpointermove = (event) => {
+    if (!drawing) return;
+    event.preventDefault();
+    const point = getPoint(event);
+    if (!point) return;
+    if (lastPoint) paintLine(lastPoint, point);
+    else paintLine(point, point);
+    lastPoint = point;
+  };
+  canvas.onpointerup = canvas.onpointercancel = canvas.onlostpointercapture = finishStroke;
+  clear.onclick = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    remember();
+    recordHistory();
+  };
+  if (undoButton) undoButton.onclick = () => restoreHistory(historyIndex - 1);
+  if (redoButton) redoButton.onclick = () => restoreHistory(historyIndex + 1);
 
   let picker = file.parentElement;
   if (!picker.classList.contains('profile-picture-file')) {
@@ -134,12 +221,14 @@ function setupProfilePictureEditor(imageData = '') {
         size.value = String(image.naturalWidth);
         resize(image.naturalWidth, image.naturalHeight);
       }
+      remember();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const scale = Math.min(canvas.width / image.width, canvas.height / image.height);
       const width = image.width * scale;
       const height = image.height * scale;
       ctx.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
       remember();
+      recordHistory();
       URL.revokeObjectURL(image.src);
       file.value = '';
     };
@@ -156,11 +245,13 @@ function setupProfilePictureEditor(imageData = '') {
       resize(nativeSize, nativeSize);
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
       remember();
+      recordHistory();
     };
     image.src = `data:image/png;base64,${imageData}`;
   } else {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     remember();
+    recordHistory();
   }
 }
 
