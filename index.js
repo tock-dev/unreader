@@ -518,7 +518,7 @@ app.get('/api/mod-logs', authenticateToken, async (req, res) => {
 });
 
 function canManageProfilePictures(user) {
-  return user.role.role === 'admin' || user.role.role === 'moderator';
+  return hasAdminPrivileges(user) || hasModeratorPrivileges(user);
 }
 
 function validProfileImage(imageData) {
