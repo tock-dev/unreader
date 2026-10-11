@@ -264,8 +264,13 @@ function getProfilePictureBase64() {
 
 function showProfilePicture(imageData, fallback) {
   const element = document.getElementById('info-avatar');
-  element.replaceChildren();
-  if (!profilePictureDataUrl(imageData)) return;
+  while (element.firstChild) element.removeChild(element.firstChild);
+  if (!profilePictureDataUrl(imageData)) {
+    element.textContent = navigator.userAgent.toLowerCase().includes('kindle')
+      ? ':)'
+      : fallback || '';
+    return;
+  }
   const image = document.createElement('img');
   image.src = profilePictureDataUrl(imageData);
   image.alt = 'Profile picture';
@@ -374,9 +379,11 @@ function parseMarkdownForKindle(text) {
 function parseMarkup(text) {
   if (!text) return '';
   const escaped = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  if (navigator.userAgent.toLowerCase().includes('kindle')) {
-    return DOMPurify.sanitize(text);
-    // return DOMPurify.sanitize(parseMarkdownForKindle(escaped));
+  if (navigator.userAgent.toLowerCase().includes('kindle')) return escaped;
+  if (typeof marked === 'undefined' || typeof marked.parse !== 'function') {
+    return typeof DOMPurify === 'undefined'
+      ? escaped.trim()
+      : DOMPurify.sanitize(escaped).trim();
   }
   return DOMPurify.sanitize(marked.parse(escaped)).trim();
 }

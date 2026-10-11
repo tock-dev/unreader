@@ -814,7 +814,7 @@
         var xhr = new XMLHttpRequest();
         var endpoint = "/history?index=";
         if (currentMode === "dm")
-          endpoint = "/dm-history?target=" + currentTarget + "&index=";
+          endpoint = "/dm-history?target=" + encodeURIComponent(currentTarget) + "&index=";
         xhr.open("GET", BACKEND_URL + endpoint + currentHistoryIndex, true);
         if (token) xhr.setRequestHeader("Authorization", "Bearer " + token);
         xhr.onreadystatechange = function () {
@@ -1270,7 +1270,7 @@
       function openProfileModal(targetUser) {
         log("Pulling profile metadata for:", targetUser);
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", BACKEND_URL + "/api/profile/" + targetUser, true);
+        xhr.open("GET", BACKEND_URL + "/api/profile/" + encodeURIComponent(targetUser), true);
         xhr.setRequestHeader("Authorization", "Bearer " + token);
         xhr.onreadystatechange = function () {
           if (xhr.readyState === 4 && xhr.status === 200) {
