@@ -267,6 +267,35 @@
             font-size: 0.9rem;
             text-transform: capitalize;
         }
+
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .data-card { border: 1px solid #000; padding: 8px; min-width: 0; overflow-wrap: anywhere; }
+        .data-label { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
+        .data-value { font-size: 0.9rem; }
+        .subtle { font-size: 0.8rem; line-height: 1.4; }
+        .tag-list { margin: 0; padding-left: 18px; font-size: 0.85rem; line-height: 1.5; }
+        .sprite-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .sprite-card { border: 1px solid #aaa; padding: 5px; text-align: center; font-size: 0.7rem; overflow-wrap: anywhere; }
+        .sprite-card img { width: 72px; height: 72px; max-width: 100%; object-fit: contain; }
+        .move-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        .move-table th, .move-table td { border: 1px solid #aaa; padding: 5px; text-align: left; vertical-align: top; }
+        .evo-row { display: flex; flex-wrap: wrap; align-items: center; }
+        .evo-node { border: 1px solid #000; padding: 6px; margin: 3px; text-align: center; font-size: 0.8rem; }
+        .type-chart { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        .type-chart th, .type-chart td { border: 1px solid #aaa; padding: 5px; text-align: left; }
+        .audio-player { width: 100%; margin-top: 5px; }
+        .detail-note { font-size: 0.75rem; line-height: 1.4; }
+        .form-picker { border: 2px solid #000; padding: 8px; margin-bottom: 12px; background: #f7f7f7; }
+        .form-picker label { display: block; font-weight: bold; font-size: 0.8rem; margin-bottom: 6px; }
+        .form-picker select { display: block; width: 100%; min-height: 48px; border: 2px solid #000; border-radius: 0; background: #fff; color: #000; font: inherit; padding: 8px; }
+        .form-picker-note { font-size: 0.75rem; margin-top: 5px; line-height: 1.35; }
+
+        @media (max-width: 380px) {
+            .detail-grid { grid-template-columns: 1fr; }
+            #detail-content { padding: 9px; }
+            .physical-row { flex-wrap: wrap; }
+        }
+
     </style>
 </head>
 <body>
@@ -422,7 +451,7 @@
 
             const nameSpan = document.createElement('span');
             nameSpan.className = 'pokemon-name';
-            nameSpan.textContent = pokemon.name.replace('-', ' ');
+            nameSpan.textContent = formatApiName(pokemon.name);
 
             const idSpan = document.createElement('span');
             idSpan.className = 'pokemon-id';
@@ -434,6 +463,29 @@
             li.appendChild(img);
             li.appendChild(infoDiv);
             return li;
+        }
+
+        // PokéAPI slugs are usually lowercase. Format identifier-like values for display
+        // without changing descriptive prose or the underlying API/cache values.
+        function formatApiName(value) {
+            if (value === null || value === undefined || value === '') return value;
+            const special = {
+                'mr mime': 'Mr. Mime', 'mr rime': 'Mr. Rime', 'mime jr': 'Mime Jr.',
+                'type null': 'Type: Null', 'ho oh': 'Ho-Oh', 'porygon z': 'Porygon-Z',
+                'jangmo o': 'Jangmo-o', 'hakamo o': 'Hakamo-o', 'kommo o': 'Kommo-o',
+                'farfetchd': 'Farfetch’d', 'sirfetchd': 'Sirfetch’d', 'flabebe': 'Flabébé',
+                'nidoran f': 'Nidoran♀', 'nidoran m': 'Nidoran♂', 'hp': 'HP', 'sp atk': 'Sp. Atk',
+                'sp def': 'Sp. Def'
+            };
+            const normalized = String(value).replace(/-/g, ' ').replace(/_/g, ' ').trim();
+            const lower = normalized.toLowerCase();
+            if (special[lower]) return special[lower];
+            return normalized.replace(/\b([a-z])/g, function (match) { return match.toUpperCase(); });
+        }
+
+        function capitalizeSentence(value) {
+            if (!value) return value;
+            return String(value).charAt(0).toUpperCase() + String(value).slice(1);
         }
 
         // ---------------- Detail view ----------------
@@ -462,45 +514,145 @@
             fetchDetail(id);
         }
 
+        async function apiJSON(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('PokéAPI request failed: ' + url);
+            return response.json();
+        }
+
         async function fetchDetail(id) {
             try {
-                const [pokemonRes, speciesRes] = await Promise.all([
-                    fetch(`https://pokeapi.co/api/v2/pokemon/${id}`),
-                    fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`)
+                const base = await Promise.all([
+                    apiJSON('https://pokeapi.co/api/v2/pokemon/' + id),
+                    apiJSON('https://pokeapi.co/api/v2/pokemon-species/' + id)
                 ]);
-                if (!pokemonRes.ok || !speciesRes.ok) throw new Error("detail fetch failed");
+                const pokemonData = base[0];
+                const speciesData = base[1];
+                const requests = [];
+                const requestKinds = [];
 
-                const pokemonData = await pokemonRes.json();
-                const speciesData = await speciesRes.json();
+                if (speciesData.evolution_chain && speciesData.evolution_chain.url) {
+                    requests.push(apiJSON(speciesData.evolution_chain.url)); requestKinds.push('evolution');
+                }
+                pokemonData.types.forEach(function (entry) {
+                    requests.push(apiJSON(entry.type.url)); requestKinds.push('type');
+                });
+                pokemonData.abilities.forEach(function (entry) {
+                    requests.push(apiJSON(entry.ability.url)); requestKinds.push('ability');
+                });
+                requests.push(apiJSON('https://pokeapi.co/api/v2/pokemon/' + id + '/encounters'));
+                requestKinds.push('encounters');
 
-                const flavorEntry = speciesData.flavor_text_entries.find(e => e.language.name === 'en');
-                const flavorText = flavorEntry ? flavorEntry.flavor_text.replace(/[\n\f\r]+/g, ' ') : '';
+                const extras = await Promise.all(requests.map(function (promise) {
+                    return promise.catch(function () { return null; });
+                }));
+                const extraData = { evolution: null, types: [], abilities: [], encounters: [] };
+                extras.forEach(function (value, index) {
+                    if (!value) return;
+                    if (requestKinds[index] === 'evolution') extraData.evolution = value;
+                    else if (requestKinds[index] === 'type') extraData.types.push(value);
+                    else if (requestKinds[index] === 'ability') extraData.abilities.push(value);
+                    else if (requestKinds[index] === 'encounters') extraData.encounters = value;
+                });
 
-                const genusEntry = speciesData.genera.find(g => g.language.name === 'en');
-
-                const localEntry = nationalDex.find(p => p.id === id);
-
+                const flavorEntry = speciesData.flavor_text_entries.find(function (e) { return e.language.name === 'en'; });
+                const flavorText = flavorEntry ? flavorEntry.flavor_text.replace(/[\n\f\r]+/g, ' ').replace(/\s+/g, ' ') : '';
+                const genusEntry = speciesData.genera.find(function (g) { return g.language.name === 'en'; });
+                const localEntry = nationalDex.find(function (p) { return p.id === id; });
+                const englishName = function (entries) {
+                    if (!entries) return '';
+                    const found = entries.find(function (entry) { return entry.language && entry.language.name === 'en'; });
+                    return found ? found.name : '';
+                };
+                const abilityDetails = pokemonData.abilities.map(function (a) {
+                    const found = extraData.abilities.find(function (x) { return x && x.name === a.ability.name; });
+                    return {
+                        name: formatApiName(a.ability.name),
+                        hidden: a.is_hidden,
+                        effect: found && found.effect_entries ? (found.effect_entries.find(function (e) { return e.language.name === 'en'; }) || {}).short_effect || '' : '',
+                        generation: found && found.generation ? formatApiName(found.generation.name) : ''
+                    };
+                });
+                const typeDetails = extraData.types.map(function (type) {
+                    const relations = type.damage_relations;
+                    function names(list) { return list.map(function (x) { return formatApiName(x.name); }).join(', ') || 'None'; }
+                    return {
+                        name: formatApiName(type.name),
+                        doubleDamageTo: names(relations.double_damage_to),
+                        halfDamageTo: names(relations.half_damage_to),
+                        noDamageTo: names(relations.no_damage_to),
+                        doubleDamageFrom: names(relations.double_damage_from),
+                        halfDamageFrom: names(relations.half_damage_from),
+                        noDamageFrom: names(relations.no_damage_from)
+                    };
+                });
                 const detail = {
                     id: id,
                     name: pokemonData.name,
                     image: (localEntry && localEntry.image) || pokemonData.sprites.front_default,
-                    types: pokemonData.types.map(t => t.type.name),
+                    types: pokemonData.types.map(function (t) { return t.type.name; }),
                     heightM: (pokemonData.height / 10).toFixed(1),
                     weightKg: (pokemonData.weight / 10).toFixed(1),
-                    abilities: pokemonData.abilities.map(a => ({
-                        name: a.ability.name.replace(/-/g, ' '),
-                        hidden: a.is_hidden
-                    })),
-                    stats: pokemonData.stats.map(s => ({ name: s.stat.name, value: s.base_stat })),
+                    abilities: abilityDetails,
+                    stats: pokemonData.stats.map(function (st) { return { name: st.stat.name, value: st.base_stat, effort: st.effort }; }),
                     genus: genusEntry ? genusEntry.genus : '',
-                    flavorText: flavorText
+                    flavorText: flavorText,
+                    species: {
+                        color: speciesData.color ? speciesData.color.name : '',
+                        shape: speciesData.shape ? formatApiName(speciesData.shape.name) : '',
+                        habitat: speciesData.habitat ? formatApiName(speciesData.habitat.name) : 'Unknown / not specified',
+                        generation: speciesData.generation ? formatApiName(speciesData.generation.name) : '',
+                        growthRate: speciesData.growth_rate ? formatApiName(speciesData.growth_rate.name) : '',
+                        captureRate: speciesData.capture_rate,
+                        baseHappiness: speciesData.base_happiness,
+                        isBaby: speciesData.is_baby,
+                        isLegendary: speciesData.is_legendary,
+                        isMythical: speciesData.is_mythical,
+                        genderRate: speciesData.gender_rate,
+                        hatchCounter: speciesData.hatch_counter,
+                        eggGroups: speciesData.egg_groups.map(function (g) { return formatApiName(g.name); }),
+                        speciesSlug: speciesData.name,
+                        varieties: speciesData.varieties.map(function (v) { return { name: formatApiName(v.pokemon.name), slug: v.pokemon.name, url: v.pokemon.url, isDefault: v.is_default }; }),
+                        formsSwitchable: speciesData.forms_switchable,
+                        hasGenderDifferences: speciesData.has_gender_differences,
+                        dexNumbers: speciesData.pokedex_numbers.map(function (d) { return { dex: formatApiName(d.pokedex.name), number: d.entry_number }; }),
+                        genera: genusEntry ? genusEntry.genus : '',
+                        evolution: extraData.evolution
+                    },
+                    sprites: pokemonData.sprites,
+                    cries: pokemonData.cries || {},
+                    baseExperience: pokemonData.base_experience,
+                    order: pokemonData.order,
+                    isDefault: pokemonData.is_default,
+                    forms: pokemonData.forms.map(function (f) { return formatApiName(f.name); }),
+                    heldItems: pokemonData.held_items.map(function (item) {
+                        return { name: formatApiName(item.item.name), versions: item.version_details.map(function (v) { return formatApiName(v.version.name); }) };
+                    }),
+                    gameIndices: pokemonData.game_indices.map(function (g) { return { game: formatApiName(g.version.name), number: g.game_index }; }),
+                    moves: pokemonData.moves.map(function (m) {
+                        return {
+                            name: formatApiName(m.move.name),
+                            methods: m.version_group_details.map(function (v) {
+                                return {
+                                    method: formatApiName(v.move_learn_method.name),
+                                    level: v.level_learned_at,
+                                    version: formatApiName(v.version_group.name)
+                                };
+                            })
+                        };
+                    }),
+                    typeDetails: typeDetails,
+                    encounters: extraData.encounters.map(function (location) {
+                        return {
+                            name: formatApiName(location.location_area.name),
+                            versions: location.version_details.map(function (v) { return formatApiName(v.version.name); })
+                        };
+                    })
                 };
-
                 detailCache.set(id, detail);
-
-                // Only render if the user hasn't navigated to a different entry in the meantime.
                 if (currentDetailId === id) renderDetail(detail);
             } catch (error) {
+                console.error('Pokédex detail error:', error);
                 if (currentDetailId === id) renderDetailError();
             }
         }
@@ -542,7 +694,7 @@
 
             const nameEl = document.createElement('div');
             nameEl.className = 'detail-name';
-            nameEl.textContent = detail.name.replace(/-/g, ' ');
+            nameEl.textContent = formatApiName(detail.name);
 
             const idEl = document.createElement('div');
             idEl.className = 'detail-id';
@@ -554,7 +706,7 @@
             if (detail.genus) {
                 const genusEl = document.createElement('div');
                 genusEl.className = 'detail-genus';
-                genusEl.textContent = detail.genus;
+                genusEl.textContent = capitalizeSentence(detail.genus);
                 nameBlock.appendChild(genusEl);
             }
 
@@ -562,13 +714,17 @@
             header.appendChild(nameBlock);
             container.appendChild(header);
 
+            // Form selector: only query known Mega candidates for eligible species, avoiding dozens
+            // of failed requests for every Pokémon. Species varieties are supplied by PokéAPI.
+            addFormSelector(container, detail);
+
             // Type badges
             const typeRow = document.createElement('div');
             typeRow.className = 'type-badges';
             detail.types.forEach(type => {
                 const badge = document.createElement('span');
                 badge.className = 'type-badge';
-                badge.textContent = type;
+                badge.textContent = formatApiName(type);
                 badge.style.backgroundColor = TYPE_COLORS[type] || '#ccc';
                 typeRow.appendChild(badge);
             });
@@ -578,7 +734,7 @@
             if (detail.flavorText) {
                 const p = document.createElement('p');
                 p.className = 'detail-flavor';
-                p.textContent = detail.flavorText;
+                p.textContent = capitalizeSentence(detail.flavorText);
                 container.appendChild(buildSection('Pokédex Entry', p));
             }
 
@@ -629,7 +785,411 @@
                 li.textContent = a.hidden ? `${a.name} (Hidden Ability)` : a.name;
                 abilityList.appendChild(li);
             });
-            container.appendChild(buildSection('Abilities', abilityList));
+            container.appendChild(buildSection('Abilities and Effects', abilityList));
+            detail.abilities.forEach(function (ability) {
+                if (ability.effect) {
+                    const p = document.createElement('p');
+                    p.className = 'subtle';
+                    p.textContent = ability.name + ': ' + capitalizeSentence(ability.effect);
+                    container.appendChild(p);
+                }
+            });
+
+            const species = detail.species;
+            const overview = document.createElement('div');
+            overview.className = 'detail-grid';
+            function addCard(label, value) {
+                const card = document.createElement('div');
+                card.className = 'data-card';
+                const labelEl = document.createElement('div');
+                labelEl.className = 'data-label';
+                labelEl.textContent = label;
+                const valueEl = document.createElement('div');
+                valueEl.className = 'data-value';
+                valueEl.textContent = value === null || value === undefined || value === '' ? 'Unknown' : String(value);
+                card.appendChild(labelEl);
+                card.appendChild(valueEl);
+                overview.appendChild(card);
+            }
+            addCard('Base experience', detail.baseExperience === null ? 'Not provided' : detail.baseExperience);
+            addCard('Growth rate', formatApiName(species.growthRate));
+            addCard('Capture rate', species.captureRate + ' / 255');
+            addCard('Base friendship', species.baseHappiness);
+            addCard('Color / shape', formatApiName(species.color) + ' / ' + formatApiName(species.shape));
+            addCard('Habitat', formatApiName(species.habitat));
+            addCard('Introduced in', formatApiName(species.generation));
+            addCard('Egg groups', species.eggGroups.map(formatApiName).join(', '));
+            addCard('Egg cycles', species.hatchCounter);
+            addCard('Pokémon order', detail.order);
+            addCard('Default form', detail.isDefault ? 'Yes' : 'No');
+            addCard('Special classification', species.isMythical ? 'Mythical' : (species.isLegendary ? 'Legendary' : (species.isBaby ? 'Baby Pokémon' : 'Standard')));
+            addCard('Gender ratio', species.genderRate === -1 ? 'Genderless' : (species.genderRate * 12.5 + '% female; ' + (100 - species.genderRate * 12.5) + '% male'));
+            addCard('Forms switchable', species.formsSwitchable ? 'Yes' : 'No');
+            addCard('Gender differences', species.hasGenderDifferences ? 'Yes' : 'No');
+            container.appendChild(buildSection('Species and Training Data', overview));
+
+            if (species.dexNumbers.length) {
+                const dexList = document.createElement('ul');
+                dexList.className = 'tag-list';
+                species.dexNumbers.forEach(function (entry) {
+                    const li = document.createElement('li');
+                    li.textContent = formatApiName(entry.dex) + ': #' + entry.number;
+                    dexList.appendChild(li);
+                });
+                container.appendChild(buildSection('Regional Pokédex Numbers', dexList));
+            }
+
+            const varietyList = document.createElement('ul');
+            varietyList.className = 'tag-list';
+            species.varieties.forEach(function (v) {
+                const li = document.createElement('li');
+                li.textContent = formatApiName(v.name) + (v.isDefault ? ' (Default)' : '');
+                varietyList.appendChild(li);
+            });
+            container.appendChild(buildSection('Species Varieties', varietyList));
+
+            const formList = document.createElement('ul');
+            formList.className = 'tag-list';
+            detail.forms.forEach(function (form) {
+                const li = document.createElement('li');
+                li.textContent = formatApiName(form);
+                formList.appendChild(li);
+            });
+            container.appendChild(buildSection('Available Forms', formList));
+
+            const spriteGrid = document.createElement('div');
+            spriteGrid.className = 'sprite-grid';
+            function addSprite(label, url) {
+                if (!url || typeof url !== 'string') return;
+                const card = document.createElement('div');
+                card.className = 'sprite-card';
+                const image = document.createElement('img');
+                image.loading = 'lazy';
+                image.src = url;
+                image.alt = label;
+                image.onerror = function () { card.style.display = 'none'; };
+                const caption = document.createElement('div');
+                caption.textContent = label;
+                card.appendChild(image);
+                card.appendChild(caption);
+                spriteGrid.appendChild(card);
+            }
+            const sprites = detail.sprites;
+            addSprite('Front', sprites.front_default);
+            addSprite('Back', sprites.back_default);
+            addSprite('Front shiny', sprites.front_shiny);
+            addSprite('Back shiny', sprites.back_shiny);
+            addSprite('Female front', sprites.front_female);
+            addSprite('Female back', sprites.back_female);
+            addSprite('Female shiny', sprites.front_shiny_female);
+            addSprite('Official artwork', sprites.other && sprites.other['official-artwork'] ? sprites.other['official-artwork'].front_default : null);
+            addSprite('Home artwork', sprites.other && sprites.other.home ? sprites.other.home.front_default : null);
+            container.appendChild(buildSection('Sprites and Appearance', spriteGrid));
+
+            const cries = document.createElement('div');
+            let hasCry = false;
+            ['latest', 'legacy'].forEach(function (key) {
+                if (detail.cries[key]) {
+                    hasCry = true;
+                    const label = document.createElement('div');
+                    label.className = 'subtle';
+                    label.textContent = key === 'latest' ? 'Latest cry' : 'Legacy cry';
+                    const audio = document.createElement('audio');
+                    audio.className = 'audio-player';
+                    audio.controls = true;
+                    audio.src = detail.cries[key];
+                    cries.appendChild(label);
+                    cries.appendChild(audio);
+                }
+            });
+            if (hasCry) container.appendChild(buildSection('Pokémon Cries', cries));
+
+            if (detail.typeDetails.length) {
+                const chart = document.createElement('table');
+                chart.className = 'type-chart';
+                const head = document.createElement('tr');
+                ['Type', 'Deals 2x to', 'Deals 1/2 to', 'Deals 0x to'].forEach(function (label) {
+                    const th = document.createElement('th'); th.textContent = label; head.appendChild(th);
+                });
+                chart.appendChild(head);
+                detail.typeDetails.forEach(function (t) {
+                    const tr = document.createElement('tr');
+                    [t.name, t.doubleDamageTo, t.halfDamageTo, t.noDamageTo].forEach(function (value) {
+                        const td = document.createElement('td'); td.textContent = value; tr.appendChild(td);
+                    });
+                    chart.appendChild(tr);
+                });
+                container.appendChild(buildSection('Type Matchups (Attacking)', chart));
+                const defensive = document.createElement('ul');
+                defensive.className = 'tag-list';
+                detail.typeDetails.forEach(function (t) {
+                    const li = document.createElement('li');
+                    li.textContent = t.name + ' weaknesses: ' + t.doubleDamageFrom + '; resistances: ' + t.halfDamageFrom + '; immunities: ' + t.noDamageFrom;
+                    defensive.appendChild(li);
+                });
+                container.appendChild(buildSection('Type Matchups (Defending)', defensive));
+            }
+
+            if (species.evolution) {
+                const evoList = document.createElement('ul');
+                evoList.className = 'tag-list';
+                function walkEvolution(node, depth) {
+                    const li = document.createElement('li');
+                    let line = formatApiName(node.species.name);
+                    if (depth > 0) line = new Array(depth + 1).join('— ') + line;
+                    if (node.evolution_details && node.evolution_details.length) {
+                        const conditions = node.evolution_details.map(function (condition) {
+                            const parts = [];
+                            if (condition.min_level) parts.push('Level ' + condition.min_level);
+                            if (condition.item) parts.push('use ' + formatApiName(condition.item.name));
+                            if (condition.held_item) parts.push('hold ' + formatApiName(condition.held_item.name));
+                            if (condition.min_happiness !== null) parts.push('happiness ' + condition.min_happiness + '+');
+                            if (condition.min_beauty) parts.push('beauty ' + condition.min_beauty + '+');
+                            if (condition.min_affection) parts.push('affection ' + condition.min_affection + '+');
+                            if (condition.time_of_day) parts.push(condition.time_of_day);
+                            if (condition.location) parts.push('at ' + formatApiName(condition.location.name));
+                            if (condition.known_move) parts.push('knows ' + formatApiName(condition.known_move.name));
+                            if (condition.known_move_type) parts.push('knows a ' + formatApiName(condition.known_move_type.name) + ' move');
+                            if (condition.trade_species) parts.push('trade for ' + formatApiName(condition.trade_species.name));
+                            if (condition.trigger) parts.push('trigger: ' + formatApiName(condition.trigger.name));
+                            if (condition.gender !== null) parts.push(condition.gender === 1 ? 'female' : 'male');
+                            return parts.join(', ');
+                        }).filter(function (x) { return x; });
+                        if (conditions.length) line += ' (' + conditions.join(' OR ') + ')';
+                    }
+                    li.textContent = line;
+                    evoList.appendChild(li);
+                    (node.evolves_to || []).forEach(function (child) { walkEvolution(child, depth + 1); });
+                }
+                walkEvolution(species.evolution.chain, 0);
+                container.appendChild(buildSection('Evolution Chain and Conditions', evoList));
+            }
+
+            const itemList = document.createElement('ul');
+            itemList.className = 'tag-list';
+            if (detail.heldItems.length) {
+                detail.heldItems.forEach(function (item) {
+                    const li = document.createElement('li');
+                    li.textContent = formatApiName(item.name) + (item.versions.length ? ' — ' + item.versions.map(formatApiName).join(', ') : '');
+                    itemList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li'); li.textContent = 'No held items listed.'; itemList.appendChild(li);
+            }
+            container.appendChild(buildSection('Held Items by Game Version', itemList));
+
+            const encounterList = document.createElement('ul');
+            encounterList.className = 'tag-list';
+            detail.encounters.forEach(function (encounter) {
+                const li = document.createElement('li');
+                li.textContent = formatApiName(encounter.name) + (encounter.versions.length ? ' — ' + encounter.versions.map(formatApiName).join(', ') : '');
+                encounterList.appendChild(li);
+            });
+            if (!detail.encounters.length) {
+                const li = document.createElement('li'); li.textContent = 'No encounter locations returned (may be unobtainable in current game data).'; encounterList.appendChild(li);
+            }
+            container.appendChild(buildSection('Encounter Locations', encounterList));
+
+            const gameList = document.createElement('ul');
+            gameList.className = 'tag-list';
+            detail.gameIndices.forEach(function (entry) {
+                const li = document.createElement('li');
+                li.textContent = formatApiName(entry.game) + ': game index ' + entry.number;
+                gameList.appendChild(li);
+            });
+            container.appendChild(buildSection('Game Index Data', gameList));
+
+            const moveSummary = document.createElement('p');
+            moveSummary.className = 'detail-note';
+            moveSummary.textContent = detail.moves.length + ' moves are listed by PokéAPI. Showing the first 120 move entries to keep the Kindle browser responsive; learn methods and levels can vary by game version.';
+            const moveTable = document.createElement('table');
+            moveTable.className = 'move-table';
+            const moveHead = document.createElement('tr');
+            ['Move', 'Learn method', 'Level', 'Version group'].forEach(function (label) {
+                const th = document.createElement('th'); th.textContent = label; moveHead.appendChild(th);
+            });
+            moveTable.appendChild(moveHead);
+            detail.moves.slice(0, 120).forEach(function (move) {
+                if (!move.methods.length) {
+                    const tr = document.createElement('tr');
+                    [formatApiName(move.name), '—', '—', '—'].forEach(function (value) { const td = document.createElement('td'); td.textContent = value; tr.appendChild(td); });
+                    moveTable.appendChild(tr);
+                } else {
+                    move.methods.forEach(function (method) {
+                        const tr = document.createElement('tr');
+                        [formatApiName(move.name), formatApiName(method.method), method.level, formatApiName(method.version)].forEach(function (value) { const td = document.createElement('td'); td.textContent = value; tr.appendChild(td); });
+                        moveTable.appendChild(tr);
+                    });
+                }
+            });
+            const moveWrap = document.createElement('div');
+            moveWrap.appendChild(moveSummary);
+            moveWrap.appendChild(moveTable);
+            container.appendChild(buildSection('Learnset by Version Group', moveWrap));
+        }
+
+
+        function addFormSelector(container, detail) {
+            const species = detail.species;
+            const picker = document.createElement('div');
+            picker.className = 'form-picker';
+            const label = document.createElement('label');
+            label.textContent = 'FORM / EVOLUTION VIEW';
+            const select = document.createElement('select');
+            const note = document.createElement('div');
+            note.className = 'form-picker-note';
+            note.textContent = 'Choose a form to compare its form-specific data.';
+            label.htmlFor = 'pokemon-form-select';
+            select.id = 'pokemon-form-select';
+
+            const options = [];
+            const seen = {};
+            function add(slug, text, url) {
+                if (!slug || seen[slug]) return;
+                seen[slug] = true;
+                options.push({ slug: slug, text: text, url: url || ('https://pokeapi.co/api/v2/pokemon/' + slug) });
+            }
+            add(detail.name, formatApiName(detail.name) + ' (Base)', null);
+            species.varieties.forEach(function (v) {
+                if (v.slug && v.slug !== detail.name) add(v.slug, v.name + (v.isDefault ? ' (Default)' : ' (Variant)'), v.url);
+            });
+
+            // Known Mega-capable species and their exact PokéAPI form slugs.
+            const megaForms = {
+                venusaur: ['venusaur-mega'], charizard: ['charizard-mega-x', 'charizard-mega-y'],
+                blastoise: ['blastoise-mega'], alakazam: ['alakazam-mega'], gengar: ['gengar-mega'],
+                kangaskhan: ['kangaskhan-mega'], pinsir: ['pinsir-mega'], gyarados: ['gyarados-mega'],
+                aerodactyl: ['aerodactyl-mega'], mewtwo: ['mewtwo-mega-x', 'mewtwo-mega-y'],
+                ampharos: ['ampharos-mega'], scizor: ['scizor-mega'], heracross: ['heracross-mega'],
+                houndoom: ['houndoom-mega'], tyranitar: ['tyranitar-mega'], blaziken: ['blaziken-mega'],
+                gardevoir: ['gardevoir-mega'], mawile: ['mawile-mega'], aggron: ['aggron-mega'],
+                medicham: ['medicham-mega'], manectric: ['manectric-mega'], banette: ['banette-mega'],
+                absol: ['absol-mega'], latias: ['latias-mega'], latios: ['latios-mega'],
+                rayquaza: ['rayquaza-mega'], lopunny: ['lopunny-mega'], garchomp: ['garchomp-mega'],
+                lucario: ['lucario-mega'], abomasnow: ['abomasnow-mega'], gallade: ['gallade-mega'],
+                audino: ['audino-mega'], diancie: ['diancie-mega'], metagross: ['metagross-mega'],
+                salamence: ['salamence-mega'], sharpedo: ['sharpedo-mega'], slowbro: ['slowbro-mega'],
+                steelix: ['steelix-mega'], sceptile: ['sceptile-mega'], swampert: ['swampert-mega'],
+                sableye: ['sableye-mega'], camerupt: ['camerupt-mega'], altaria: ['altaria-mega'],
+                lopunny: ['lopunny-mega'], beedrill: ['beedrill-mega'], pidgeot: ['pidgeot-mega'],
+                diancie: ['diancie-mega']
+            };
+            const baseSpecies = species.speciesSlug || detail.name;
+            const megaSlugs = megaForms[baseSpecies] || [];
+            megaSlugs.forEach(function (slug) {
+                const suffix = slug.indexOf('-mega-x') !== -1 ? ' (Mega X)' : (slug.indexOf('-mega-y') !== -1 ? ' (Mega Y)' : ' (Mega Evolution)');
+                add(slug, formatApiName(slug.replace(/-mega(?:-[xy])?$/, '')) + suffix, null);
+            });
+
+            function renderOptions() {
+                select.innerHTML = '';
+                options.forEach(function (item) {
+                    const option = document.createElement('option');
+                    option.value = item.slug;
+                    option.textContent = item.text;
+                    if (item.slug === detail.name) option.selected = true;
+                    select.appendChild(option);
+                });
+            }
+            renderOptions();
+            picker.appendChild(label);
+            picker.appendChild(select);
+            picker.appendChild(note);
+            const typeRow = container.querySelector('.type-badges');
+            if (typeRow) container.insertBefore(picker, typeRow);
+            else container.appendChild(picker);
+
+            // Probe only this species' known Mega forms. Add a form only when the API confirms it.
+            if (megaSlugs.length) {
+                Promise.all(megaSlugs.map(function (slug) {
+                    return apiJSON('https://pokeapi.co/api/v2/pokemon/' + slug).then(function (data) {
+                        return { slug: slug, data: data };
+                    }).catch(function () { return null; });
+                })).then(function (results) {
+                    if (currentDetailId !== detail.id || !picker.parentNode) return;
+                    results.forEach(function (result) {
+                        if (!result) return;
+                        const slug = result.slug;
+                        if (!seen[slug]) {
+                            const suffix = slug.indexOf('-mega-x') !== -1 ? ' (Mega X)' : (slug.indexOf('-mega-y') !== -1 ? ' (Mega Y)' : ' (Mega Evolution)');
+                            add(slug, formatApiName(slug.replace(/-mega(?:-[xy])?$/, '')) + suffix, null);
+                        }
+                    });
+                    renderOptions();
+                });
+            }
+
+            select.addEventListener('change', function () {
+                const selectedSlug = select.value;
+                if (selectedSlug === detail.name) {
+                    note.textContent = 'Showing the original Pokémon form.';
+                    return;
+                }
+                const selected = options.find(function (item) { return item.slug === selectedSlug; });
+                if (!selected) return;
+                select.disabled = true;
+                note.textContent = 'Loading ' + selected.text + '...';
+                apiJSON(selected.url).then(function (data) {
+                    if (currentDetailId !== detail.id) return;
+                    const headerName = container.querySelector('.detail-name');
+                    if (headerName) headerName.textContent = formatApiName(data.name);
+                    const headerImage = container.querySelector('.detail-sprite');
+                    const art = data.sprites && data.sprites.other && data.sprites.other['official-artwork'];
+                    if (headerImage) {
+                        headerImage.src = (art && art.front_default) || data.sprites.front_default || detail.image;
+                        headerImage.alt = formatApiName(data.name);
+                    }
+                    const types = container.querySelector('.type-badges');
+                    if (types) {
+                        types.innerHTML = '';
+                        data.types.forEach(function (entry) {
+                            const badge = document.createElement('span');
+                            badge.className = 'type-badge';
+                            badge.textContent = formatApiName(entry.type.name);
+                            badge.style.backgroundColor = TYPE_COLORS[entry.type.name] || '#ccc';
+                            types.appendChild(badge);
+                        });
+                    }
+                    const sections = container.querySelectorAll('.detail-section');
+                    for (let i = 0; i < sections.length; i++) {
+                        const title = sections[i].querySelector('h3');
+                        if (!title) continue;
+                        if (title.textContent === 'Physical') {
+                            sections[i].lastElementChild.textContent = 'Height: ' + (data.height / 10).toFixed(1) + ' m    Weight: ' + (data.weight / 10).toFixed(1) + ' kg';
+                        } else if (title.textContent === 'Base Stats') {
+                            const wrap = sections[i].lastElementChild;
+                            wrap.innerHTML = '';
+                            data.stats.forEach(function (stat) {
+                                const row = document.createElement('div'); row.className = 'stat-row';
+                                const statLabel = document.createElement('span'); statLabel.className = 'stat-label';
+                                statLabel.textContent = STAT_LABELS[stat.stat.name] || formatApiName(stat.stat.name);
+                                const track = document.createElement('span'); track.className = 'stat-bar-track';
+                                const fill = document.createElement('span'); fill.className = 'stat-bar-fill';
+                                fill.style.width = Math.min(100, stat.base_stat / STAT_MAX * 100) + '%';
+                                track.appendChild(fill);
+                                const value = document.createElement('span'); value.className = 'stat-value'; value.textContent = stat.base_stat;
+                                row.appendChild(statLabel); row.appendChild(track); row.appendChild(value); wrap.appendChild(row);
+                            });
+                        } else if (title.textContent === 'Abilities and Effects') {
+                            const list = sections[i].querySelector('ul');
+                            if (list) {
+                                list.innerHTML = '';
+                                data.abilities.forEach(function (ability) {
+                                    const li = document.createElement('li');
+                                    li.textContent = formatApiName(ability.ability.name) + (ability.is_hidden ? ' (Hidden Ability)' : '');
+                                    list.appendChild(li);
+                                });
+                            }
+                        }
+                    }
+                    note.textContent = 'Showing ' + selected.text + '. Species description and evolution chain still describe the base species.';
+                    select.disabled = false;
+                }).catch(function () {
+                    note.textContent = 'Could not load this form. The original data is unchanged.';
+                    select.disabled = false;
+                    select.value = detail.name;
+                });
+            });
         }
 
         function buildSection(title, contentEl) {
