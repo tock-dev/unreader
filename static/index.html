@@ -76,30 +76,24 @@
 
     .header-actions {
       position: absolute;
-      top: 50%;
-      right: 15px;
-      transform: translateY(-50%);
+      top: 15px;
+      right: 20px;
       display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 12px;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
     }
 
     .settings-btn,
     .discord-btn {
       cursor: pointer;
       font-weight: 900;
-      font-size: 11px;
+      font-size: 13px;
       text-decoration: underline;
       color: inherit;
-      background: var(--bg-color);
-      border: 1px solid var(--border-color);
-      padding: 4px 8px;
-    }
-
-    .settings-btn:active, .discord-btn:active {
-      background: var(--text-color);
-      color: var(--bg-color);
+      background: none;
+      border: none;
+      padding: 0;
     }
 
     .featured-box {
@@ -279,7 +273,7 @@
       <div class="title">UN-READER</div>
       <div class="subtitle" id="user-status">Guest Mode</div>
       <div class="header-actions">
-        <button class="settings-btn" id="settings-trigger">[SETTINGS]</button>
+        <div class="settings-btn" id="settings-trigger">[SETTINGS]</div>
         <a class="discord-btn" href="https://discord.gg/wGpdg3ND7T" target="_blank" rel="noopener noreferrer">[DISCORD]</a>
       </div>
     </div>
