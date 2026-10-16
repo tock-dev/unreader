@@ -436,8 +436,7 @@
 
         const div = document.createElement('div');
         div.className = 'app-item';
-        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>' +
-          (app.req ? '<div class="app-requirement">Requires: ' + (Array.isArray(app.req) ? app.req.join(' / ') : app.req).toUpperCase() + '</div>' : '');
+        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
         div.onclick = () => {
           if (app.external) {
             window.open(app.url, '_blank');
