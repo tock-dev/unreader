@@ -52,49 +52,6 @@
       background-color: var(--bg-color);
     }
 
-    .title-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 37px;
-      padding: 0 8px;
-      background: var(--bg-color);
-      border-bottom: var(--border-width) solid var(--border-color);
-      box-sizing: border-box;
-      position: relative;
-      flex-shrink: 0;
-    }
-
-    .title-stripes {
-      position: absolute;
-      top: 0; left: 0; right: 0; height: 3px;
-      background: repeating-linear-gradient(45deg, var(--border-color), var(--border-color) 4px, transparent 4px, transparent 8px);
-    }
-
-    #back-btn, .retro-btn {
-      font-family: inherit;
-      font-size: 11px;
-      font-weight: bold;
-      background: var(--bg-color);
-      color: var(--text-color);
-      border: var(--border-width) solid var(--border-color);
-      padding: 4px 8px;
-      cursor: pointer;
-      text-transform: uppercase;
-    }
-
-    #back-btn:active, .retro-btn:active {
-      background: var(--text-color);
-      color: var(--bg-color);
-    }
-
-    .title-text {
-      font-weight: bold;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
     .header-container {
       text-align: center;
       padding: 20px;
@@ -318,13 +275,6 @@
 
 <body>
   <div class="window">
-    <div class="title-bar">
-      <div class="title-stripes"></div>
-      <button id="back-btn" onclick="window.location.href='index.html'">HOME</button>
-      <div class="title-text">Un-Reader Dashboard</div>
-      <div></div>
-    </div>
-
     <div class="header-container">
       <div class="title">UN-READER</div>
       <div class="subtitle" id="user-status">Guest Mode</div>
@@ -455,6 +405,7 @@
       { name: 'Un-Cloud', desc: 'Run virtual machines online! (BETA)', url: 'https://undroid-server.onrender.com/' },
       { name: 'AI ASSISTANT', desc: 'AI Assistant (Beta)', url: 'chatai.html' },
       { name: 'MODERATION', desc: 'Moderation Dashboard.', url: 'modmenu.html', req: 'mod' },
+      { name: 'PFP MOD', desc: 'Profile Picture Manager & Moderation.', url: 'mod-pfps.html', req: 'mod' },
       { name: 'PROFILE PICTURE EDITOR', desc: 'Draw or import your profile picture.', url: 'profile-picture.html' }
     ];
 
@@ -472,12 +423,27 @@
       { name: 'GAME OF LIFE', desc: 'Easiest thing ever, wow!', url: 'cwol.html' }
     ];
 
+    const ROLE_LEVEL = { guest: 0, user: 1, mod: 2, moderator: 2, admin: 3 };
+
+    function meetsRoleRequirement(currentRole, requirement) {
+      if (!requirement) return true;
+      const roleLevel = ROLE_LEVEL[String(currentRole || 'guest').toLowerCase()];
+      const requiredRoles = Array.isArray(requirement) ? requirement : [requirement];
+      return requiredRoles.some(function (requiredRole) {
+        const requiredLevel = ROLE_LEVEL[String(requiredRole).toLowerCase()];
+        return requiredLevel !== undefined && roleLevel !== undefined && roleLevel >= requiredLevel;
+      });
+    }
+
     function renderAppList(container, appsList, currentRank) {
       container.innerHTML = '';
       appsList.forEach(app => {
+        if (!meetsRoleRequirement(currentRank, app.req)) return;
+
         const div = document.createElement('div');
         div.className = 'app-item';
-        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
+        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>' +
+          (app.req ? '<div class="app-requirement">Requires: ' + (Array.isArray(app.req) ? app.req.join(' / ') : app.req).toUpperCase() + '</div>' : '');
         div.onclick = () => {
           if (app.external) {
             window.open(app.url, '_blank');
@@ -489,9 +455,40 @@
       });
     }
 
-    renderAppList(document.getElementById('apps-container'), FEATURED_DATABASE, 'user');
-    renderAppList(document.getElementById('platform-apps-container'), PLATFORM_DATABASE, 'user');
-    renderAppList(document.getElementById('games-apps-container'), GAMES_DATABASE, 'user');
+    function buildDashboardGrid(currentRank) {
+      const featuredContainer = document.getElementById('apps-container');
+      const platformContainer = document.getElementById('platform-apps-container');
+      const gamesContainer = document.getElementById('games-apps-container');
+      currentRank = currentRank || 'guest';
+
+      renderAppList(featuredContainer, FEATURED_DATABASE, currentRank);
+      renderAppList(platformContainer, PLATFORM_DATABASE, currentRank);
+      renderAppList(gamesContainer, GAMES_DATABASE, currentRank);
+    }
+
+    function loadDashboardRole() {
+      if (!token || !myUsername) {
+        buildDashboardGrid('guest');
+        return;
+      }
+      buildDashboardGrid('user');
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', (typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : '') + '/api/profile/' + encodeURIComponent(myUsername), true);
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        let role = 'user';
+        if (xhr.status === 200) {
+          try {
+            const profile = JSON.parse(xhr.responseText);
+            role = profile.is_admin ? 'admin' : profile.is_moderator ? 'mod' : 'user';
+          } catch (err) {}
+        }
+        setStorageItem('unreader-rank', role);
+        buildDashboardGrid(role);
+      };
+      xhr.send();
+    }
 
     document.getElementById('settings-trigger').onclick = () => document.getElementById('settings-view').style.display = 'block';
 
@@ -569,6 +566,7 @@
         localStorage.clear();
         document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
         document.cookie = "username=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
+        document.cookie = "unreader-rank=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
         location.reload();
       };
     } else {
@@ -577,6 +575,8 @@
         document.getElementById('login-modal-view').style.display = 'block';
       };
     }
+
+    loadDashboardRole();
   </script>
 </body>
 
