@@ -332,12 +332,13 @@
       <div id="sidebar-cell">
         <div class="panel-header">Quick Open</div>
         <div class="sidebar-input-container">
-          <input type="text" id="repo-input" class="retro-input" value="koreader/koreader" placeholder="owner/repo" />
+          <input type="text" id="repo-input" class="retro-input" value="" placeholder="owner/repo" />
           <button class="retro-btn" onclick="loadRepoFromInput()">GO</button>
         </div>
 
         <div class="panel-header">Navigation</div>
         <div id="nav-home" class="nav-item nav-item-active" onclick="showHome()">Home Dashboard</div>
+        <div id="nav-exit" class="nav-item" style="font-weight: bold; background: #eee;" onclick="showHome()">[<- BACK]</div>
         <div id="nav-readme" class="nav-item" onclick="switchTab('readme')">README.md</div>
         <div id="nav-files" class="nav-item" onclick="switchTab('files')">File Explorer</div>
         <div id="nav-issues" class="nav-item" onclick="switchTab('issues')">Issues</div>
@@ -466,7 +467,7 @@
 
       var html = '<div class="admin-msg"><div class="message-text">GITHUB E-INK DASHBOARD // HOME</div></div>';
       html += '<div class="message"><div class="message-text">';
-      html += 'Welcome to your Kindle GitHub client! Choose a featured repo below, search globally using the bottom bar, or tap KEY in the top right to load your own repositories.<br><br>';
+      html += 'Welcome to your Kindle GitHub client! Enter any repo in Quick Open above, search globally using the bottom bar, or tap KEY in the top right to load your own repositories.<br><br>';
       html += 'Featured Repositories:<br>';
       html += '- <span class="roster-name" onclick="loadRepo(\'koreader/koreader\')">koreader/koreader</span> (E-ink document reader)<br>';
       html += '- <span class="roster-name" onclick="loadRepo(\'torvalds/linux\')">torvalds/linux</span> (Linux Kernel source)<br>';
@@ -855,36 +856,9 @@
       }
     }
 
-    // Funkcja zapisująca klucz zarówno lokalnie jak i wysyłająca na konto un-reader
     function saveToken() {
-      var tokenInput = document.getElementById('token-input').value.replace(/^\s+|\s+$/g, '');
-      if (!tokenInput) return;
-
-      // 1. Zapis lokalny
-      localStorage.setItem('gh_token', tokenInput);
-      ghToken = tokenInput;
-
-      // 2. Zapis na głównym koncie un-reader
-      if (unreaderToken) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', (typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : '') + '/api/user/github-token', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.setRequestHeader('Authorization', 'Bearer ' + unreaderToken);
-        
-        xhr.onreadystatechange = function() {
-          if (xhr.readyState === 4) {
-            if (xhr.status === 200) {
-              alert('Token saved successfully to local storage and your un-reader account!');
-            } else {
-              alert('Saved locally, but server account sync failed: ' + xhr.responseText);
-            }
-          }
-        };
-        xhr.send(JSON.stringify({ github_token: tokenInput }));
-      } else {
-        alert('Token saved locally! (Log in to un-reader account to sync it remotely)');
-      }
-
+      ghToken = document.getElementById('token-input').value.replace(/^\s+|\s+$/g, '');
+      localStorage.setItem('gh_token', ghToken);
       toggleAuth(false);
       showHome();
     }
@@ -894,6 +868,7 @@
       setTimeout(function() { document.body.style.filter = 'none'; }, 180);
     }
 
+    // Initialize application home state on boot
     showHome();
   </script>
 </body>
