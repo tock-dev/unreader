@@ -150,6 +150,13 @@
       line-height: 1.2;
     }
 
+    .app-requirement {
+      margin-top: 6px;
+      font-size: 9px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
     .fullscreen-view {
       display: none;
       position: fixed;
@@ -396,15 +403,16 @@
       { name: 'CHAT', desc: 'Now with... less pixels?', url: 'chat.html' },
       { name: 'TOPICS', desc: 'Discuss anything!', url: 'topics.html' },
       { name: 'NEIGHBOURHOOD', desc: 'Posts! Share your thoughts!', url: 'neighbourhood.html' },
+      { name: 'SUGGESTIONS', desc: "Suggestions! Just please don't suggest stupid things...", url: 'suggestions.html' },
       { name: 'Un-Cloud', desc: 'Run virtual machines online! (BETA)', url: 'https://undroid-server.onrender.com/' },
-      { name: 'AI ASSISTANT', desc: 'AI Assistant (Beta)', url: 'chatai.html' }
+      { name: 'AI ASSISTANT', desc: 'AI Assistant (Beta)', url: 'chatai.html' },
+      { name: 'GITHUB', desc: 'Manage and edit GitHub repos on e-ink.', url: 'github.htm' }
     ];
 
     const PLATFORM_DATABASE = [
-      { name: 'SUGGESTIONS', desc: 'Manage and edit GitHub repos on e-ink.', url: 'github.htm' },
       { name: 'MODERATION', desc: 'Moderation Dashboard.', url: 'modmenu.html', req: 'mod' },
       { name: 'PROFILE MODERATION', desc: 'Profile Picture Manager & Moderation.', url: 'mod-pfps.html', req: 'mod' },
-      { name: 'PFP CREATOR', desc: 'Draw or import your profile picture.', url: 'profile-picture.html' },
+      { name: 'PROFILE PICTURE EDITOR', desc: 'Draw or import your profile picture.', url: 'profile-picture.html' },
       { name: 'REKINDLE', desc: 'Shortcut to what made this all possible!', url: 'rekindle.html' },
       { name: 'UNREADER DESKTOP', desc: '(BETA) Desktop client for unreader!', url: 'https://github.com/SuprUsr123/UnReader.NET/releases/', external: true },
       { name: 'CALCULATOR', desc: 'A simple calculator, what did you expect?', url: 'calc.html' },
@@ -415,6 +423,7 @@
       { name: 'OREGON TRAIL', desc: "Play the original 1970 teletext version!", url: 'oregon_trail.html' },
       { name: 'REVERSI', desc: 'A remake of Reversi.', url: 'reversi.html' },
       { name: 'PORTAL: THE KINDLE VERSION', desc: "Why don't we think with portals for a bit?", url: 'portal-2d.html' },
+      { name: 'SLEDGEHAMMER EDITOR', desc: "GLaDOS' lair (Admin only).", url: 'portal-2d-editor.html', req: 'admin' },
       { name: 'GAME OF LIFE', desc: 'Easiest thing ever, wow!', url: 'cwol.html' }
     ];
 
