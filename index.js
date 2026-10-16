@@ -103,7 +103,7 @@ async function initDatabase() {
         is_deleted BOOLEAN DEFAULT false, deleted_by TEXT
       );
       CREATE TABLE IF NOT EXISTS profiles (
-        username TEXT PRIMARY KEY REFERENCES users(username) ON DELETE CASCADE, bio TEXT DEFAULT 'Hello world.', location TEXT DEFAULT 'Cyberspace', avatar_emoji TEXT DEFAULT '👤'
+        username TEXT PRIMARY KEY REFERENCES users(username) ON DELETE CASCADE, bio TEXT DEFAULT 'Being a human fahhh.', location TEXT DEFAULT 'Earth', avatar_emoji TEXT DEFAULT '👤'
       );
       CREATE TABLE IF NOT EXISTS profile_images (
         username TEXT PRIMARY KEY REFERENCES users(username) ON DELETE CASCADE,
@@ -211,7 +211,7 @@ async function blockBannedIPs(req, res, next) {
       banned = check.rowCount > 0;
       bannedIpCache.set(clientIp, { banned, expiresAt: now + BANNED_IP_CACHE_TTL });
     }
-    if (banned) return res.status(403).json({ error: 'Your IP address has been banned.' });
+    if (banned) return res.status(403).json({ error: 'Yo IP addwess is banned bruh.' });
     next();
   } catch (err) {
     log('IP validation middleware error:', err);
@@ -343,7 +343,7 @@ app.get('/dm-contacts', authenticateToken, async (req, res) => {
   res.json(result.rows.map((r) => r.username));
 });
 
-// Endpoint do zapisu tokena GitHub na koncie un-reader
+// Endpoint to save gh key on un-reader acc
 app.post('/api/user/github-token', authenticateToken, async (req, res) => {
   try {
     const { github_token } = req.body;
