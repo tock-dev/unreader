@@ -9,7 +9,6 @@
   <link rel="stylesheet" media="screen" href="https://fontlibrary.org/face/symbola/css/symbola.css" type="text/css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.2/purify.min.js"></script>
   <style type="text/css">
-    /* --- Base Variables Framework --- */
     :root {
       --bg-color: #ffffff;
       --text-color: #000000;
@@ -304,66 +303,21 @@
       padding-bottom: 6px;
       margin-bottom: 16px;
     }
-
-    .readme-content img {
-      max-width: 100%;
-      height: auto;
-      filter: grayscale(100%) contrast(120%);
-      border: 1px solid var(--border-color);
-    }
-    .readme-content pre {
-      background: var(--bg-color);
-      border: 1px solid var(--border-color);
-      padding: 6px;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    /* Theme Engine Adaptability overrides */
-    body.dark-mode {
-      --bg-color: #121212;
-      --text-color: #ffffff;
-      --border-color: #ffffff;
-      background-color: #121212 !important;
-    }
-
-    body.dark-mode .window,
-    body.dark-mode .title-bar,
-    body.dark-mode #back-btn,
-    body.dark-mode #sidebar-cell,
-    body.dark-mode #chat-cell,
-    body.dark-mode .panel-header,
-    body.dark-mode .nav-item,
-    body.dark-mode .retro-input,
-    body.dark-mode .retro-btn,
-    body.dark-mode .message,
-    body.dark-mode .auth-box,
-    body.dark-mode .mod-action-tray,
-    body.dark-mode .mod-tray-btn,
-    body.dark-mode .page-btn {
-      background-color: var(--bg-color) !important;
-      color: var(--text-color) !important;
-      border-color: var(--border-color) !important;
-    }
-
-    body.contrast-medium { --border-width: 3px; }
-    body.contrast-high { --border-width: 4px; }
   </style>
+  <script src="common.js"></script>
 </head>
 
 <body>
   <div class="window">
-    <!-- Optional Token Auth Modal -->
     <div id="auth-screen">
       <div class="auth-box">
         <h2>GitHub Token Auth</h2>
         <input type="password" id="token-input" class="retro-input" placeholder="ghp_xxxxxxxxxxxx" style="margin-bottom: 15px;" />
-        <button class="retro-btn" style="width:100%; margin-bottom: 8px;" onclick="saveToken()">SAVE TOKEN</button>
+        <button class="retro-btn" style="width:100%; margin-bottom: 8px;" onclick="saveToken()">SAVE TO LOCAL & ACCOUNT</button>
         <button class="retro-btn" style="width:100%;" onclick="toggleAuth(false)">CLOSE</button>
       </div>
     </div>
 
-    <!-- Title Bar with Close Button in Top Left linking to index.html -->
     <div class="title-bar">
       <div class="title-stripes"></div>
       <button id="back-btn" onclick="window.location.href='index.html'">CLOSE</button>
@@ -374,9 +328,7 @@
       </div>
     </div>
 
-    <!-- Main Workspace Table -->
     <div id="workspace-table">
-      <!-- Sidebar -->
       <div id="sidebar-cell">
         <div class="panel-header">Quick Open</div>
         <div class="sidebar-input-container">
@@ -407,7 +359,6 @@
         <div id="sidebar-tree"></div>
       </div>
 
-      <!-- Main Content Cell -->
       <div id="chat-cell">
         <div id="pagination-header-bar">
           <button class="page-btn" onclick="changePage(-1)">&lt; PREV</button>
@@ -430,6 +381,7 @@
   <script type="text/javascript">
     var currentRepo = '';
     var ghToken = localStorage.getItem('gh_token') || '';
+    var unreaderToken = localStorage.getItem('token') || '';
     var pages = ['Loading...'];
     var currentPage = 0;
     var currentFileSha = '';
@@ -653,7 +605,6 @@
       currentFilePath = path;
       setPages(['<div class="message"><div class="message-text">Opening ' + path + '...</div></div>']);
 
-      // Fetch standard JSON contents endpoint which reliably returns 'sha' and base64 'content'
       apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, null, null, function(err, res) {
         if (err) {
           setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
@@ -904,9 +855,36 @@
       }
     }
 
+    // Funkcja zapisująca klucz zarówno lokalnie jak i wysyłająca na konto un-reader
     function saveToken() {
-      ghToken = document.getElementById('token-input').value.replace(/^\s+|\s+$/g, '');
-      localStorage.setItem('gh_token', ghToken);
+      var tokenInput = document.getElementById('token-input').value.replace(/^\s+|\s+$/g, '');
+      if (!tokenInput) return;
+
+      // 1. Zapis lokalny
+      localStorage.setItem('gh_token', tokenInput);
+      ghToken = tokenInput;
+
+      // 2. Zapis na głównym koncie un-reader
+      if (unreaderToken) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', (typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : '') + '/api/user/github-token', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Authorization', 'Bearer ' + unreaderToken);
+        
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+              alert('Token saved successfully to local storage and your un-reader account!');
+            } else {
+              alert('Saved locally, but server account sync failed: ' + xhr.responseText);
+            }
+          }
+        };
+        xhr.send(JSON.stringify({ github_token: tokenInput }));
+      } else {
+        alert('Token saved locally! (Log in to un-reader account to sync it remotely)');
+      }
+
       toggleAuth(false);
       showHome();
     }
@@ -916,7 +894,6 @@
       setTimeout(function() { document.body.style.filter = 'none'; }, 180);
     }
 
-    // Initialize application home state on boot
     showHome();
   </script>
 </body>
