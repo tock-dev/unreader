@@ -1,24 +1,18 @@
-<!doctype html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://w3.org">
 <html lang="en">
 
 <head>
   <script src="https://louisabraham.github.io/nekojs/neko.js" data-autostart></script>
-  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="google-site-verification" content="w8xH7X5MJ05Wt7haHm86RqiZP3m-6x8YdKRLcyPL6f4" />
   <meta name="google-site-verification" content="UjsDkrVnnAV3puBKIVDaxlMkGOPKHyB_wN9wiM1U9z0" />
   <meta name="description" content="Un-Reader - a social network for e-readers">
   <meta name="robots" content="index, follow">
   <title>Un-Reader Dashboard</title>
-  <style>
-    /* --- KINDLE E-INK CORE LAYOUT (Ref: 1781893955316.jpeg) --- */
-    * {
-      box-sizing: border-box;
-      transition: none !important;
-      animation: none !important;
-      border-radius: 0 !important;
-    }
-
+  <link rel="stylesheet" media="screen" href="https://fontlibrary.org/face/symbola/css/symbola.css" type="text/css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.2/purify.min.js"></script>
+  <style type="text/css">
     :root {
       --bg-color: #ffffff;
       --text-color: #000000;
@@ -49,7 +43,58 @@
       overflow-x: hidden;
     }
 
-    /* Home Layout Frame */
+    .window {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      background-color: var(--bg-color);
+    }
+
+    .title-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 37px;
+      padding: 0 8px;
+      background: var(--bg-color);
+      border-bottom: var(--border-width) solid var(--border-color);
+      box-sizing: border-box;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .title-stripes {
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: repeating-linear-gradient(45deg, var(--border-color), var(--border-color) 4px, transparent 4px, transparent 8px);
+    }
+
+    #back-btn, .retro-btn {
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: bold;
+      background: var(--bg-color);
+      color: var(--text-color);
+      border: var(--border-width) solid var(--border-color);
+      padding: 4px 8px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    #back-btn:active, .retro-btn:active {
+      background: var(--text-color);
+      color: var(--bg-color);
+    }
+
+    .title-text {
+      font-weight: bold;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
     .header-container {
       text-align: center;
       padding: 20px;
@@ -90,7 +135,6 @@
       color: inherit;
     }
 
-    /* Featured App Container Grid */
     .featured-box {
       margin: 15px;
       border: var(--border-width) solid var(--border-color);
@@ -145,14 +189,6 @@
       line-height: 1.2;
     }
 
-    .app-requirement {
-      margin-top: 6px;
-      font-size: 9px;
-      font-weight: bold;
-      text-transform: uppercase;
-    }
-
-    /* --- CONTROL PANEL WINDOW (Ref: 32784.jpg) --- */
     .fullscreen-view {
       display: none;
       position: fixed;
@@ -210,7 +246,6 @@
       margin-top: 2px;
     }
 
-    /* Interactive Elements */
     button {
       border: var(--border-width) solid var(--text-color);
       background: var(--bg-color);
@@ -236,16 +271,10 @@
 
     .flash-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 9999;
-      pointer-events: none;
-      background: var(--text-color);
+      top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 9999; pointer-events: none; background: var(--text-color);
     }
 
-    /* Kindle-Safe Auth Modal Layout */
     .kindle-auth-box {
       border: 3px solid var(--border-color);
       padding: 15px;
@@ -278,31 +307,38 @@
 </head>
 
 <body>
+  <div class="window">
+    <div class="title-bar">
+      <div class="title-stripes"></div>
+      <button id="back-btn" onclick="window.location.href='index.html'">HOME</button>
+      <div class="title-text">Un-Reader Dashboard</div>
+      <div></div>
+    </div>
 
-  <div class="header-container">
-    <div class="title">UN-READER</div>
-    <div class="subtitle" id="user-status">Guest Mode</div>
-    <div class="header-actions">
-      <div class="settings-btn" id="settings-trigger">[SETTINGS]</div>
-      <a class="discord-btn" href="https://discord.gg/wGpdg3ND7T" target="_blank" rel="noopener noreferrer">[DISCORD]</a>
+    <div class="header-container">
+      <div class="title">UN-READER</div>
+      <div class="subtitle" id="user-status">Guest Mode</div>
+      <div class="header-actions">
+        <div class="settings-btn" id="settings-trigger">[SETTINGS]</div>
+        <a class="discord-btn" href="https://discord.gg/wGpdg3ND7T" target="_blank" rel="noopener noreferrer">[DISCORD]</a>
+      </div>
+    </div>
+
+    <div class="featured-box">
+      <div class="featured-title">FEATURED</div>
+      <div class="apps-grid" id="apps-container"></div>
+    </div>
+
+    <div class="featured-box" style="margin-top: 0;">
+      <div class="featured-title">APPLICATIONS</div>
+      <div class="apps-grid" id="platform-apps-container"></div>
+    </div>
+
+    <div class="featured-box" style="margin-top: 0;">
+      <div class="featured-title">GAMES</div>
+      <div class="apps-grid" id="games-apps-container"></div>
     </div>
   </div>
-
-  <div class="featured-box">
-    <div class="featured-title">FEATURED</div>
-    <div class="apps-grid" id="apps-container"></div>
-  </div>
-
-  <div class="featured-box" style="margin-top: 0;">
-    <div class="featured-title">APPLICATIONS</div>
-    <div class="apps-grid" id="platform-apps-container"></div>
-  </div>
-
-  <div class="featured-box" style="margin-top: 0;">
-    <div class="featured-title">GAMES</div>
-    <div class="apps-grid" id="games-apps-container"></div>
-  </div>
-
 
   <div class="fullscreen-view" id="settings-view">
     <div class="control-header">Control Panel</div>
@@ -314,7 +350,7 @@
           <div class="setting-label">Session</div>
           <div class="setting-desc" id="auth-status">Not logged in</div>
         </div>
-        <button id="auth-btn">Log In</button>
+        <button id="auth-btn" class="retro-btn">Log In</button>
       </div>
     </div>
 
@@ -325,7 +361,7 @@
           <div class="setting-label">Theme</div>
           <div class="setting-desc">Toggle between Light and Dark interface.</div>
         </div>
-        <button id="theme-toggle">Toggle</button>
+        <button id="theme-toggle" class="retro-btn">Toggle</button>
       </div>
     </div>
 
@@ -336,7 +372,7 @@
           <div class="setting-label">OpenDyslexic Font</div>
           <div class="setting-desc">Use OpenDyslexic font for better readability.</div>
         </div>
-        <button id="font-toggle">Toggle</button>
+        <button id="font-toggle" class="retro-btn">Toggle</button>
       </div>
     </div>
 
@@ -347,14 +383,12 @@
           <div class="setting-label">Flush Screen</div>
           <div class="setting-desc">Force a complete layout inversion clear.</div>
         </div>
-        <button id="flush-btn">Flush</button>
+        <button id="flush-btn" class="retro-btn">Flush</button>
       </div>
     </div>
 
-    <button class="modal-btn" onclick="document.getElementById('settings-view').style.display='none'">[CLOSE
-      WINDOW]</button>
+    <button class="modal-btn" onclick="document.getElementById('settings-view').style.display='none'">[CLOSE WINDOW]</button>
   </div>
-
 
   <div class="fullscreen-view" id="login-modal-view">
     <div class="kindle-auth-box">
@@ -367,21 +401,17 @@
       <div style="font-weight: 900; margin-bottom: 4px; font-size: 12px;">PASSWORD:</div>
       <input type="password" id="modal-auth-pass" class="kindle-input" />
 
-      <button id="modal-auth-submit" style="width: 100%; padding: 10px; margin-top: 5px;">SUBMIT</button>
+      <button id="modal-auth-submit" class="retro-btn" style="width: 100%; padding: 10px; margin-top: 5px;">SUBMIT</button>
 
-      <div id="modal-auth-toggle"
-        style="font-size: 11px; margin-top: 15px; cursor: pointer; text-decoration: underline; text-align: center; font-weight: bold;">
+      <div id="modal-auth-toggle" style="font-size: 11px; margin-top: 15px; cursor: pointer; text-decoration: underline; text-align: center; font-weight: bold;">
         Need an account? Register
       </div>
 
-      <button class="modal-btn" style="margin-top: 15px;"
-        onclick="document.getElementById('login-modal-view').style.display='none'">[CANCEL]</button>
+      <button class="modal-btn" style="margin-top: 15px;" onclick="document.getElementById('login-modal-view').style.display='none'">[CANCEL]</button>
     </div>
   </div>
 
-
-  <script>
-    // --- COOKIE STORAGE ENGINE FOR LEGACY HARDWARE ---
+  <script type="text/javascript">
     function setStorageItem(key, value) {
       localStorage.setItem(key, value);
       document.cookie = key + "=" + encodeURIComponent(value) + "; path=/; max-age=31536000;";
@@ -399,69 +429,46 @@
       return val;
     }
 
-    // Load State Parameters immediately
     if (getStorageItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
     if (getStorageItem('dyslexic-font') === 'true') document.body.classList.add('dyslexic-font');
 
-    // Sync variables using exact keys extracted from chat.html architecture
     var token = getStorageItem("token");
     var myUsername = getStorageItem("username");
     var isRegisterMode = false;
 
-    // Dynamic Header State Management
     document.getElementById('user-status').textContent = myUsername ? "@" + myUsername : 'Guest Mode';
 
-    // Featured Core Applications Array
     const FEATURED_DATABASE = [
+      { name: 'GITHUB WORKSPACE', desc: 'Manage and edit GitHub repos on e-ink.', url: 'github.htm' },
       { name: 'CHAT', desc: 'Now with... less pixels?', url: 'chat.html' },
       { name: 'TOPICS', desc: 'Discuss anything!', url: 'topics.html' },
       { name: 'NEIGHBOURHOOD', desc: 'Posts! Share your thoughts!', url: 'neighbourhood.html' },
-      { name: 'Un-Cloud', desc: 'Run virtual machines online! (BETA) (Warning - does not work on kindles)', url: 'https://undroid-server.onrender.com/' },
+      { name: 'Un-Cloud', desc: 'Run virtual machines online! (BETA)', url: 'https://undroid-server.onrender.com/' },
       { name: 'AI ASSISTANT', desc: 'AI Assistant (Beta)', url: 'chatai.html' },
       { name: 'MODERATION', desc: 'Moderation Dashboard.', url: 'modmenu.html', req: 'mod' },
-      { name: 'PROFILE MODERATION', desc: 'Moderation Dashboard: Elsewhere.', url: 'mod-pfps.html', req: 'mod' },
       { name: 'PROFILE PICTURE EDITOR', desc: 'Draw or import your profile picture.', url: 'profile-picture.html' }
     ];
 
     const PLATFORM_DATABASE = [
-      { name: 'REKINDLE', desc: 'Shortcut to what made this all possible in the first place!', url: 'rekindle.html' },
-      { name: 'UNREADER DESKTOP', desc: '(BETA) Desktop client for unreader! Enjoy!', url: 'https://github.com/SuprUsr123/UnReader.NET/releases/', external: true },
-      { name: 'SUGGESTIONS', desc: "Suggestions! Just please don't suggest stupid things...", url: 'suggestions.html' },
+      { name: 'REKINDLE', desc: 'Shortcut to what made this all possible!', url: 'rekindle.html' },
+      { name: 'UNREADER DESKTOP', desc: '(BETA) Desktop client for unreader!', url: 'https://github.com/SuprUsr123/UnReader.NET/releases/', external: true },
       { name: 'CALCULATOR', desc: 'A simple calculator, what did you expect?', url: 'calc.html' },
-      { name: 'POKEDEX', desc: "Gotta catch 'em all! (Optimized!)", url: 'pokedex.html' }
+      { name: 'POKEDEX', desc: "Gotta catch 'em all!", url: 'pokedex.html' }
     ];
 
     const GAMES_DATABASE = [
-      { name: 'OREGON TRAIL', desc: "Play the original 1970 teletext version on your E-reader!", url: 'oregon_trail.html' },
+      { name: 'OREGON TRAIL', desc: "Play the original 1970 teletext version!", url: 'oregon_trail.html' },
       { name: 'REVERSI', desc: 'A remake of Reversi.', url: 'reversi.html' },
       { name: 'PORTAL: THE KINDLE VERSION', desc: "Why don't we think with portals for a bit?", url: 'portal-2d.html' },
-      { name: 'SLEDGEHAMMER EDITOR (DEV ONLY)', desc: "GLaDOS' lair (Helper Cores may access), all test subjects forbidden.", url: 'portal-2d-editor.html', req: 'admin' },
-      { name: 'GAME OF LIFE', desc: 'Easiest thing ever, wow!', url: 'cwol.html' },
-      { name: 'EMBERKEEP ULTIMATE', desc: "Emberkeep, now stripped from KindleHub! (WARNING: THIS USES KINDLEHUB'S ACCOUNT SYSTEM! YOU MUST HAVE AN ACCOUNT BEFOREHAND!)", url: 'EmberkeepUltimate.html' }
+      { name: 'GAME OF LIFE', desc: 'Easiest thing ever, wow!', url: 'cwol.html' }
     ];
 
-    const ROLE_LEVEL = { guest: 0, user: 1, mod: 2, moderator: 2, admin: 3 };
-
-    function meetsRoleRequirement(currentRole, requirement) {
-      if (!requirement) return true;
-      const roleLevel = ROLE_LEVEL[String(currentRole || 'guest').toLowerCase()];
-      const requiredRoles = Array.isArray(requirement) ? requirement : [requirement];
-      return requiredRoles.some(function (requiredRole) {
-        const requiredLevel = ROLE_LEVEL[String(requiredRole).toLowerCase()];
-        return requiredLevel !== undefined && roleLevel !== undefined && roleLevel >= requiredLevel;
-      });
-    }
-
-    // Helper renderer
     function renderAppList(container, appsList, currentRank) {
       container.innerHTML = '';
       appsList.forEach(app => {
-        if (!meetsRoleRequirement(currentRank, app.req)) return;
-
         const div = document.createElement('div');
         div.className = 'app-item';
-        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>' +
-          (app.req ? '<div class="app-requirement">Requires: ' + (Array.isArray(app.req) ? app.req.join(' / ') : app.req).toUpperCase() + '</div>' : '');
+        div.innerHTML = '<div class="app-name">' + app.name + '</div><div class="app-desc">' + app.desc + '</div>';
         div.onclick = () => {
           if (app.external) {
             window.open(app.url, '_blank');
@@ -473,43 +480,10 @@
       });
     }
 
-    // Build functional home UI grid layout
-    function buildDashboardGrid(currentRank) {
-      const featuredContainer = document.getElementById('apps-container');
-      const platformContainer = document.getElementById('platform-apps-container');
-      const gamesContainer = document.getElementById('games-apps-container');
-      currentRank = currentRank || 'guest';
+    renderAppList(document.getElementById('apps-container'), FEATURED_DATABASE, 'user');
+    renderAppList(document.getElementById('platform-apps-container'), PLATFORM_DATABASE, 'user');
+    renderAppList(document.getElementById('games-apps-container'), GAMES_DATABASE, 'user');
 
-      renderAppList(featuredContainer, FEATURED_DATABASE, currentRank);
-      renderAppList(platformContainer, PLATFORM_DATABASE, currentRank);
-      renderAppList(gamesContainer, GAMES_DATABASE, currentRank);
-    }
-
-    function loadDashboardRole() {
-      if (!token || !myUsername) {
-        buildDashboardGrid('guest');
-        return;
-      }
-      buildDashboardGrid('user');
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', window.location.origin + '/api/profile/' + encodeURIComponent(myUsername), true);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState !== 4) return;
-        let role = 'user';
-        if (xhr.status === 200) {
-          try {
-            const profile = JSON.parse(xhr.responseText);
-            role = profile.is_admin ? 'admin' : profile.is_moderator ? 'mod' : 'user';
-          } catch (err) {}
-        }
-        setStorageItem('unreader-rank', role);
-        buildDashboardGrid(role);
-      };
-      xhr.send();
-    }
-
-    // Interface Dynamic Handlers
     document.getElementById('settings-trigger').onclick = () => document.getElementById('settings-view').style.display = 'block';
 
     document.getElementById('theme-toggle').onclick = () => {
@@ -531,14 +505,12 @@
       setTimeout(() => overlay.remove(), 150);
     };
 
-    // Modal view authentication mode swapper
     document.getElementById("modal-auth-toggle").onclick = function () {
       isRegisterMode = !isRegisterMode;
       document.getElementById("modal-auth-title").textContent = isRegisterMode ? "REGISTER" : "LOGIN";
       this.textContent = isRegisterMode ? "Already have an account? Login" : "Need an account? Register";
     };
 
-    // --- LIVE EXPLICIT REPLICATION OF THE CHAT.HTML AUTH PIPELINE ---
     document.getElementById("modal-auth-submit").onclick = function () {
       var usernameInput = document.getElementById("modal-auth-user").value.trim();
       var passwordInput = document.getElementById("modal-auth-pass").value;
@@ -552,7 +524,7 @@
 
       var url = isRegisterMode ? "/api/register" : "/api/login";
       var xhr = new XMLHttpRequest();
-      xhr.open("POST", BACKEND_URL + url, true);
+      xhr.open("POST", (typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : '') + url, true);
       xhr.setRequestHeader("Content-Type", "application/json");
 
       xhr.onreadystatechange = function () {
@@ -562,18 +534,17 @@
               var data = JSON.parse(xhr.responseText);
               setStorageItem("token", data.token);
               setStorageItem("username", data.username);
-
               location.reload();
             } catch (e) {
-              errorDisplay.textContent = "Whoops! Server returned an unexpected response!";
+              errorDisplay.textContent = "Server returned an unexpected response.";
               errorDisplay.style.display = "block";
             }
           } else {
             try {
               var errData = JSON.parse(xhr.responseText);
-              errorDisplay.textContent = "Internal error: " + (errData.error || "Access Denied");
+              errorDisplay.textContent = "Error: " + (errData.error || "Access Denied");
             } catch (e) {
-              errorDisplay.textContent = "Connection Failed. Either the server is down or your device is offline.";
+              errorDisplay.textContent = "Connection Failed.";
             }
             errorDisplay.style.display = "block";
           }
@@ -587,11 +558,8 @@
       document.getElementById('auth-btn').textContent = 'Log Out';
       document.getElementById('auth-btn').onclick = function () {
         localStorage.clear();
-
         document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
         document.cookie = "username=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
-        document.cookie = "unreader-rank=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0;";
-
         location.reload();
       };
     } else {
@@ -600,9 +568,6 @@
         document.getElementById('login-modal-view').style.display = 'block';
       };
     }
-
-    // Run layout deployment logic
-    loadDashboardRole();
   </script>
 </body>
 
