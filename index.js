@@ -86,6 +86,7 @@ async function initDatabase() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_ip TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT false;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS roles TEXT NOT NULL DEFAULT '[]';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS github_token TEXT;
       UPDATE users SET is_admin = true WHERE LOWER(username) IN ('admin', 'lmao');
 
       CREATE TABLE IF NOT EXISTS mod_logs (
@@ -187,10 +188,6 @@ async function initDatabase() {
         completion BOOLEAN
       );
     `);
-    /* INSERT INTO roles (role, prefix, style, priority) VALUES
-      ('admin', 'ADMIN', 'background: black !important;color: white !important;border: 3px solid black !important;box-shadow: 4px 4px 0px #0000004a !important;', 1000),
-      ('moderator', 'MOD', 'border: 3px solid #0000ff !important;box-shadow: 4px 4px 0px #0000ff50 !important;', 50),
-      ('bot', 'BOT', 'border: 3px solid #808080 !important;box-shadow: 4px 4px 0px #80808050 !important;', 10) ON CONFLICT (role) DO NOTHING; */
     log('Structural migration successful.');
   } catch (err) {
     log('DB MIGRATION FAILURE:', err);
@@ -225,18 +222,15 @@ app.use(blockBannedIPs);
 
 const ADMIN_ENTITY_USERNAMES = new Set(['admin', 'lmao']);
 
-// SQL expression for rows read straight from `users` (roles is a JSON array TEXT column).
 const adminUserSql = (alias) =>
   `(${alias}.is_admin OR LOWER(${alias}.username) IN ('admin', 'lmao') OR ${alias}.roles::jsonb @> '["admin"]')`;
 
-// SQL expression for rows read straight from `users` (roles is a JSON array TEXT column).
 const moderatorUserSql = (alias) =>
   `(${alias}.is_moderator OR ${alias}.roles::jsonb @> '["moderator"]')`;
 
 const hasAdminPrivileges = (user) => !!(user && user.is_admin);
 const hasModeratorPrivileges = (user) => !!(user && user.is_moderator);
 
-// const getUserRolesCache = {};
 async function getUserRoles(username) {
   const cacheKey = String(username || '').toLowerCase();
   const cached = userRoleCache.get(cacheKey);
@@ -268,10 +262,6 @@ async function getUserRoles(username) {
   };
   const adminEntity = ADMIN_ENTITY_USERNAMES.has(cacheKey);
   try { res.roles = JSON.parse(res.roles || '[]'); } catch { res.roles = []; }
-  // An "admin"/"moderator" entry in the user's roles array (or the legacy boolean
-  // columns) grants the benefit instantly, even when the roles-table seed row is
-  // missing. style/class still come from the best-priority roles-table match, so
-  // promoted users keep their custom borders.
   const roleList = Array.isArray(res.roles) ? res.roles : [];
   res.is_admin = !!res.is_admin || adminEntity || roleList.includes('admin');
   res.is_moderator = !!res.is_moderator || roleList.includes('moderator');
@@ -306,15 +296,12 @@ async function authenticateToken(req, res, next) {
   }
 }
 
-// The editor shell is directly navigable from the dashboard; its API/session check
-// gates the actual developer UI and every mutating editor operation remains admin-only.
 app.get('/portal-2d-editor.html', (req, res) => {
   res.sendFile('portal-2d-editor.html', { root: './static' });
 });
 
 app.use(express.static('./static/'));
 
-// { username: { ws, mode, target, lastIp } }
 const activeClients = new Map();
 
 function broadcastSystemUpdate(payloadObj, filterFn = null) {
@@ -354,6 +341,27 @@ app.get('/dm-contacts', authenticateToken, async (req, res) => {
     [req.user.username],
   );
   res.json(result.rows.map((r) => r.username));
+});
+
+// Endpoint do zapisu tokena GitHub na koncie un-reader
+app.post('/api/user/github-token', authenticateToken, async (req, res) => {
+  try {
+    const { github_token } = req.body;
+    if (!github_token) {
+      return res.status(400).json({ error: 'Missing github_token' });
+    }
+    
+    await db.query(
+      'UPDATE users SET github_token = $1 WHERE username = $2;',
+      [sanitize(github_token), req.user.username]
+    );
+
+    log(`GitHub token updated for user: ${req.user.username}`);
+    res.json({ success: true });
+  } catch (err) {
+    log('Failed to save GitHub token:', err.message);
+    res.status(500).json({ error: 'Server error: ' + err.message });
+  }
 });
 
 app.post('/api/register', async (req, res) => {
@@ -631,7 +639,6 @@ app.get(
       return bPriority - aPriority;
     });
 
-    // Find alts (other users with same IP)
     let alts = [];
     if (userInfo.last_ip) {
       const altsRes = await db.query(
@@ -641,7 +648,6 @@ app.get(
       alts = altsRes.rows.map((r) => r.username);
     }
 
-    // Redact IP for moderators (non-admins)
     if (!hasAdminPrivileges(req.user)) {
       userInfo.last_ip = '[redacted]';
     }
@@ -772,7 +778,6 @@ app.get('/history', authenticateToken, async (req, res) => {
 app.get('/dm-history', authenticateToken, async (req, res) => {
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const target = sanitizeUsername(req.query.target);
-  // FIX: Force ALIAS and explicit join for name consistency
   const r = await db.query(
     `
     SELECT d.id, d.sender AS username, d.receiver, d.timestamp, d.content, d.is_deleted, d.deleted_by, pi.image_data
@@ -823,10 +828,6 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
   res.json(result.reverse());
 });
 
-// ---------------------------------------------------------------------------
-// Suggestions  (table: suggestions — id, date DATE, suggestions, username, admin_filter, completion BOOLEAN)
-// One row = one app idea. "date" is the posting day, stamped by the DB.
-// "admin_filter" is a staff status tag; "completion" marks the idea as done.
 const SUGG_MAX_TITLE = 120;
 const SUGG_MAX_BODY = 4000;
 const SUGG_MAX_FILTER = 200;
@@ -870,7 +871,6 @@ app.post('/api/suggestions', authenticateToken, async (req, res) => {
   }
 });
 
-// Staff annotation: admin_filter = status tag, completion = done flag.
 app.put('/api/suggestions/:id', authenticateToken, async (req, res) => {
   try {
     if (!hasAdminPrivileges(req.user) && !hasModeratorPrivileges(req.user))
@@ -884,7 +884,6 @@ app.put('/api/suggestions/:id', authenticateToken, async (req, res) => {
     const touchesCompletion = 'completion' in body;
     if (!touchesFilter && !touchesCompletion)
       return res.status(400).json({ error: 'Nothing to update.' });
-    // Omitted fields keep their stored value; null or blank clears them.
     const admin_filter = touchesFilter ? suggClean(body.admin_filter ?? '', SUGG_MAX_FILTER) || null : found.rows[0].admin_filter;
     let completion = found.rows[0].completion;
     if (touchesCompletion) {
@@ -907,7 +906,6 @@ app.put('/api/suggestions/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Owners can delete their own suggestions; staff can delete any.
 app.delete('/api/suggestions/:id', authenticateToken, async (req, res) => {
   try {
     const id = p2dParseId(req.params.id);
@@ -932,23 +930,12 @@ app.delete('/api/suggestions/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// Flash Portal 2D: online level packs  (table: "portal-2d")
-// One row = one published pack. "level-data" holds the pack as JSON:
-//   { name, levels: [ { name, start, exit, platforms, hazards, buttons, button,
-//                       triggers, wires, lasers, doors, plates, grids, noPortal, exitClosed, cubeStart } ] }
-// Every identifier is double-quoted because the columns contain hyphens.
-//
-// The OFFICIAL pack is one special row whose username is "[official]". That
-// value cannot be registered (usernames are limited to [A-Za-z0-9_-]), so only
-// the admin-only /api/portal2d/official routes can ever write it.
-// ---------------------------------------------------------------------------
 const P2D_CANVAS_W = 640;
 const P2D_CANVAS_H = 400;
 const P2D_MAX_LEVELS = 30;
 const P2D_MAX_PLATFORMS = 150;
 const P2D_MAX_HAZARDS = 60;
-const P2D_MAX_EXTRAS = 40; // doors / plates / grids / triggers / lasers / no-portal zones per level
+const P2D_MAX_EXTRAS = 40;
 const P2D_MAX_WIRES = 120;
 const P2D_MAX_DATA_CHARS = 90000;
 const P2D_MAX_PACKS_PER_USER = 25;
@@ -1030,7 +1017,6 @@ function p2dWire(o) {
   };
 }
 
-// Whitelists every field so only well-formed game data ever reaches the DB.
 function p2dNormalizePack(input, fallbackName, maxLevels = P2D_MAX_LEVELS) {
   let raw = input;
   if (typeof raw === 'string') {
@@ -1108,7 +1094,6 @@ function p2dBlockedUser(user) {
   return null;
 }
 
-// Who am I? Lets the game show/hide admin tools. The server still re-checks every request.
 app.get('/api/portal2d/me', authenticateToken, (req, res) => {
   res.json({
     username: req.user.username,
@@ -1136,7 +1121,6 @@ app.get('/api/portal2d/levels', authenticateToken, async (req, res) => {
     const staff = p2dIsStaff(req.user);
     const levels = r.rows.slice(0, P2D_PAGE_SIZE).map((row) => ({
       ...row,
-      // decided here, never by the client
       canDelete: staff || row.username === req.user.username,
       isOwner: row.username === req.user.username,
     }));
@@ -1213,7 +1197,6 @@ app.post('/api/portal2d/levels', authenticateToken, async (req, res) => {
   }
 });
 
-// Owners can update a pack they published (e.g. after editing their copy).
 app.put('/api/portal2d/levels/:id', authenticateToken, async (req, res) => {
   try {
     const blocked = p2dBlockedUser(req.user);
@@ -1281,7 +1264,6 @@ app.delete('/api/portal2d/levels/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// ----- Official pack (admin only to write, everyone to read) -----
 async function p2dReadOfficial() {
   const r = await db.query(
     `SELECT "level-id" AS id, "level-name" AS name, "level-data" AS data
@@ -1291,30 +1273,6 @@ async function p2dReadOfficial() {
   if (!r.rows[0]) return null;
   const row = r.rows[0];
   return { id: row.id, name: row.name, data: JSON.parse(row.data) };
-}
-
-async function p2dWriteOfficial(pack, actor, note) {
-  const json = JSON.stringify(pack);
-  if (json.length > P2D_OFFICIAL_MAX_CHARS) {
-    const err = new Error('Official pack is too large.');
-    err.status = 413;
-    throw err;
-  }
-  const upd = await db.query(
-    'UPDATE "portal-2d" SET "level-name" = $1, "level-data" = $2 WHERE "username" = $3;',
-    [pack.name, json, P2D_OFFICIAL],
-  );
-  if (!upd.rowCount) {
-    await db.query(
-      'INSERT INTO "portal-2d" ("level-name", "username", "level-data") VALUES ($1, $2, $3);',
-      [pack.name, P2D_OFFICIAL, json],
-    );
-  }
-  await db.query(
-    'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
-    [actor, 'portal2d official', P2D_OFFICIAL, 0, note, Date.now()],
-  );
-  log(`Portal2D official: ${note} by ${actor}`);
 }
 
 app.get('/api/portal2d/official', authenticateToken, async (req, res) => {
@@ -1328,21 +1286,17 @@ app.get('/api/portal2d/official', authenticateToken, async (req, res) => {
   }
 });
 
-// Replace the whole official pack (reordering, removing, bulk edits).
 app.put('/api/portal2d/official', authenticateToken, async (req, res) => {
   res.status(410).json({ error: 'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.' });
 });
 
-// Append one playtested level to the end of the official pack.
 app.post('/api/portal2d/official/levels', authenticateToken, async (req, res) => {
   res.status(410).json({ error: 'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.' });
 });
 
-// Remove the server copy so everyone falls back to the chambers built into the game.
 app.delete('/api/portal2d/official', authenticateToken, async (req, res) => {
   res.status(410).json({ error: 'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.' });
 });
-
 
 const server = app.listen(process.env.PORT || 10000, '0.0.0.0', () =>
   log(`Node strictly bound to port: ${process.env.PORT || 10000}`),
@@ -1602,7 +1556,6 @@ wss.on('connection', (ws, req) => {
           hasAdminPrivileges(userRoles) ||
           hasModeratorPrivileges(userRoles);
 
-        // Deletes
         if (data.type === 'mod_delete' && canDelete) {
           const reason =
             data.reason ||
@@ -1626,7 +1579,6 @@ wss.on('connection', (ws, req) => {
             );
           }
           broadcastSystemUpdate({ type: 'refresh_feed' });
-          // Restores
         } else if (data.type === 'mod_restore' && canUndo) {
           log(
             `EXECUTING DATA RESTORE: targetId=${data.id} in ${targetTable} by=${authUser}`,
@@ -1643,12 +1595,10 @@ wss.on('connection', (ws, req) => {
         }
       }
 
-      // Moderating users
       if (
         hasAdminPrivileges(userRoles) ||
         hasModeratorPrivileges(userRoles)
       ) {
-        // Timeouts
         if (data.type === 'mod_timeout') {
           const target = sanitizeUsername(data.target);
           const targetRoles = await getUserRoles(target);
@@ -1662,7 +1612,7 @@ wss.on('connection', (ws, req) => {
           const duration = Math.min(
             Math.max(1, parseInt(data.duration, 10)),
             43200,
-          ); // Max 30 days
+          );
           const reason =
             sanitize(data.reason || '') ||
             (hasAdminPrivileges(userRoles)
@@ -1689,7 +1639,6 @@ wss.on('connection', (ws, req) => {
             activeClients.get(target).ws.close();
           }
         }
-        // Kicks
         if (data.type === 'mod_kick') {
           if (!activeClients.has(data.target))
             return log(`KICK TARGET ${data.target} NOT CONNECTED`, data.target);
@@ -1722,7 +1671,6 @@ wss.on('connection', (ws, req) => {
           }
         }
         if (hasAdminPrivileges(userRoles)) {
-          // Bans
           if (data.type === 'mod_ban') {
             const target = sanitizeUsername(data.target);
             const reason =
@@ -1746,7 +1694,6 @@ wss.on('connection', (ws, req) => {
               activeClients.get(target).ws.close();
             }
           }
-          // Pardons
           if (data.type === 'mod_pardon') {
             const target = sanitizeUsername(data.target);
             log(`ADMIN PARDON: target=${target}, by=${authUser}`);
