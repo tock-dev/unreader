@@ -458,8 +458,19 @@
       xhr.send(bodyObj ? JSON.stringify(bodyObj) : null);
     }
 
+    function decodeBase64Utf8(base64) {
+      var s = window.atob(base64.replace(/[\n\r\s]/g, ''));
+      try {
+        return decodeURIComponent(escape(s));
+      } catch (e) {
+        return s;
+      }
+    }
+
     function utf8ToBase64(str) {
-      return window.btoa(unescape(encodeURIComponent(str)));
+      return window.btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+        return String.fromCharCode('0x' + p1);
+      }));
     }
 
     function setActiveNav(id) {
@@ -642,43 +653,45 @@
       currentFilePath = path;
       setPages(['<div class="message"><div class="message-text">Opening ' + path + '...</div></div>']);
 
-      // 1. Fetch metadata to get the file's SHA (required for editing/deleting)
-      apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, null, null, function(metaErr, metaRes) {
-        if (!metaErr) {
-          var metaObj = JSON.parse(metaRes);
-          currentFileSha = metaObj.sha;
+      // Fetch standard JSON contents endpoint which reliably returns 'sha' and base64 'content'
+      apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, null, null, function(err, res) {
+        if (err) {
+          setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
+          return;
         }
+        var fileObj = JSON.parse(res);
+        currentFileSha = fileObj.sha;
+        
+        var raw = '';
+        if (fileObj.content) {
+          raw = decodeBase64Utf8(fileObj.content);
+        } else {
+          raw = 'File content empty or binary.';
+        }
+        
+        currentFileRaw = raw;
+        var safe = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        var lines = safe.split('\n');
+        var linesPerPage = 35;
+        var chunks = [];
 
-        // 2. Fetch raw code content using correct 'application/vnd.github.raw' header
-        apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, 'application/vnd.github.raw', null, function(err, raw) {
-          if (err) {
-            setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
-            return;
+        var modBar = '<div class="mod-action-tray">FILE MOD: ' +
+          '<button class="mod-tray-btn" onclick="openFileEditor()">Edit File</button>' +
+          '<button class="mod-tray-btn" onclick="deleteCurrentFile()">Delete File</button>' +
+          '</div>';
+
+        for (var i = 0; i < lines.length; i += linesPerPage) {
+          var slice = lines.slice(i, i + linesPerPage);
+          var numbered = '';
+          for (var j = 0; j < slice.length; j++) {
+            var lineNum = i + j + 1;
+            var pad = lineNum < 10 ? '  ' + lineNum : (lineNum < 100 ? ' ' + lineNum : lineNum);
+            numbered += pad + ' | ' + slice[j] + '\n';
           }
-          currentFileRaw = raw;
-          var safe = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          var lines = safe.split('\n');
-          var linesPerPage = 35;
-          var chunks = [];
-
-          var modBar = '<div class="mod-action-tray">FILE MOD: ' +
-            '<button class="mod-tray-btn" onclick="openFileEditor()">Edit File</button>' +
-            '<button class="mod-tray-btn" onclick="deleteCurrentFile()">Delete File</button>' +
-            '</div>';
-
-          for (var i = 0; i < lines.length; i += linesPerPage) {
-            var slice = lines.slice(i, i + linesPerPage);
-            var numbered = '';
-            for (var j = 0; j < slice.length; j++) {
-              var lineNum = i + j + 1;
-              var pad = lineNum < 10 ? '  ' + lineNum : (lineNum < 100 ? ' ' + lineNum : lineNum);
-              numbered += pad + ' | ' + slice[j] + '\n';
-            }
-            var header = '<div class="admin-msg"><div class="message-text">FILE: ' + path + ' (Lines ' + (i + 1) + '-' + Math.min(i + linesPerPage, lines.length) + ')</div></div>';
-            chunks.push(header + modBar + '<div class="message"><div class="message-text">' + numbered + '</div></div>');
-          }
-          setPages(chunks);
-        });
+          var header = '<div class="admin-msg"><div class="message-text">FILE: ' + path + ' (Lines ' + (i + 1) + '-' + Math.min(i + linesPerPage, lines.length) + ')</div></div>';
+          chunks.push(header + modBar + '<div class="message"><div class="message-text">' + numbered + '</div></div>');
+        }
+        setPages(chunks);
       });
     }
 
