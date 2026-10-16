@@ -642,15 +642,13 @@
       currentFilePath = path;
       setPages(['<div class="message"><div class="message-text">Opening ' + path + '...</div></div>']);
 
-      // 1. Fetch metadata to get the file's SHA (required for editing/deleting)
       apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, null, null, function(metaErr, metaRes) {
         if (!metaErr) {
           var metaObj = JSON.parse(metaRes);
           currentFileSha = metaObj.sha;
         }
 
-        // 2. Fetch raw code content using correct 'application/vnd.github.raw' header
-        apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, 'application/vnd.github.raw', null, function(err, raw) {
+        apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, 'application/vnd.github.raw+json', null, function(err, raw) {
           if (err) {
             setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
             return;
