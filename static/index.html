@@ -101,6 +101,7 @@
       border-bottom: var(--border-width) solid var(--border-color);
       position: relative;
       width: 100%;
+      box-sizing: border-box;
     }
 
     .title {
@@ -118,21 +119,30 @@
 
     .header-actions {
       position: absolute;
-      top: 15px;
-      right: 20px;
+      top: 50%;
+      right: 15px;
+      transform: translateY(-50%);
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 6px;
+      flex-direction: row;
+      align-items: center;
+      gap: 12px;
     }
 
     .settings-btn,
     .discord-btn {
       cursor: pointer;
       font-weight: 900;
-      font-size: 13px;
+      font-size: 11px;
       text-decoration: underline;
       color: inherit;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      padding: 4px 8px;
+    }
+
+    .settings-btn:active, .discord-btn:active {
+      background: var(--text-color);
+      color: var(--bg-color);
     }
 
     .featured-box {
@@ -307,12 +317,19 @@
 </head>
 
 <body>
+  <div class="window">
+    <div class="title-bar">
+      <div class="title-stripes"></div>
+      <button id="back-btn" onclick="window.location.href='index.html'">HOME</button>
+      <div class="title-text">Un-Reader Dashboard</div>
+      <div></div>
+    </div>
 
     <div class="header-container">
       <div class="title">UN-READER</div>
       <div class="subtitle" id="user-status">Guest Mode</div>
       <div class="header-actions">
-        <div class="settings-btn" id="settings-trigger">[SETTINGS]</div>
+        <button class="settings-btn" id="settings-trigger">[SETTINGS]</button>
         <a class="discord-btn" href="https://discord.gg/wGpdg3ND7T" target="_blank" rel="noopener noreferrer">[DISCORD]</a>
       </div>
     </div>
@@ -432,14 +449,13 @@
     document.getElementById('user-status').textContent = myUsername ? "@" + myUsername : 'Guest Mode';
 
     const FEATURED_DATABASE = [
-      { name: 'GITHUB WORKSPACE', desc: 'Manage and edit GitHub repos on e-ink.', url: 'github.htm' },
       { name: 'CHAT', desc: 'Now with... less pixels?', url: 'chat.html' },
       { name: 'TOPICS', desc: 'Discuss anything!', url: 'topics.html' },
       { name: 'NEIGHBOURHOOD', desc: 'Posts! Share your thoughts!', url: 'neighbourhood.html' },
       { name: 'Un-Cloud', desc: 'Run virtual machines online! (BETA)', url: 'https://undroid-server.onrender.com/' },
       { name: 'AI ASSISTANT', desc: 'AI Assistant (Beta)', url: 'chatai.html' },
       { name: 'MODERATION', desc: 'Moderation Dashboard.', url: 'modmenu.html', req: 'mod' },
-      { name: 'Github', desc: 'GH For Kindles!', url: 'github.htm' }
+      { name: 'PROFILE PICTURE EDITOR', desc: 'Draw or import your profile picture.', url: 'profile-picture.html' }
     ];
 
     const PLATFORM_DATABASE = [
