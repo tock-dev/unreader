@@ -363,10 +363,10 @@
       </div>
     </div>
 
-    <!-- Title Bar with Close Button in Top Left -->
+    <!-- Title Bar with Close Button in Top Left linking to index.html -->
     <div class="title-bar">
       <div class="title-stripes"></div>
-      <button id="back-btn" onclick="showHome()">CLOSE</button>
+      <button id="back-btn" onclick="window.location.href='index.html'">CLOSE</button>
       <div class="title-text">GitHub E-Ink Workspace</div>
       <div>
         <button id="back-btn" onclick="toggleAuth(true)">KEY</button>
@@ -642,13 +642,15 @@
       currentFilePath = path;
       setPages(['<div class="message"><div class="message-text">Opening ' + path + '...</div></div>']);
 
+      // 1. Fetch metadata to get the file's SHA (required for editing/deleting)
       apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, null, null, function(metaErr, metaRes) {
         if (!metaErr) {
           var metaObj = JSON.parse(metaRes);
           currentFileSha = metaObj.sha;
         }
 
-        apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, 'application/vnd.github.raw+json', null, function(err, raw) {
+        // 2. Fetch raw code content using correct 'application/vnd.github.raw' header
+        apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, 'application/vnd.github.raw', null, function(err, raw) {
           if (err) {
             setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
             return;
