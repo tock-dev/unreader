@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-  <script src="https://louisabraham.github.io/nekojs/neko.js" data-autostart></script>
+  <script src="neko-loader.js"></script>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="google-site-verification" content="w8xH7X5MJ05Wt7haHm86RqiZP3m-6x8YdKRLcyPL6f4" />
@@ -324,6 +324,16 @@
         </div>
         <button id="theme-toggle" class="retro-btn">Toggle</button>
       </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Neko Pet</div>
+          <div class="setting-desc">Show the Neko cat on Un-Reader pages.</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button id="neko-toggle" class="retro-btn" aria-pressed="true">Enabled</button>
+          <button id="pet-creator-btn" class="retro-btn">Create Pet</button>
+        </div>
+      </div>
     </div>
 
     <div class="setting-group">
@@ -417,7 +427,8 @@
       { name: 'READIUM', desc: "Free advertising spot! I don't expect him to pay me back, just... it's a cool project.", url: 'readium.html' },
       { name: 'UNREADER DESKTOP', desc: '(BETA) Desktop client for unreader!', url: 'https://github.com/SuprUsr123/UnReader.NET/releases/', external: true },
       { name: 'CALCULATOR', desc: 'A simple calculator, what did you expect?', url: 'calc.html' },
-      { name: 'POKEDEX', desc: "Gotta catch 'em all!", url: 'pokedex.html' }
+      { name: 'POKEDEX', desc: "Gotta catch 'em all!", url: 'pokedex.html' },
+      { name: 'FANDOM', desc: 'The Fandom Wiki, now at your fingertips! (again!)', url: 'fandom.html' }
     ];
 
     const GAMES_DATABASE = [
@@ -501,6 +512,22 @@
       document.body.classList.toggle('dark-mode', enabled);
       setStorageItem('dark-mode', enabled);
       localStorage.setItem('unreader-darkmode', enabled ? 'enabled' : 'disabled');
+    };
+
+    const nekoToggle = document.getElementById('neko-toggle');
+    const updateNekoToggle = () => {
+      const enabled = localStorage.getItem('unreader-neko-enabled') !== 'false';
+      nekoToggle.textContent = enabled ? 'Enabled' : 'Disabled';
+      nekoToggle.setAttribute('aria-pressed', String(enabled));
+    };
+    updateNekoToggle();
+    document.getElementById('pet-creator-btn').onclick = () => {
+      window.location.href = 'pet-creator.html';
+    };
+    nekoToggle.onclick = () => {
+      const enabled = localStorage.getItem('unreader-neko-enabled') === 'false';
+      setNekoEnabled(enabled);
+      updateNekoToggle();
     };
 
     document.getElementById('font-toggle').onclick = () => {

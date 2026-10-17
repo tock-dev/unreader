@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Wiki Reader</title>
+<style>
+:root {
+  --ink: #111;
+  --paper: #fff;
+  --desk: #e5e5e5;
+  --line: #222;
+  --muted: #555;
+  --stripe-pattern: repeating-linear-gradient(0deg, transparent, transparent 2px, #000 3px, #000 4px);
+}
+* { box-sizing: border-box; transition: none !important; animation: none !important; }
+html { background: var(--desk); }
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Arial, Verdana, sans-serif;
+  font-size: 13px;
+  line-height: 1.25;
+}
+button, input, select {
+  font: inherit;
+  color: var(--ink);
+  border: 2px solid #000;
+  border-radius: 0;
+  background: #fff;
+}
+button {
+  min-height: 32px;
+  padding: 4px 7px;
+  box-shadow: 1px 1px 0 #000;
+  font-weight: bold;
+  cursor: pointer;
+}
+button:active { transform: translate(2px, 2px); box-shadow: none; background: #000; color: #fff; }
+button:disabled { color: #666; background: #ddd; }
+input, select { min-height: 32px; padding: 4px; width: 100%; }
+a { color: #111; text-decoration: underline; }
+.app {
+  width: 100%;
+  margin: 0;
+  background: #fff;
+  border: 0;
+  box-shadow: none;
+  min-height: 100vh;
+}
+.title-bar {
+  height: 30px;
+  border-bottom: 1px solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 4px 42px;
+  background: #fff;
+}
+.title-stripes { position: absolute; top: 2px; bottom: 2px; left: 2px; right: 2px; background-image: var(--stripe-pattern); z-index: 0; }
+.title-text { position: relative; z-index: 1; background: #fff; padding: 0 12px; font-weight: bold; }
+.close-box {
+  position: absolute; left: 6px; top: 4px; z-index: 2;
+  width: 18px; height: 18px; line-height: 14px; text-align: center;
+  border: 2px solid #000; background: #fff; box-shadow: 2px 2px 0 #000;
+  font-weight: bold; cursor: pointer;
+}
+.topline { padding: 5px 6px; border-bottom: 1px solid #777; background: #f2f2f2; }
+.brand { font-size: 1rem; font-weight: bold; margin-bottom: 4px; }
+.search-row { display: flex; gap: 4px; align-items: stretch; }
+.search-row input { flex: 1; min-width: 0; margin: 0; }
+.search-row button { width: auto; min-width: 58px; min-height: 32px; padding: 4px 6px; }
+.search-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 3px;
+  font-size: .75rem;
+}
+.search-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.search-options input {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+}
+.search-summary {
+  border: 1px solid #777;
+  background: #f4f4f4;
+  padding: 4px;
+  margin-bottom: 4px;
+  font-size: .75rem;
+}
+.search-more {
+  width: 100%;
+  margin-top: 4px;
+  min-height: 30px;
+  padding: 4px;
+}
+.result-type {
+  display: inline-block;
+  border: 1px solid #777;
+  padding: 1px 4px;
+  margin-left: 5px;
+  font-size: .75rem;
+  font-weight: normal;
+  text-decoration: none;
+}
+.result-snippet mark {
+  background: #000;
+  color: #fff;
+  padding: 0 2px;
+}
+.main { padding: 5px 6px; }
+.status { border: 1px solid #777; background: #f4f4f4; padding: 5px; margin: 5px 0; overflow-wrap: anywhere; font-size: .8rem; }
+.hidden { display: none !important; }
+.layout { display: block; }
+.sidebar { border: 1px solid #888; padding: 4px; margin-bottom: 5px; background: #f7f7f7; }
+.sidebar-title { font-weight: bold; border-bottom: 1px solid #777; padding-bottom: 5px; margin-bottom: 6px; }
+.sidebar button { display: block; width: 100%; margin-top: 3px; min-height: 30px; padding: 4px 5px; text-align: left; background: #fff; box-shadow: none; }
+.section-heading { font-size: .95rem; margin: 5px 0 4px; border-bottom: 1px solid #222; padding-bottom: 3px; }
+.result { border-bottom: 1px solid #aaa; padding: 3px 0; }
+.result button { width: 100%; min-height: 30px; text-align: left; box-shadow: none; border-width: 1px; padding: 4px 5px; }
+.result-title { display: block; font-weight: bold; text-decoration: underline; margin-bottom: 3px; }
+.result-snippet { display: block; font-size: .78rem; margin-top: 2px; font-weight: normal; line-height: 1.2; }
+.article-header { border-bottom: 1px solid #222; margin-bottom: 6px; padding-bottom: 4px; }
+.article-header h1 { font-size: 1.15rem; line-height: 1.15; margin: 0 0 3px; overflow-wrap: anywhere; }
+.article-meta { color: #444; font-size: .85rem; }
+.article-tools { margin: 5px 0; }
+.article-tools button { margin: 0 3px 4px 0; min-height: 30px; padding: 4px 6px; }
+.article-body { overflow-wrap: anywhere; }
+.article-body h1, .article-body h2, .article-body h3, .article-body h4 { line-height: 1.15; border-bottom: 1px solid #aaa; padding-bottom: 2px; margin-top: 1em; }
+.article-body h1 { font-size: 1.2rem; }
+.article-body h2 { font-size: 1.08rem; }
+.article-body h3 { font-size: 1rem; }
+.article-body p { margin: 0.55em 0; }
+.article-body img { max-width: 100%; height: auto; }
+.article-body table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; margin: 10px 0; }
+.article-body td, .article-body th { border: 1px solid #555; padding: 3px; vertical-align: top; }
+.article-body th { background: #eee; }
+.article-body ul, .article-body ol { padding-left: 20px; }
+.article-body li { margin: 3px 0; }
+.article-body .infobox, .article-body .portable-infobox { border: 1px solid #555; padding: 7px; margin: 8px 0; }
+.article-body blockquote { border-left: 3px solid #777; margin-left: 0; padding-left: 10px; }
+.article-body .mw-editsection, .article-body .reference, .article-body .reflist, .article-body .navbox, .article-body .sistersitebox { display: none !important; }
+.article-body a { overflow-wrap: anywhere; }
+.article-body sup { font-size: .75em; }
+.footer { padding: 5px 6px; border-top: 1px solid #888; color: #444; font-size: .7rem; }
+.small { font-size: .75rem; color: #444; }
+@media (min-width: 700px) {
+  body { padding: 0; font-size: 13px; }
+  .app { min-height: 100vh; }
+  .topline { padding: 5px 6px; }
+  .brand { font-size: 1rem; margin-bottom: 4px; }
+  .search-row { gap: 4px; }
+  .search-row button { width: 70px; min-height: 32px; }
+  .main { padding: 6px; }
+  .layout { display: block; }
+  .sidebar { margin-bottom: 6px; }
+}</style>
+
+<style id="kindle-layout-overrides">
+/* Kindle viewport layout: preserve the existing appearance, only reorganize sizing. */
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  min-width: 0;
+  min-height: 0;
+}
+
+.app {
+  width: 100%;
+  height: 100vh;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Keep the existing title/search visual treatment, but don't let it consume the page. */
+.title-bar {
+  flex: 0 0 auto;
+  min-height: 30px;
+}
+
+.topbar {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.topbar > * {
+  min-width: 0;
+}
+
+.search-row {
+  min-width: 0;
+  width: 100%;
+}
+
+.search-row input {
+  min-width: 0;
+  width: 100%;
+}
+
+/* Navigation and article occupy the remaining viewport. */
+.main {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hide the old desktop sidebar arrangement; navigation becomes a compact row. */
+.sidebar {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.sidebar > * {
+  min-width: 0;
+}
+
+.nav-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  gap: 4px;
+}
+
+.nav-buttons button {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The article is the scrolling region. */
+.content {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent tables/images/code blocks from making a Kindle-sized viewport wider. */
+.article {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.article img,
+.article video,
+.article iframe,
+.article table {
+  max-width: 100%;
+}
+
+.article table {
+  display: block;
+  overflow-x: auto;
+}
+
+.article pre,
+.article code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.search-results {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.result {
+  min-width: 0;
+}
+
+.result-title,
+.result-snippet {
+  overflow-wrap: anywhere;
+}
+
+/* Search controls stay on-screen instead of becoming a wide desktop row. */
+.search-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+}
+
+/* Remove the old desktop breakpoint that creates a sidebar/main grid. */
+@media (min-width: 700px) {
+  .main {
+    display: flex;
+    grid-template-columns: none;
+  }
+  .sidebar {
+    width: 100%;
+  }
+}
+
+/* Very narrow Kindle screens. */
+@media (max-width: 420px) {
+  .topbar {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .content,
+  .sidebar {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .nav-buttons button {
+    flex: 1 1 30%;
+  }
+
+  .search-row {
+    gap: 4px;
+  }
+}
+</style>
+
+
+<style id="kindle-layout-fixes">
+/* Kindle viewport safety: preserve the existing look, but prevent flex
+   children from being clipped/obscured. */
+html, body {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.app {
+    width: 100%;
+    height: 100vh;
+    min-height: 0;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.title-bar {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 10;
+}
+
+.topbar {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.main {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    box-sizing: border-box;
+}
+
+.content {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+}
+
+.article {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+}
+
+.article img,
+.article video,
+.article iframe,
+.article object,
+.article embed {
+    max-width: 100%;
+    height: auto;
+}
+
+.article table {
+    max-width: 100%;
+    display: block;
+    overflow-x: auto;
+}
+
+.article pre {
+    max-width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.search-results,
+.search-result,
+.results-list {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.nav-buttons,
+.search-options {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+}
+
+button, input, select {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+@media (min-width: 700px) {
+    .main {
+        display: flex;
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+    }
+}
+
+@media (max-width: 420px) {
+    .content,
+    .sidebar,
+    .topbar {
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+}
+</style>
+
+
+<style id="kindle-scroll-layout">
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.app {
+    width: 100%;
+    height: 100vh;
+    min-height: 0;
+    max-width: none;
+    margin: 0;
+    box-sizing: border-box;
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Keep the title bar visible while everything below it scrolls. */
+.title-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-sizing: border-box;
+}
+
+/* These sections are allowed to grow naturally; the app itself scrolls. */
+.topline,
+.main,
+.footer {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.main {
+    min-height: 0;
+    overflow: visible;
+}
+
+.content {
+    min-height: 0;
+    overflow: visible;
+}
+
+.layout {
+    min-width: 0;
+}
+
+.article,
+#view,
+#results,
+#article {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.article {
+    overflow-wrap: anywhere;
+}
+
+.article img,
+.article video,
+.article iframe,
+.article object,
+.article embed {
+    max-width: 100%;
+    height: auto;
+}
+
+.article table {
+    max-width: 100%;
+    display: block;
+    overflow-x: auto;
+}
+
+.article pre,
+.article code {
+    max-width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <div class="title-bar">
+    <div class="title-stripes"></div>
+    <div class="close-box" role="button" aria-label="Home" onclick="goHome()">X</div>
+    <span class="title-text">Wiki Reader</span>
+  </div>
+  <div class="topline">
+    <div class="brand">Fandom Reader <span style="font-size:.65rem;border:1px solid #000;padding:2px 4px;vertical-align:middle;">BETA</span></div>
+    <form id="searchForm" class="search-row">
+      <input id="searchInput" type="text" value="" placeholder="Search this wiki..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search this wiki">
+      <button id="searchButton" type="submit">Search</button>
+    </form>
+    <div class="search-options">
+      <label><input id="titleOnlySearch" type="checkbox"> Titles only</label>
+      <label><input id="caseSensitiveSearch" type="checkbox"> Exact phrase</label>
+    </div>
+    <div class="small" style="margin-top:6px;">Searches article titles and article text, with relevant snippets.</div>
+  </div>
+  <main class="main">
+    <div id="status" class="status" role="status" aria-live="polite">Enter a Fandom wiki below to get started.</div>
+    <label for="wikiInput"><strong>Wiki address</strong></label>
+    <input id="wikiInput" type="text" value="minecraft.fandom.com" autocapitalize="off" autocomplete="off" spellcheck="false">
+    <div style="margin-top:8px;">
+      <button id="setWikiButton" type="button">Open wiki</button>
+      <button id="backButton" type="button" disabled>Back</button>
+      <button id="homeButton" type="button">Home</button>
+    </div>
+    <div style="margin-top:5px; padding:5px; border:1px solid #aaa;">
+      <label for="wikiDiscoveryInput"><strong>Find a wiki</strong></label>
+      <input id="wikiDiscoveryInput" type="text" value="" placeholder="e.g. SMG4" autocapitalize="off" autocomplete="off" spellcheck="false" aria-label="Search for Fandom wikis">
+      <button id="wikiDiscoveryButton" type="button" style="min-height:30px;padding:4px 6px;">Search wikis</button>
+      <p class="small">Search by topic or community name, then switch this reader to the matching wiki.</p>
+    </div>
+
+    <div class="layout" style="margin-top:16px;">
+      <aside class="sidebar">
+        <div class="sidebar-title">Navigation</div>
+        <button type="button" id="recentButton">Recent article</button>
+        <button type="button" id="randomButton">Random article</button>
+        <button type="button" id="wikiHomeButton">Wiki main page</button>
+        <div class="sidebar-title" style="margin-top:14px;">Reader options</div>
+        <button type="button" id="textModeButton">Toggle text-only mode</button>
+        <p class="small">Pages are loaded on demand. The reader avoids animations and external web fonts.</p>
+      </aside>
+      <section id="view" aria-live="polite">
+        <div id="welcome">
+          <h1 style="font-size:1.15rem;margin:4px 0;">Welcome to Wiki Reader</h1>
+          <p>Search a Fandom wiki and read its articles in a simplified layout designed for e-ink screens.</p>
+          <p>Enter a wiki address above, or use Find a wiki to discover a community and then search its articles.</p>
+          <p class="small">Tip: use the hostname only, for example <code>minecraft.fandom.com</code>.</p>
+        </div>
+        <div id="results" class="hidden"></div>
+        <article id="article" class="hidden">
+          <div class="article-header">
+            <h1 id="articleTitle"></h1>
+            <div id="articleMeta" class="article-meta"></div>
+          </div>
+          <div class="article-tools">
+            <button type="button" id="articleBackButton">Back to results</button>
+            <button type="button" id="openOriginalButton">Open original</button>
+          </div>
+          <div id="articleBody" class="article-body"></div>
+        </article>
+      </section>
+    </div>
+  </main>
+  <div class="footer">Wiki Reader is an independent reader and is not affiliated with Fandom. Article text and images belong to their respective owners.</div>
+</div>
+<script>
+(function () {
+  var wikiHost = "minecraft.fandom.com";
+  var currentTitle = "";
+  var lastSearch = "";
+  var previousView = "welcome";
+  var historyStack = [];
+  var recentTitle = "";
+  var textOnly = false;
+  var requestSerial = 0;
+  var statusBox = document.getElementById("status");
+  var searchInput = document.getElementById("searchInput");
+  var wikiInput = document.getElementById("wikiInput");
+  var searchButton = document.getElementById("searchButton");
+  var viewWelcome = document.getElementById("welcome");
+  var viewResults = document.getElementById("results");
+  var viewArticle = document.getElementById("article");
+  var articleTitle = document.getElementById("articleTitle");
+  var articleMeta = document.getElementById("articleMeta");
+  var articleBody = document.getElementById("articleBody");
+  var backButton = document.getElementById("backButton");
+
+  function setStatus(message, bad) {
+    statusBox.className = "status" + (bad ? " fail" : "");
+    statusBox.textContent = message;
+  }
+
+  function normalizeHost(value) {
+    var host = String(value || "").replace(/^\s+|\s+$/g, "").toLowerCase();
+    host = host.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/:\d+$/, "");
+    if (!host || !/^[a-z0-9.-]+$/.test(host) || host.indexOf(".") < 0) {
+      throw new Error("Enter a valid hostname, such as minecraft.fandom.com.");
+    }
+    if (host.indexOf("fandom.com") === -1) {
+      throw new Error("This reader currently supports Fandom hostnames only.");
+    }
+    return host;
+  }
+
+  function apiUrl(params) {
+    var parts = [];
+    var key;
+    for (key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        parts.push(encodeURIComponent(key) + "=" + encodeURIComponent(params[key]));
+      }
+    }
+    parts.push("origin=*");
+    return "https://" + wikiHost + "/api.php?" + parts.join("&");
+  }
+
+  function requestJson(url) {
+    return fetch(url, { method: "GET", credentials: "omit" }).then(function (response) {
+      if (!response.ok) {
+        throw new Error("HTTP " + response.status + " " + response.statusText);
+      }
+      return response.json();
+    });
+  }
+
+  function showView(name) {
+    viewWelcome.className = name === "welcome" ? "" : "hidden";
+    viewResults.className = name === "results" ? "" : "hidden";
+    viewArticle.className = name === "article" ? "" : "hidden";
+    previousView = name;
+    backButton.disabled = historyStack.length === 0;
+  }
+
+  function setBusy(busy) {
+    searchButton.disabled = busy;
+    searchButton.textContent = busy ? "Loading..." : "Search";
+  }
+
+  function setWiki() {
+    try {
+      wikiHost = normalizeHost(wikiInput.value);
+      wikiInput.value = wikiHost;
+      historyStack = [];
+      currentTitle = "";
+      lastSearch = "";
+      setStatus("Connected to " + wikiHost + ". Search for an article to begin.", false);
+      showView("welcome");
+      searchInput.focus();
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  function search(term, offset) {
+    term = String(term || "").replace(/^\s+|\s+$/g, "");
+    offset = offset || 0;
+    if (!term) {
+      setStatus("Enter a search term first.", true);
+      return;
+    }
+
+    lastSearch = term;
+    setBusy(true);
+    setStatus("Searching " + wikiHost + " ...", false);
+    var serial = ++requestSerial;
+    var titleOnly = document.getElementById("titleOnlySearch").checked;
+    var exactPhrase = document.getElementById("caseSensitiveSearch").checked;
+
+    function normalizeTitle(value) {
+      return String(value || "").replace(/_/g, " ").replace(/\s+/g, " ")
+        .replace(/^\s+|\s+$/g, "").toLowerCase();
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function highlightSnippet(value) {
+      // MediaWiki marks matches as <span class="searchmatch">...</span>.
+      // The snippet is otherwise treated as plain text, so API HTML cannot
+      // inject markup into the reader.
+      var raw = String(value || "");
+      var parts = raw.split(/(<span[^>]*class=["']searchmatch["'][^>]*>[\s\S]*?<\/span>)/ig);
+      var out = "";
+      for (var i = 0; i < parts.length; i += 1) {
+        var part = parts[i];
+        if (/^<span[^>]*class=["']searchmatch["']/i.test(part)) {
+          out += "<mark>" + escapeHtml(part.replace(/<[^>]*>/g, "")) + "</mark>";
+        } else {
+          out += escapeHtml(part.replace(/<[^>]*>/g, ""));
+        }
+      }
+      return out;
+    }
+
+    function rank(item) {
+      var title = normalizeTitle(item.title);
+      var query = normalizeTitle(term);
+      if (title === query) { return 0; }
+      if (title.indexOf(query) === 0) { return 1; }
+      if (title.indexOf(query) !== -1) { return 2; }
+
+      var words = query.split(/\s+/).filter(function (word) { return word; });
+      var matched = 0;
+      for (var w = 0; w < words.length; w += 1) {
+        if (title.indexOf(words[w]) !== -1) { matched += 1; }
+      }
+      return 3 - Math.min(2, matched / Math.max(1, words.length));
+    }
+
+    function renderResults(items, continuation, totalHits, append) {
+      if (serial !== requestSerial) { return; }
+
+      items.sort(function (a, b) {
+        var difference = rank(a) - rank(b);
+        if (difference) { return difference; }
+        var at = normalizeTitle(a.title), bt = normalizeTitle(b.title);
+        return at < bt ? -1 : (at > bt ? 1 : 0);
+      });
+
+      if (!append) {
+        viewResults.innerHTML = "";
+
+        var heading = document.createElement("h1");
+        heading.className = "section-heading";
+        heading.textContent = "Search results for: " + term;
+        viewResults.appendChild(heading);
+
+        var summary = document.createElement("div");
+        summary.className = "search-summary";
+        summary.textContent = totalHits != null
+          ? "Found about " + totalHits.toLocaleString() + " matching page(s). Showing the most relevant results."
+          : "Showing the most relevant results.";
+        viewResults.appendChild(summary);
+      }
+
+      if (!items.length && !append) {
+        var empty = document.createElement("p");
+        empty.textContent = "No matches found. Try fewer words, a different spelling, or turn off Titles only.";
+        viewResults.appendChild(empty);
+      }
+
+      for (var i = 0; i < items.length; i += 1) {
+        (function (item) {
+          var wrap = document.createElement("div");
+          wrap.className = "result";
+
+          var button = document.createElement("button");
+          button.type = "button";
+
+          var title = document.createElement("span");
+          title.className = "result-title";
+          title.textContent = item.title;
+
+          var type = document.createElement("span");
+          type.className = "result-type";
+          type.textContent = rank(item) <= 2 ? "title match" : "article match";
+          title.appendChild(type);
+          button.appendChild(title);
+
+          if (item.snippet) {
+            var snippet = document.createElement("span");
+            snippet.className = "result-snippet";
+            snippet.innerHTML = highlightSnippet(item.snippet);
+            button.appendChild(snippet);
+          }
+
+          button.onclick = function () { loadArticle(item.title, true); };
+          wrap.appendChild(button);
+          viewResults.appendChild(wrap);
+        }(items[i]));
+      }
+
+      var oldMore = document.getElementById("searchMoreButton");
+      if (oldMore) { oldMore.remove(); }
+
+      if (continuation && continuation.sroffset != null) {
+        var more = document.createElement("button");
+        more.type = "button";
+        more.id = "searchMoreButton";
+        more.className = "search-more";
+        more.textContent = "Load more results";
+        more.onclick = function () {
+          more.disabled = true;
+          more.textContent = "Loading...";
+          search(term, continuation.sroffset);
+        };
+        viewResults.appendChild(more);
+      }
+
+      showView("results");
+      setStatus("Showing search results from " + wikiHost + ".", false);
+    }
+
+    // MediaWiki's search syntax is much more capable than title matching:
+    // it searches article content, supports quoted phrases, and returns
+    // relevance-ranked snippets. We deliberately keep the query intact.
+    var searchQuery = term;
+    if (exactPhrase && term.indexOf('"') === -1) {
+      searchQuery = '"' + term.replace(/"/g, '\\"') + '"';
+    }
+
+    requestJson(apiUrl({
+      action: "query",
+      list: "search",
+      srsearch: searchQuery,
+      srwhat: titleOnly ? "title" : "text",
+      srlimit: "30",
+      sroffset: String(offset),
+      srprop: "snippet|titlesnippet|wordcount|size|timestamp",
+      srinfo: "totalhits",
+      format: "json",
+      formatversion: "2"
+    })).then(function (data) {
+      if (serial !== requestSerial) { return; }
+
+      var queryData = data && data.query ? data.query : {};
+      var items = queryData.search || [];
+      var continuation = data && data.continue ? data.continue : null;
+      var totalHits = queryData.searchinfo && queryData.searchinfo.totalhits;
+
+      // Prefer exact title matches, but don't hide the rest of the useful
+      // full-text results behind the exact-title shortcut.
+      renderResults(items, continuation, totalHits, offset > 0);
+    }).catch(function (error) {
+      if (serial !== requestSerial) { return; }
+      setStatus("Search failed: " + error.message + ". Check the wiki address or connection.", true);
+      if (!offset) {
+        viewResults.innerHTML = "";
+        var failure = document.createElement("p");
+        failure.textContent = "The wiki search API could not be reached. You can still open articles by title.";
+        viewResults.appendChild(failure);
+        showView("results");
+      }
+    }).then(function () {
+      if (serial === requestSerial) { setBusy(false); }
+    });
+  }
+
+  function stripHtml(value) {
+    var div = document.createElement("div");
+    div.innerHTML = value;
+    return div.textContent || div.innerText || "";
+  }
+
+
+
+  function searchAcrossWikis() {
+    var term = String(document.getElementById("wikiDiscoveryInput").value || "").replace(/^\s+|\s+$/g, "");
+    if (!term) {
+      setStatus("Enter a wiki name or topic, such as SMG4.", true);
+      return;
+    }
+
+    var serial = ++requestSerial;
+    setBusy(true);
+    setStatus("Searching for wikis matching “" + term + "”…", false);
+    showView("results");
+    viewResults.innerHTML = "";
+
+    var heading = document.createElement("h1");
+    heading.className = "section-heading";
+    heading.textContent = "Wikis matching: " + term;
+    viewResults.appendChild(heading);
+    var intro = document.createElement("p");
+    intro.className = "small";
+    intro.textContent = "Choose “Read this wiki” to switch this reader to that community. You stay in Wiki Reader; the Fandom directory UI is not opened.";
+    viewResults.appendChild(intro);
+
+    // Search Fandom's directory for likely community entries. Selecting one
+    // resolves its outbound Fandom community link, then switches the reader.
+    var url = "https://wikis.fandom.com/api.php?" + [
+      "action=query",
+      "list=search",
+      "srsearch=" + encodeURIComponent(term),
+      "srwhat=text",
+      "srlimit=20",
+      "srprop=snippet",
+      "format=json",
+      "formatversion=2",
+      "origin=*"
+    ].join("&");
+
+    function useDirectoryEntry(item, row, actionButton) {
+      actionButton.disabled = true;
+      actionButton.textContent = "Finding wiki…";
+      setStatus("Resolving the community link for " + item.title + "…", false);
+      var parseUrl = "https://wikis.fandom.com/api.php?" + [
+        "action=parse",
+        "page=" + encodeURIComponent(item.title),
+        "prop=text|externallinks|wikitext",
+        "format=json",
+        "formatversion=2",
+        "origin=*"
+      ].join("&");
+
+      requestJson(parseUrl).then(function (data) {
+        if (serial !== requestSerial) { return; }
+        var parsed = data && data.parse ? data.parse : null;
+        var candidates = [];
+        if (parsed && parsed.externallinks) {
+          parsed.externallinks.forEach(function (link) { candidates.push(link); });
+        }
+        var sourceText = parsed && parsed.wikitext && parsed.wikitext["*"] ? parsed.wikitext["*"] : "";
+        var matches = sourceText.match(/https?:\/\/[^\s|}\]<>"]+/ig) || [];
+        matches.forEach(function (link) { candidates.push(link.replace(/[),.;]+$/, "")); });
+
+        // Some directory entries generate the community URL through templates,
+        // so it appears in rendered HTML rather than literal wikitext.
+        var rendered = parsed && parsed.text ? parsed.text : "";
+        var hrefMatches = rendered.match(/href\s*=\s*["'][^"']+["']/ig) || [];
+        hrefMatches.forEach(function (attribute) {
+          var value = attribute.replace(/^href\s*=\s*["']?/i, "").replace(/["']$/, "");
+          candidates.push(value.replace(/&amp;/g, "&"));
+        });
+
+        function communityRoot(value) {
+          var candidate = String(value || "").replace(/&amp;/g, "&");
+          var match = candidate.match(/^https?:\/\/([a-z0-9-]+)\.(fandom\.com|wikia\.org|wikia\.com)(?:[/:?#]|$)/i);
+          if (!match) { return ""; }
+          var subdomain = match[1].toLowerCase();
+          if (/^(wikis|community|www|support|help|dev|about|services)$/.test(subdomain)) { return ""; }
+          return "https://" + subdomain + "." + match[2].toLowerCase();
+        }
+
+        var communityUrl = "";
+        for (var i = 0; i < candidates.length; i++) {
+          communityUrl = communityRoot(candidates[i]);
+          if (communityUrl) { break; }
+        }
+        if (!communityUrl) {
+          actionButton.disabled = false;
+          actionButton.textContent = "Couldn't resolve — retry";
+          setStatus("Couldn't find a direct community URL on that directory entry. Try another result.", true);
+          return;
+        }
+
+        try {
+          wikiHost = normalizeHost(communityUrl);
+          wikiInput.value = wikiHost;
+          historyStack = [];
+          currentTitle = "";
+          lastSearch = "";
+          searchInput.value = "";
+          setStatus("Switched to " + wikiHost + ". Search for an article to begin.", false);
+          showView("welcome");
+          searchInput.focus();
+        } catch (error) {
+          actionButton.disabled = false;
+          actionButton.textContent = "Read this wiki";
+          setStatus("Found a community link, but couldn't use it: " + error.message, true);
+        }
+      }).catch(function (error) {
+        if (serial !== requestSerial) { return; }
+        actionButton.disabled = false;
+        actionButton.textContent = "Retry wiki lookup";
+        setStatus("Couldn't resolve that directory entry: " + error.message, true);
+      });
+    }
+
+    requestJson(url).then(function (data) {
+      if (serial !== requestSerial) { return; }
+      var items = data && data.query && data.query.search ? data.query.search : [];
+      viewResults.innerHTML = "";
+      var h = document.createElement("h1");
+      h.className = "section-heading";
+      h.textContent = "Wikis matching: " + term;
+      viewResults.appendChild(h);
+      var intro2 = document.createElement("p");
+      intro2.className = "small";
+      intro2.textContent = "Results stay inside Wiki Reader. Choose “Read this wiki” to switch the reader to the community's API.";
+      viewResults.appendChild(intro2);
+
+      if (!items.length) {
+        var empty = document.createElement("p");
+        empty.textContent = "No matching directory entries found. Try a shorter name or another keyword.";
+        viewResults.appendChild(empty);
+      }
+
+      items.forEach(function (item) {
+        var row = document.createElement("div");
+        row.className = "result";
+        var title = document.createElement("strong");
+        title.textContent = item.title;
+        row.appendChild(title);
+        if (item.snippet) {
+          var snippet = document.createElement("div");
+          snippet.className = "result-snippet";
+          snippet.textContent = item.snippet.replace(/<[^>]*>/g, " ").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+          row.appendChild(snippet);
+        }
+        var actionButton = document.createElement("button");
+        actionButton.type = "button";
+        actionButton.textContent = "Read this wiki";
+        actionButton.addEventListener("click", function () {
+          useDirectoryEntry(item, row, actionButton);
+        });
+        row.appendChild(actionButton);
+        viewResults.appendChild(row);
+      });
+      setStatus("Found " + items.length + " possible wiki directory result(s).", false);
+      setBusy(false);
+    }).catch(function (error) {
+      if (serial !== requestSerial) { return; }
+      setStatus("Wiki search failed: " + error.message + ". The directory API may be unavailable from this browser.", true);
+      setBusy(false);
+      var help = document.createElement("p");
+      help.textContent = "Try a more specific name, or enter a wiki's hostname in the Wiki address field.";
+      viewResults.appendChild(help);
+    });
+  }
+
+  function loadArticle(title, pushHistory) {
+    if (!title) { return; }
+    if (pushHistory && currentTitle && currentTitle !== title) {
+      historyStack.push({ title: currentTitle, view: previousView });
+    }
+    currentTitle = title;
+    recentTitle = title;
+    setStatus("Loading article: " + title + " ...", false);
+    var serial = ++requestSerial;
+    var url = apiUrl({
+      action: "parse",
+      page: title,
+      prop: "text|displaytitle",
+      redirects: "1",
+      format: "json",
+      formatversion: "2"
+    });
+    requestJson(url).then(function (data) {
+      if (serial !== requestSerial) { return; }
+      if (!data || !data.parse || !data.parse.text) {
+        throw new Error("The wiki did not return article content.");
+      }
+      var parse = data.parse;
+      articleTitle.textContent = parse.displaytitle ? stripHtml(parse.displaytitle) : parse.title;
+      articleMeta.textContent = "From " + wikiHost + " | Article view";
+      renderArticle(parse.text);
+      showView("article");
+      setStatus("Loaded " + parse.title + ".", false);
+      document.title = parse.title + " - Wiki Reader";
+    }).catch(function (error) {
+      if (serial !== requestSerial) { return; }
+      setStatus("Could not load article: " + error.message, true);
+    });
+  }
+
+  function renderArticle(sourceHtml) {
+    articleBody.innerHTML = "";
+    var parser = new DOMParser();
+    var parsed = parser.parseFromString(sourceHtml, "text/html");
+    var root = parsed.body;
+    var removeSelectors = [
+      "script", "style", "link", "meta", "iframe", "form", "input", "button",
+      ".mw-editsection", ".portable-infobox .pi-item--source", ".reference",
+      ".reflist", ".navbox", ".sistersitebox", ".toc", ".mw-jump-link",
+      ".printfooter", ".catlinks", ".page-header__actions", ".global-footer",
+      ".wds-global-footer", ".ad-slot"
+    ];
+    var i;
+    for (i = 0; i < removeSelectors.length; i += 1) {
+      var found = root.querySelectorAll(removeSelectors[i]);
+      var j;
+      for (j = found.length - 1; j >= 0; j -= 1) {
+        if (found[j].parentNode) { found[j].parentNode.removeChild(found[j]); }
+      }
+    }
+    var allowed = {
+      A: 1, ABBR: 1, B: 1, BLOCKQUOTE: 1, BR: 1, CAPTION: 1, CODE: 1,
+      DD: 1, DEL: 1, DIV: 1, DL: 1, DT: 1, EM: 1, FIGCAPTION: 1, FIGURE: 1,
+      H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, HR: 1, I: 1, IMG: 1,
+      PICTURE: 1, SOURCE: 1, SVG: 1, G: 1, PATH: 1, USE: 1, POLYGON: 1, POLYLINE: 1,
+      RECT: 1, CIRCLE: 1, ELLIPSE: 1, LINE: 1, DEFS: 1, CLIPPATH: 1,
+      LI: 1, OL: 1, P: 1, PRE: 1, S: 1, SMALL: 1, SPAN: 1, STRONG: 1,
+      SUB: 1, SUP: 1, TABLE: 1, TBODY: 1, TD: 1, TH: 1, THEAD: 1,
+      TR: 1, U: 1, UL: 1
+    };
+    var all = root.querySelectorAll("*");
+    for (i = all.length - 1; i >= 0; i -= 1) {
+      var node = all[i];
+      if (!node.parentNode) { continue; }
+      if (!allowed[node.tagName]) {
+        var parent = node.parentNode;
+        while (node.firstChild) { parent.insertBefore(node.firstChild, node); }
+        parent.removeChild(node);
+        continue;
+      }
+      var attrs = [];
+      var k;
+      for (k = 0; k < node.attributes.length; k += 1) { attrs.push(node.attributes[k].name); }
+      // Do not sanitize or rewrite image assets or their supporting markup.
+      // Preserve image URLs, lazy-load attributes, srcset, styles, and picture/source tags.
+      var assetNode = /^(IMG|PICTURE|SOURCE|SVG|G|PATH|USE|POLYGON|POLYLINE|RECT|CIRCLE|ELLIPSE|LINE|DEFS|CLIPPATH)$/.test(node.tagName);
+      if (!assetNode) for (k = 0; k < attrs.length; k += 1) {
+        var attr = attrs[k];
+        var attrLower = attr.toLowerCase();
+        if (attrLower.indexOf("on") === 0 || attrLower === "srcdoc") {
+          node.removeAttribute(attr);
+        }
+      }
+      if (node.tagName === "A") {
+        var href = node.getAttribute("href") || "";
+        // Fandom sometimes links thumbnails to their transformed /revision/latest/... URL.
+        // Point image links at the original file path instead, matching the working <img src>.
+        if (/^https?:\/\/static\.wikia\.nocookie\.net\//i.test(href) &&
+            /\/revision\/latest\//i.test(href)) {
+          href = href.replace(/\/revision\/latest\/.*$/i, "/");
+          node.setAttribute("href", href);
+        }
+        if (href.indexOf("javascript:") === 0 || href.indexOf("data:") === 0) {
+          node.removeAttribute("href");
+        } else if (href.charAt(0) === "#") {
+          node.setAttribute("href", href);
+        } else if (href.indexOf("//") === 0) {
+          node.setAttribute("href", "https:" + href);
+        } else if (href.charAt(0) === "/") {
+          node.setAttribute("href", "https://" + wikiHost + href);
+        } else if (href.indexOf("http://") !== 0 && href.indexOf("https://") !== 0) {
+          node.setAttribute("href", "https://" + wikiHost + "/" + href.replace(/^\//, ""));
+        }
+      }
+      if (node.tagName === "IMG" && textOnly && node.parentNode) {
+        node.parentNode.removeChild(node);
+      }
+    }
+    // Fandom's API can return thumbnail variants in both src and srcset.
+    // Kindle browsers may choose a srcset candidate even when src is present.
+    // Prefer the original file URL and remove responsive thumbnail candidates.
+    var images = root.querySelectorAll("img");
+    for (i = 0; i < images.length; i += 1) {
+      var image = images[i];
+      var imageSrc = image.getAttribute("src") || "";
+      var originalSrc = imageSrc.replace(/\/revision\/latest\/scale-to-width-down\/\d+(?=\?|$)/i, "/");
+      if (originalSrc !== imageSrc) { image.setAttribute("src", originalSrc); }
+      image.removeAttribute("srcset");
+      image.removeAttribute("sizes");
+    }
+
+    while (root.firstChild) { articleBody.appendChild(root.firstChild); }
+
+    var links = articleBody.querySelectorAll("a");
+    for (i = 0; i < links.length; i += 1) {
+      links[i].onclick = function (event) {
+        var href = this.getAttribute("href") || "";
+        if (href.indexOf("https://" + wikiHost + "/wiki/") === 0) {
+          event.preventDefault();
+          var linkedTitle = decodeURIComponent(href.substring(("https://" + wikiHost + "/wiki/").length)).replace(/_/g, " ");
+          loadArticle(linkedTitle, true);
+        } else if (href.indexOf("#") === 0) {
+          event.preventDefault();
+          var target = document.getElementById(href.substring(1));
+          if (target) { target.scrollIntoView(); }
+        }
+      };
+    }
+    if (textOnly) {
+      var images = articleBody.querySelectorAll("img");
+      for (i = images.length - 1; i >= 0; i -= 1) {
+        if (images[i].parentNode) { images[i].parentNode.removeChild(images[i]); }
+      }
+    }
+  }
+
+  function goHome() {
+    requestSerial += 1;
+    currentTitle = "";
+    document.title = "Wiki Reader";
+    showView("welcome");
+    setStatus("Ready. Search " + wikiHost + " to read an article.", false);
+  }
+
+  function goBack() {
+    if (!historyStack.length) {
+      if (previousView === "article") { showView("results"); }
+      return;
+    }
+    var entry = historyStack.pop();
+    currentTitle = "";
+    loadArticle(entry.title, false);
+    backButton.disabled = historyStack.length === 0;
+  }
+
+  document.getElementById("searchForm").onsubmit = function (event) {
+    event.preventDefault();
+    search(searchInput.value, 0);
+  };
+  document.getElementById("setWikiButton").onclick = setWiki;
+  document.getElementById("wikiDiscoveryButton").onclick = searchAcrossWikis;
+  document.getElementById("homeButton").onclick = goHome;
+  document.getElementById("wikiHomeButton").onclick = function () {
+    loadArticle("Main Page", true);
+  };
+  document.getElementById("randomButton").onclick = function () {
+    setStatus("Finding a random article ...", false);
+    requestJson(apiUrl({
+      action: "query",
+      list: "random",
+      rnnamespace: "0",
+      rnlimit: "1",
+      format: "json",
+      formatversion: "2"
+    })).then(function (data) {
+      var items = data && data.query && data.query.random ? data.query.random : [];
+      if (items.length) { loadArticle(items[0].title, true); }
+      else { setStatus("No random article was returned.", true); }
+    }).catch(function (error) {
+      setStatus("Random article failed: " + error.message, true);
+    });
+  };
+  document.getElementById("recentButton").onclick = function () {
+    if (recentTitle) { loadArticle(recentTitle, true); }
+    else { setStatus("You have not opened an article yet.", false); }
+  };
+  document.getElementById("textModeButton").onclick = function () {
+    textOnly = !textOnly;
+    document.getElementById("textModeButton").textContent = textOnly ? "Turn images back on" : "Toggle text-only mode";
+    if (currentTitle) { loadArticle(currentTitle, false); }
+    else { setStatus(textOnly ? "Text-only mode enabled." : "Text-only mode disabled.", false); }
+  };
+  document.getElementById("articleBackButton").onclick = function () {
+    showView("results");
+    setStatus("Showing search results for: " + lastSearch, false);
+  };
+  document.getElementById("openOriginalButton").onclick = function () {
+    if (currentTitle) {
+      var url = "https://" + wikiHost + "/wiki/" + encodeURIComponent(currentTitle.replace(/ /g, "_"));
+      window.location.href = url;
+    }
+  };
+  backButton.onclick = goBack;
+  wikiInput.onkeydown = function (event) {
+    if (event.key === "Enter") { setWiki(); }
+  };
+  searchInput.onkeydown = function (event) {
+    if (event.key === "Enter") { search(searchInput.value, 0); }
+  };
+}());
+</script>
+
+<script id="kindle-close-handler">
+document.addEventListener("click", function (event) {
+    const el = event.target.closest(".close, #close, .close-btn, #close-btn");
+    if (el) window.location.href = "index.html";
+});
+</script>
+
+</body>
+</html>

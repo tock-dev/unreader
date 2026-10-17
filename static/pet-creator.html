@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Neko Pet Creator</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="bbs.css">
+  <script src="common.js"></script>
+  <script src="neko-loader.js"></script>
+  <style>
+    * { animation: none !important; transition: none !important; }
+    body { height: 100vh; overflow: hidden; }
+    .window { width: 95%; max-width: 600px; height: 90vh; margin: auto; overflow: hidden; }
+    .creator-content { min-height: 0; padding: 12px; overflow-y: auto; }
+    .creator-content h2, .creator-content h3 { margin: 12px 0 6px; }
+    .tools { display: flex; flex-wrap: wrap; align-items: center; }
+    .tools > * { margin: 0 8px 8px 0; }
+    .tools button, .tools input, .pet-publisher button { min-height: 48px; }
+    .pet-rgb-picker { display: grid; grid-template-columns: minmax(0, 1fr); margin: 8px 0; }
+    .pet-rgb-picker label { display: grid; grid-template-columns: 16px minmax(0, 1fr) 32px; align-items: center; min-height: 48px; }
+    .pet-rgb-picker input[type="range"] { width: 100%; height: 48px; margin: 0; }
+    .pet-rgb-picker output { text-align: right; font-family: monospace; }
+    #pet-color-preview { width: 48px; height: 48px; border: 2px solid #000; background: #111; }
+    .pet-swatches { display: grid; grid-template-columns: repeat(4, minmax(48px, 1fr)); margin: 4px -2px 8px; }
+    .pet-swatches button { min-width: 48px; min-height: 48px; margin: 2px; padding: 5px; }
+    .pet-swatches button span { display: block; width: 100%; height: 100%; min-height: 32px; border: 1px solid #000; }
+    #pet-canvas-wrap { position: relative; width: 100%; max-width: 384px; margin: 8px auto; }
+    #pet-canvas { display: block; box-sizing: border-box; width: 100%; height: auto; border: 2px solid #000; background: #fff; image-rendering: pixelated; touch-action: none; }
+    #pet-grid { position: absolute; top: 2px; right: 2px; bottom: 2px; left: 2px; pointer-events: none; background-image: linear-gradient(to right, rgba(0,0,0,.28) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,.28) 1px, transparent 1px); background-size: var(--pet-cell-size) var(--pet-cell-size); }
+    #action-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 8px; margin: 8px 0; }
+    .action-group { border: 1px solid #000; padding: 6px; }
+    .action-group h3 { margin: 0 0 6px; font-size: 12px; }
+    .action-frames { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .frame-button { min-height: 48px; border: 2px solid #000; background: #fff; color: #000; font: inherit; }
+    .frame-button.selected { background: #000; color: #fff; }
+    #frame-label { font-weight: bold; }
+    #pet-status { min-height: 1.4em; }
+    .pet-publisher { margin-top: 18px; padding-top: 12px; border-top: 2px solid #000; }
+    .pet-publisher input { box-sizing: border-box; width: 100%; min-height: 48px; margin: 6px 0; }
+    #pet-library { display: grid; gap: 8px; margin-top: 10px; }
+    .pet-card { display: flex; align-items: center; border: 1px solid #000; padding: 8px; }
+    .pet-card img { flex: 0 0 48px; width: 48px; height: 48px; margin-right: 10px; image-rendering: pixelated; border: 1px solid #000; }
+    .pet-card-info { flex: 1; min-width: 0; margin-right: 8px; }
+    .pet-card-name { font-weight: 900; word-break: break-word; }
+    .pet-card-meta { font-size: 11px; }
+    .pet-card button { min-height: 48px; }
+    @media (max-width: 380px) {
+      .creator-content { padding: 8px; }
+      .pet-card { flex-wrap: wrap; }
+      .pet-card button { margin: 8px 0 0 58px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="window">
+    <header class="title-bar">
+      <div class="title-stripes"></div>
+      <button class="paper-btn" id="back-btn" type="button" onclick="window.location.href = 'index.html'">&lt; HOME</button>
+      <div class="title-text">NEKO PET CREATOR</div>
+    </header>
+    <section class="creator-content">
+      <p>Draw each 32x32 pose. Add frames inside an action to extend its animation.</p>
+      <div id="action-groups" aria-label="Pet action frames"></div>
+      <p id="frame-label" aria-live="polite"></p>
+      <div class="pet-rgb-picker" aria-label="RGB brush color">
+        <label>R <input id="pet-red" type="range" min="0" max="255" value="17"><output id="pet-red-value">17</output></label>
+        <label>G <input id="pet-green" type="range" min="0" max="255" value="17"><output id="pet-green-value">17</output></label>
+        <label>B <input id="pet-blue" type="range" min="0" max="255" value="17"><output id="pet-blue-value">17</output></label>
+        <span id="pet-color-preview" aria-label="Selected brush color"></span>
+      </div>
+      <div class="pet-swatches" aria-label="Quick colors">
+        <button type="button" class="pet-color-swatch" data-color="#000000" aria-label="Black"><span style="background:#000000"></span></button>
+        <button type="button" class="pet-color-swatch" data-color="#ffffff" aria-label="White"><span style="background:#ffffff"></span></button>
+        <button type="button" class="pet-color-swatch" data-color="#ff0000" aria-label="Red"><span style="background:#ff0000"></span></button>
+        <button type="button" class="pet-color-swatch" data-color="#00aa00" aria-label="Green"><span style="background:#00aa00"></span></button>
+        <button type="button" class="pet-color-swatch" data-color="#0000ff" aria-label="Blue"><span style="background:#0000ff"></span></button>
+        <button type="button" class="pet-color-swatch" data-color="#ffff00" aria-label="Yellow"><span style="background:#ffff00"></span></button>
+        <button type="button" class="pet-color-swatch" data-color="#ff00ff" aria-label="Magenta"><span style="background:#ff00ff"></span></button>
+        <button type="button" class="pet-color-swatch" data-color="#00ffff" aria-label="Cyan"><span style="background:#00ffff"></span></button>
+      </div>
+      <div class="tools">
+        <button id="pet-erase" type="button" class="paper-btn" aria-pressed="false">ERASER: OFF</button>
+        <button id="pet-clear" type="button" class="paper-btn">CLEAR FRAME</button>
+      </div>
+      <div id="pet-canvas-wrap">
+        <canvas id="pet-canvas" width="32" height="32" aria-label="Draw the selected pet frame"></canvas>
+        <div id="pet-grid" aria-hidden="true"></div>
+      </div>
+      <div class="tools">
+        <button id="pet-save" type="button" class="paper-btn">SAVE PET</button>
+        <button id="pet-reset" type="button" class="paper-btn">RESET TO NEKO</button>
+      </div>
+      <p id="pet-status" role="status" aria-live="polite"></p>
+
+      <section class="pet-publisher" aria-labelledby="publisher-title">
+        <h2 id="publisher-title">Pet Publisher</h2>
+        <label for="pet-name">Name your pet</label>
+        <input id="pet-name" maxlength="255" autocomplete="off" placeholder="Pet name">
+        <button id="pet-publish" type="button" class="paper-btn">PUBLISH CURRENT PET</button>
+        <p id="publisher-status" role="status" aria-live="polite"></p>
+        <h3>Community Pets</h3>
+        <div id="pet-library" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+  <script>
+    var MIN_FRAME_COUNT = 32;
+    // shortcut: Cap at 64 frames so encoded sprites stay within the API payload limit.
+    var MAX_FRAME_COUNT = 64;
+    var canImportImages = !/(Kindle|Silk|KFTT|KF[A-Z]{2,})/i.test(navigator.userAgent || '');
+    // Neko.js uses fixed state IDs; frame 28 is shared by wash and stop in the default set.
+    var ACTIONS = [
+      { state: 5, name: 'AWAKE', frames: [0] },
+      { state: 6, name: 'MOVE UP', frames: [1, 2] },
+      { state: 11, name: 'MOVE UP-RIGHT', frames: [3, 4] },
+      { state: 9, name: 'MOVE RIGHT', frames: [5, 6] },
+      { state: 13, name: 'MOVE DOWN-RIGHT', frames: [7, 8] },
+      { state: 7, name: 'MOVE DOWN', frames: [9, 10] },
+      { state: 12, name: 'MOVE DOWN-LEFT', frames: [11, 12] },
+      { state: 8, name: 'MOVE LEFT', frames: [13, 14] },
+      { state: 10, name: 'MOVE UP-LEFT', frames: [15, 16] },
+      { state: 14, name: 'CLAW UP', frames: [17, 18] },
+      { state: 17, name: 'CLAW RIGHT', frames: [19, 20] },
+      { state: 16, name: 'CLAW LEFT', frames: [21, 22] },
+      { state: 15, name: 'CLAW DOWN', frames: [23, 24] },
+      { state: 1, name: 'WASH', frames: [25, 28] },
+      { state: 2, name: 'SCRATCH', frames: [26, 27] },
+      { state: 0, name: 'STOP', frames: [28] },
+      { state: 3, name: 'YAWN', frames: [29] },
+      { state: 4, name: 'SLEEP', frames: [30, 31] },
+    ];
+    var canvas = document.getElementById('pet-canvas');
+    var context = canvas.getContext('2d');
+    var red = document.getElementById('pet-red');
+    var green = document.getElementById('pet-green');
+    var blue = document.getElementById('pet-blue');
+    var brushColor = '#111111';
+    var frameData = [];
+    var currentFrame = 0;
+    var drawing = false;
+    var erasing = false;
+    var lastPoint = null;
+    var imageLoadNumber = 0;
+    var frameReady = true;
+    var blankCanvas = document.createElement('canvas');
+    blankCanvas.width = blankCanvas.height = 32;
+    var blankFrameData = blankCanvas.toDataURL('image/png');
+
+    context.imageSmoothingEnabled = false;
+
+    function updateBrushColor() {
+      var channels = [red, green, blue].map(function (input) {
+        return Math.max(0, Math.min(255, Number(input.value) || 0));
+      });
+      brushColor = 'rgb(' + channels.join(',') + ')';
+      document.getElementById('pet-color-preview').style.backgroundColor = brushColor;
+      ['red', 'green', 'blue'].forEach(function (name, index) {
+        document.getElementById('pet-' + name + '-value').textContent = channels[index];
+      });
+      var hexColor = '#' + channels.map(function (value) {
+        return value.toString(16).padStart(2, '0');
+      }).join('');
+      var swatches = document.querySelectorAll('.pet-color-swatch');
+      for (var i = 0; i < swatches.length; i++) {
+        swatches[i].setAttribute('aria-pressed', String(swatches[i].getAttribute('data-color') === hexColor));
+      }
+    }
+
+    [red, green, blue].forEach(function (input) { input.oninput = updateBrushColor; });
+    var colorSwatches = document.querySelectorAll('.pet-color-swatch');
+    for (var swatchIndex = 0; swatchIndex < colorSwatches.length; swatchIndex++) {
+      colorSwatches[swatchIndex].onclick = function () {
+        var value = this.getAttribute('data-color');
+        red.value = parseInt(value.slice(1, 3), 16);
+        green.value = parseInt(value.slice(3, 5), 16);
+        blue.value = parseInt(value.slice(5, 7), 16);
+        updateBrushColor();
+      };
+    }
+    updateBrushColor();
+
+    function decodePetFrames(petData) {
+      if (!petData) return null;
+      try {
+        var parsed = JSON.parse(petData);
+        if (parsed && parsed.version === 2 && Array.isArray(parsed.frames) &&
+          parsed.frames.length >= MIN_FRAME_COUNT && parsed.frames.length <= MAX_FRAME_COUNT &&
+          parsed.frames.every(function (frame) { return typeof frame === 'string' && frame.indexOf('data:image/png;base64,') === 0; }) &&
+          isValidActionMap(parsed.actions, parsed.frames.length)) {
+          return {
+            frames: parsed.frames.map(function (frame) { return frame === blankFrameData ? '' : frame; }),
+            actions: parsed.actions,
+          };
+        }
+        if (Array.isArray(parsed) && parsed.length === MIN_FRAME_COUNT && parsed.every(function (frame) {
+          return typeof frame === 'string' && frame.indexOf('data:image/png;base64,') === 0;
+        })) return { frames: parsed.map(function (frame) { return frame === blankFrameData ? '' : frame; }), actions: null };
+      } catch (error) {}
+      if (petData.indexOf('data:image/png;base64,') === 0) {
+        return { frames: Array(MIN_FRAME_COUNT).fill(petData === blankFrameData ? '' : petData), actions: null };
+      }
+      return null;
+    }
+
+    function isValidActionMap(actions, count) {
+      if (!Array.isArray(actions) || actions.length !== ACTIONS.length) return false;
+      var states = {};
+      return actions.every(function (action) {
+        if (!action || !Number.isInteger(action.state) || action.state < 0 || action.state >= ACTIONS.length ||
+          states[action.state] || !Array.isArray(action.frames) || !action.frames.length ||
+          !action.frames.every(function (index) { return Number.isInteger(index) && index >= 0 && index < count; })) return false;
+        states[action.state] = true;
+        return true;
+      });
+    }
+
+    function applyPetData(decoded) {
+      frameData = decoded.frames;
+      if (decoded.actions) {
+        decoded.actions.forEach(function (action) {
+          var target = ACTIONS.filter(function (item) { return item.state === action.state; })[0];
+          if (target && Array.isArray(action.frames) && action.frames.length) target.frames = action.frames.slice();
+        });
+      } else {
+        ACTIONS.forEach(function (action, index) {
+          var defaults = [
+            [0], [1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16],
+            [17, 18], [19, 20], [21, 22], [23, 24], [25, 28], [26, 27], [28], [29], [30, 31],
+          ];
+          action.frames = defaults[index].slice();
+        });
+      }
+      renderActionButtons();
+    }
+
+    function storeCurrentFrame() {
+      if (!frameReady) return;
+      var pixels = context.getImageData(0, 0, 32, 32).data;
+      frameData[currentFrame] = pixels.some(function (value, index) {
+        return index % 4 === 3 && value !== 0;
+      }) ? canvas.toDataURL('image/png') : '';
+    }
+
+    function serializedPetFrames() {
+      storeCurrentFrame();
+      return JSON.stringify({
+        version: 2,
+        frames: frameData.map(function (frame) { return frame || blankFrameData; }),
+        actions: ACTIONS.map(function (action) { return { state: action.state, frames: action.frames.slice() }; }),
+      });
+    }
+
+    function drawFrame(index) {
+      var requestNumber = ++imageLoadNumber;
+      currentFrame = index;
+      frameReady = false;
+      canvas.style.pointerEvents = 'none';
+      context.clearRect(0, 0, 32, 32);
+      document.getElementById('frame-label').textContent = 'FRAME ' + index + ' - ' + ACTIONS.filter(function (action) {
+        return action.frames.indexOf(index) !== -1;
+      }).map(function (action) { return action.name; }).join(' / ');
+      var buttons = document.querySelectorAll('.frame-button');
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].classList.toggle('selected', Number(buttons[i].getAttribute('data-frame')) === index);
+        buttons[i].setAttribute('aria-pressed', String(Number(buttons[i].getAttribute('data-frame')) === index));
+      }
+      if (!frameData[index]) {
+        frameReady = true;
+        canvas.style.pointerEvents = 'auto';
+        return;
+      }
+      var image = new Image();
+      image.onload = function () {
+        if (requestNumber === imageLoadNumber) {
+          context.drawImage(image, 0, 0, 32, 32);
+          frameReady = true;
+          canvas.style.pointerEvents = 'auto';
+        }
+      };
+      image.onerror = function () {
+        if (requestNumber === imageLoadNumber) {
+          frameReady = true;
+          canvas.style.pointerEvents = 'auto';
+        }
+      };
+      image.src = frameData[index];
+    }
+
+    function selectFrame(index) {
+      storeCurrentFrame();
+      drawFrame(index);
+    }
+
+    function renderActionButtons() {
+      var groups = document.getElementById('action-groups');
+      while (groups.firstChild) groups.removeChild(groups.firstChild);
+      ACTIONS.forEach(function (action) {
+        var group = document.createElement('section');
+        group.className = 'action-group';
+        var heading = document.createElement('h3');
+        heading.textContent = action.name;
+        var frames = document.createElement('div');
+        frames.className = 'action-frames';
+        action.frames.forEach(function (frame) {
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'frame-button';
+          button.setAttribute('data-frame', frame);
+          button.textContent = 'FRAME ' + frame;
+          button.onclick = function () { selectFrame(frame); };
+          frames.appendChild(button);
+        });
+        var importButton = document.createElement('button');
+        importButton.type = 'button';
+        importButton.className = 'frame-button';
+        importButton.textContent = 'IMPORT IMAGE/GIF';
+        importButton.setAttribute('aria-label', 'Import image or GIF frames into ' + action.name);
+        importButton.hidden = !canImportImages;
+        importButton.disabled = frameData.length >= MAX_FRAME_COUNT;
+        importButton.onclick = function () { chooseImageForAction(action); };
+        var addButton = document.createElement('button');
+        addButton.type = 'button';
+        addButton.className = 'frame-button';
+        addButton.textContent = 'ADD FRAME';
+        addButton.disabled = frameData.length >= MAX_FRAME_COUNT;
+        addButton.onclick = function () {
+          storeCurrentFrame();
+          if (frameData.length >= MAX_FRAME_COUNT) return;
+          frameData.push('');
+          action.frames.push(frameData.length - 1);
+          renderActionButtons();
+          selectFrame(frameData.length - 1);
+        };
+        group.append(heading, frames, importButton, addButton);
+        groups.appendChild(group);
+      });
+    }
+
+    function chooseImageForAction(action) {
+      if (!canImportImages) return;
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*,.gif';
+      input.style.position = 'absolute';
+      input.style.left = '-10000px';
+      input.onchange = function () {
+        var file = input.files && input.files[0];
+        if (input.parentNode) input.parentNode.removeChild(input);
+        if (file) importImageForAction(action, file);
+      };
+      input.oncancel = function () {
+        if (input.parentNode) input.parentNode.removeChild(input);
+      };
+      document.body.appendChild(input);
+      input.click();
+    }
+
+    var importingImage = false;
+    function importImageForAction(action, file) {
+      var remaining = MAX_FRAME_COUNT - frameData.length;
+      if (importingImage) return;
+      if (remaining <= 0) {
+        document.getElementById('pet-status').textContent = 'This pet already has the maximum of 64 frames.';
+        return;
+      }
+      importingImage = true;
+      var image = new Image();
+      var objectUrl = URL.createObjectURL(file);
+      var importedFrames = [];
+      var firstFrame = '';
+      var previousFrame = '';
+      var sampleCount = 0;
+      var isGif = file.type === 'image/gif' || /\.gif$/i.test(file.name || '');
+      var timer = null;
+      var finished = false;
+
+      function finishImport(error) {
+        if (finished) return;
+        finished = true;
+        if (timer !== null) clearTimeout(timer);
+        URL.revokeObjectURL(objectUrl);
+        if (image.parentNode) image.parentNode.removeChild(image);
+        importingImage = false;
+        if (error) {
+          document.getElementById('pet-status').textContent = 'Could not import that image.';
+          return;
+        }
+        if (!importedFrames.length) {
+          document.getElementById('pet-status').textContent = 'No frames could be imported.';
+          return;
+        }
+        storeCurrentFrame();
+        var firstAddedFrame = frameData.length;
+        importedFrames.forEach(function (frame) {
+          action.frames.push(frameData.length);
+          frameData.push(frame);
+        });
+        renderActionButtons();
+        selectFrame(firstAddedFrame);
+        document.getElementById('pet-status').textContent = 'Imported ' + importedFrames.length +
+          (isGif ? ' GIF frame(s) into ' : ' image frame into ') + action.name + '.';
+      }
+
+      // shortcut: Sample GIF playback for up to four seconds; imported frames use Neko's action timing.
+      function captureFrame() {
+        if (!image.naturalWidth || !image.naturalHeight) {
+          finishImport(true);
+          return;
+        }
+        var frame;
+        try {
+          var frameCanvas = document.createElement('canvas');
+          frameCanvas.width = frameCanvas.height = 32;
+          var frameContext = frameCanvas.getContext('2d');
+          var scale = Math.min(32 / image.naturalWidth, 32 / image.naturalHeight);
+          var width = Math.max(1, Math.round(image.naturalWidth * scale));
+          var height = Math.max(1, Math.round(image.naturalHeight * scale));
+          frameContext.imageSmoothingEnabled = false;
+          frameContext.drawImage(image, (32 - width) / 2, (32 - height) / 2, width, height);
+          frame = frameCanvas.toDataURL('image/png');
+        } catch (error) {
+          finishImport(true);
+          return;
+        }
+        sampleCount++;
+        if (frame !== previousFrame && importedFrames.length < remaining) importedFrames.push(frame);
+        if (!firstFrame) firstFrame = frame;
+        var looped = sampleCount > 2 && frame === firstFrame && previousFrame !== firstFrame;
+        previousFrame = frame;
+        if (!isGif || looped || importedFrames.length >= remaining || sampleCount >= 80) {
+          finishImport(false);
+        } else {
+          timer = setTimeout(captureFrame, 50);
+        }
+      }
+
+      image.style.position = 'absolute';
+      image.style.left = '-10000px';
+      document.body.appendChild(image);
+      image.onload = captureFrame;
+      image.onerror = function () { finishImport(true); };
+      image.src = objectUrl;
+    }
+
+    function updateGridSize() {
+      document.getElementById('pet-canvas-wrap').style.setProperty('--pet-cell-size', (canvas.clientWidth / 32) + 'px');
+    }
+
+    function pointFromEvent(event) {
+      var rect = canvas.getBoundingClientRect();
+      return {
+        x: Math.max(0, Math.min(31, Math.floor((event.clientX - rect.left) * 32 / rect.width))),
+        y: Math.max(0, Math.min(31, Math.floor((event.clientY - rect.top) * 32 / rect.height))),
+      };
+    }
+
+    function paint(point) {
+      if (erasing) context.clearRect(point.x, point.y, 1, 1);
+      else {
+        context.fillStyle = brushColor;
+        context.fillRect(point.x, point.y, 1, 1);
+      }
+    }
+
+    updateGridSize();
+    window.addEventListener('resize', updateGridSize);
+    var savedFrames = decodePetFrames(localStorage.getItem('unreader-neko-sprite'));
+    applyPetData(savedFrames || { frames: Array(MIN_FRAME_COUNT).fill(''), actions: null });
+    drawFrame(currentFrame);
+
+    canvas.onpointerdown = function (event) {
+      drawing = true;
+      lastPoint = pointFromEvent(event);
+      if (canvas.setPointerCapture && event.pointerId !== undefined) canvas.setPointerCapture(event.pointerId);
+      paint(lastPoint);
+      event.preventDefault();
+    };
+    canvas.onpointermove = function (event) {
+      if (!drawing || !lastPoint) return;
+      var point = pointFromEvent(event);
+      var steps = Math.max(Math.abs(point.x - lastPoint.x), Math.abs(point.y - lastPoint.y));
+      for (var step = 1; step <= steps; step++) {
+        var progress = step / steps;
+        paint({
+          x: Math.round(lastPoint.x + (point.x - lastPoint.x) * progress),
+          y: Math.round(lastPoint.y + (point.y - lastPoint.y) * progress),
+        });
+      }
+      lastPoint = point;
+      event.preventDefault();
+    };
+    canvas.onpointerup = canvas.onpointercancel = function () {
+      drawing = false;
+      lastPoint = null;
+      storeCurrentFrame();
+    };
+
+    document.getElementById('pet-erase').onclick = function () {
+      erasing = !erasing;
+      this.textContent = erasing ? 'ERASER: ON' : 'ERASER: OFF';
+      this.setAttribute('aria-pressed', String(erasing));
+    };
+    document.getElementById('pet-clear').onclick = function () {
+      context.clearRect(0, 0, 32, 32);
+      storeCurrentFrame();
+    };
+
+    function savePetLocally() {
+      var petData = serializedPetFrames();
+      localStorage.setItem('unreader-neko-sprite', petData);
+      if (window.applyNekoSprite) window.applyNekoSprite(petData);
+      document.getElementById('pet-status').textContent = 'Pet saved and applied.';
+      return petData;
+    }
+
+    document.getElementById('pet-save').onclick = savePetLocally;
+    document.getElementById('pet-reset').onclick = function () {
+      localStorage.removeItem('unreader-neko-sprite');
+      frameData = Array(MIN_FRAME_COUNT).fill('');
+      applyPetData({ frames: frameData, actions: null });
+      drawFrame(0);
+      var enabled = localStorage.getItem('unreader-neko-enabled') !== 'false';
+      if (enabled && window.setNekoEnabled) {
+        window.setNekoEnabled(false);
+        window.setNekoEnabled(true);
+      }
+      document.getElementById('pet-status').textContent = 'Restored the default Neko pet.';
+    };
+
+    var token = localStorage.getItem('token') || localStorage.getItem('unreader-token');
+    var publisherStatus = document.getElementById('publisher-status');
+    var petLibrary = document.getElementById('pet-library');
+
+    async function petApi(path, options) {
+      options = options || {};
+      var headers = { Authorization: 'Bearer ' + token };
+      if (options.body) headers['Content-Type'] = 'application/json';
+      if (options.headers) Object.assign(headers, options.headers);
+      var response = await fetch(BACKEND_URL + path, Object.assign({}, options, { headers: headers }));
+      var result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Pet library request failed.');
+      return result;
+    }
+
+    function usePublishedPet(pet) {
+      var decoded = decodePetFrames(pet.pet_data);
+      if (!decoded) {
+        document.getElementById('pet-status').textContent = 'This published pet has invalid frame data.';
+        return;
+      }
+      applyPetData(decoded);
+      currentFrame = 0;
+      drawFrame(0);
+      var petData = serializedPetFrames();
+      localStorage.setItem('unreader-neko-sprite', petData);
+      if (window.applyNekoSprite) window.applyNekoSprite(petData);
+      document.getElementById('pet-status').textContent = 'Using ' + pet.name + '.';
+    }
+
+    function renderPetLibrary(pets) {
+      while (petLibrary.firstChild) petLibrary.removeChild(petLibrary.firstChild);
+      if (!pets.length) {
+        petLibrary.textContent = 'No pets have been published yet.';
+        return;
+      }
+      pets.forEach(function (pet) {
+        var decoded = decodePetFrames(pet.pet_data);
+        if (!decoded) return;
+        var card = document.createElement('article');
+        card.className = 'pet-card';
+        var preview = document.createElement('img');
+        preview.src = decoded.frames.filter(Boolean)[0] || blankFrameData;
+        preview.alt = pet.name + ' preview';
+        var info = document.createElement('div');
+        info.className = 'pet-card-info';
+        var name = document.createElement('div');
+        name.className = 'pet-card-name';
+        name.textContent = pet.name;
+        var meta = document.createElement('div');
+        meta.className = 'pet-card-meta';
+        meta.textContent = 'by ' + pet.created_by + ' - ' + (pet.date_release || 'date unknown');
+        var useButton = document.createElement('button');
+        useButton.type = 'button';
+        useButton.className = 'paper-btn';
+        useButton.textContent = 'USE';
+        useButton.onclick = function () { usePublishedPet(pet); };
+        info.append(name, meta);
+        card.append(preview, info, useButton);
+        petLibrary.appendChild(card);
+      });
+    }
+
+    async function loadPetLibrary() {
+      if (!token) {
+        publisherStatus.textContent = 'Log in to publish or use community pets.';
+        document.getElementById('pet-publish').disabled = true;
+        petLibrary.textContent = 'Sign in to browse the pet library.';
+        return;
+      }
+      try {
+        renderPetLibrary(await petApi('/api/pets'));
+      } catch (error) {
+        petLibrary.textContent = error.message;
+      }
+    }
+
+    document.getElementById('pet-publish').onclick = async function () {
+      var name = document.getElementById('pet-name').value.trim();
+      if (!name) {
+        publisherStatus.textContent = 'Enter a pet name first.';
+        return;
+      }
+      storeCurrentFrame();
+      if (!frameData.some(function (frame) { return !!frame; })) {
+        publisherStatus.textContent = 'Draw at least one frame before publishing.';
+        return;
+      }
+      var button = document.getElementById('pet-publish');
+      button.disabled = true;
+      publisherStatus.textContent = 'Publishing...';
+      try {
+        var petData = serializedPetFrames();
+        await petApi('/api/pets', { method: 'POST', body: JSON.stringify({ name: name, pet_data: petData }) });
+        localStorage.setItem('unreader-neko-sprite', petData);
+        if (window.applyNekoSprite) window.applyNekoSprite(petData);
+        publisherStatus.textContent = 'Published ' + name + '.';
+        loadPetLibrary();
+      } catch (error) {
+        publisherStatus.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    };
+
+    loadPetLibrary();
+  </script>
+</body>
+</html>

@@ -111,6 +111,12 @@ async function initDatabase() {
         "user" TEXT NOT NULL DEFAULT 'user'
       );
       ALTER TABLE profile_images ADD COLUMN IF NOT EXISTS "user" TEXT NOT NULL DEFAULT 'user';
+      CREATE TABLE IF NOT EXISTS pets (
+        "pet-name" VARCHAR(255),
+        "created-by" VARCHAR(255),
+        "pet-data" TEXT,
+        "date-release" DATE
+      );
       CREATE TABLE IF NOT EXISTS topics (
         id SERIAL PRIMARY KEY, slug TEXT UNIQUE NOT NULL, title TEXT NOT NULL, username TEXT NOT NULL, timestamp TEXT NOT NULL
       );
@@ -341,6 +347,92 @@ app.get('/dm-contacts', authenticateToken, async (req, res) => {
     [req.user.username],
   );
   res.json(result.rows.map((r) => r.username));
+});
+
+const PET_PNG_PREFIX = 'data:image/png;base64,';
+const PET_DATA_MAX_LENGTH = 900000;
+const PET_MAX_FRAMES = 64;
+const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+
+function isValidPetFrame(value) {
+  if (
+    typeof value !== 'string' ||
+    value.length > 12000 ||
+    !value.startsWith(PET_PNG_PREFIX)
+  ) return false;
+
+  const base64 = value.slice(PET_PNG_PREFIX.length);
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return false;
+  const png = Buffer.from(base64, 'base64');
+  return png.toString('base64') === base64 &&
+    png.length >= 24 &&
+    png.subarray(0, 8).equals(PNG_SIGNATURE) &&
+    png.readUInt32BE(16) === 32 &&
+    png.readUInt32BE(20) === 32;
+}
+
+function isValidPetData(value) {
+  if (typeof value !== 'string' || value.length > PET_DATA_MAX_LENGTH) return false;
+  if (value.startsWith(PET_PNG_PREFIX)) return isValidPetFrame(value);
+  try {
+    const pet = JSON.parse(value);
+    if (Array.isArray(pet)) return pet.length === 32 && pet.every(isValidPetFrame);
+    if (!pet || pet.version !== 2 || !Array.isArray(pet.frames) ||
+      pet.frames.length < 32 || pet.frames.length > PET_MAX_FRAMES ||
+      !pet.frames.every(isValidPetFrame) || !Array.isArray(pet.actions) || pet.actions.length !== 18) return false;
+    const states = new Set();
+    return pet.actions.every((action) => {
+      if (!action || !Number.isInteger(action.state) || action.state < 0 || action.state >= 18 ||
+        states.has(action.state) || !Array.isArray(action.frames) || action.frames.length === 0 ||
+        action.frames.length > PET_MAX_FRAMES ||
+        !action.frames.every((frame) => Number.isInteger(frame) && frame >= 0 && frame < pet.frames.length)) return false;
+      states.add(action.state);
+      return true;
+    });
+  } catch {
+    return false;
+  }
+}
+
+app.get('/api/pets', authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT "pet-name" AS name, "created-by" AS created_by,
+              "pet-data" AS pet_data, TO_CHAR("date-release", 'YYYY-MM-DD') AS date_release
+         FROM pets
+        ORDER BY "date-release" DESC NULLS LAST, "pet-name" ASC
+        LIMIT 100;`,
+    );
+    res.json(result.rows.filter((pet) =>
+      pet.name && pet.created_by && pet.date_release && isValidPetData(pet.pet_data),
+    ));
+  } catch (err) {
+    log('Pet library load failed:', err.message);
+    res.status(500).json({ error: 'Could not load the pet library.' });
+  }
+});
+
+app.post('/api/pets', authenticateToken, async (req, res) => {
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  const petData = req.body?.pet_data;
+  if (!name || name.length > 255) {
+    return res.status(400).json({ error: 'Pet name must be between 1 and 255 characters.' });
+  }
+  if (!isValidPetData(petData)) {
+    return res.status(400).json({ error: 'Pet must contain valid 32x32 PNG frames.' });
+  }
+
+  try {
+    await db.query(
+      `INSERT INTO pets ("pet-name", "created-by", "pet-data", "date-release")
+       VALUES ($1, $2, $3, CURRENT_DATE);`,
+      [name, req.user.username, petData],
+    );
+    res.status(201).json({ success: true });
+  } catch (err) {
+    log('Pet publishing failed:', err.message);
+    res.status(500).json({ error: 'Could not publish the pet.' });
+  }
 });
 
 // Endpoint to save gh key on un-reader acc
