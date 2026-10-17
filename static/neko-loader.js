@@ -55,10 +55,12 @@
   }
 
   function createNeko() {
-    window.neko = window.createNeko();
+    const neko = window.createNeko();
     const pet = getNekoPet(localStorage.getItem(spriteKey));
-    installAnimationSupport(window.neko);
-    if (pet) applyPetToNeko(window.neko, pet);
+    installAnimationSupport(neko);
+    if (pet) applyPetToNeko(neko, pet);
+    if (!neko.running) neko.start();
+    window.neko = neko;
   }
 
   window.applyNekoSprite = function (spriteData) {
@@ -70,14 +72,21 @@
     localStorage.setItem(settingKey, String(enabled));
     if (!enabled) {
       if (window.neko) {
-        window.neko.stop();
-        window.neko.destroy();
+        const neko = window.neko;
         window.neko = null;
+        neko.stop();
+        neko.destroy();
       }
       return;
     }
 
-    if (window.neko) return;
+    if (window.neko) {
+      if (window.neko.element && window.neko.element.parentNode) {
+        if (!window.neko.running) window.neko.start();
+        return;
+      }
+      window.neko = null;
+    }
     if (window.createNeko) {
       createNeko();
       return;

@@ -158,6 +158,7 @@
     }
 
     .fullscreen-view {
+      box-sizing: border-box;
       display: none;
       position: fixed;
       top: 0;
@@ -197,10 +198,31 @@
 
     .setting-item {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
       padding: 10px 0;
       border-bottom: 1px solid var(--border-color);
+    }
+
+    .setting-item > div:first-child {
+      flex: 1 1 150px;
+      min-width: 0;
+      margin-right: 8px;
+    }
+
+    .setting-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .setting-actions button {
+      margin: 3px;
+    }
+
+    .setting-desc {
+      overflow-wrap: break-word;
     }
 
     .setting-label {
@@ -230,6 +252,7 @@
     }
 
     .modal-btn {
+      box-sizing: border-box;
       width: 100%;
       padding: 12px;
       font-weight: 900;
@@ -329,7 +352,7 @@
           <div class="setting-label">Neko Pet</div>
           <div class="setting-desc">Show the Neko cat on Un-Reader pages.</div>
         </div>
-        <div style="display:flex; gap:6px;">
+        <div class="setting-actions">
           <button id="neko-toggle" class="retro-btn" aria-pressed="true">Enabled</button>
           <button id="pet-creator-btn" class="retro-btn">Create Pet</button>
         </div>
