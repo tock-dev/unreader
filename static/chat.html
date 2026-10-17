@@ -549,7 +549,7 @@
           div.style.alignItems = "center";
           var span = document.createElement("span");
           span.className = "roster-name";
-          var context = u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (Neighborhood)";
+          var context = u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : u.mode === "topic" ? " (Topics)" : u.mode === "rekindle" ? " (ReKindle)" : u.mode === "readium" ? " (Readium!)" : " (Neighborhood)";
           span.textContent = u.username + context;
           (function (user) {
             span.onclick = function () {
@@ -558,7 +558,7 @@
           })(u);
           div.appendChild(span);
           log("Showing online user: " + u.username +
-            (u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : " (Neighborhood)") +
+            (u.mode === "public" ? " (Global)" : u.mode === "dm" ? " (DM @" + u.target + ")" : u.mode === "topic" ? " (Topics)" : u.mode === "rekindle" ? " (ReKindle)" : u.mode === "readium" ? " (Readium!)" : " (Neighborhood)") +
             " who " + (userRoles.role.role && (isAdminUser(userRoles) || isModeratorUser(userRoles))
               && u.username !== myUsername ? "can" : "cannot") + " be kicked.");
           if (u.username !== myUsername
@@ -942,7 +942,7 @@
       function generateSystemPrompt() {
         var users = "";
         for (var user of onlineUsers) {
-          users += `${user.userRoles.role.prefix} @${user.username}${user.mode === "public" ? " (Global)" : user.mode === "dm" ? " (DM @" + user.target + ")" : " (Neighborhood)"}\n`;
+          users += `${user.userRoles.role.prefix} @${user.username}${user.mode === "public" ? " (Global)" : user.mode === "dm" ? " (DM @" + user.target + ")" : user.mode === "topic" ? " (Topics)" : user.mode === "rekindle" ? " (ReKindle)" : user.mode === "readium" ? " (Readium!)" : " (Neighborhood)"}\n`;
         }
         aiMemory = localStorage.getItem("unreader-ai-memory") || "";
         const prompt = `You are a helpful AI assistant named "system" created by KodiGamingYT, enhanced by HakcerAUG and then a little bit enhanced by tock-dev, which is later tweaked over by SuprUsr123 (@lmaokasdf123) so you'd come back into life after Groq took you down, that is running on a Kindle-friendly social network called un-reader.

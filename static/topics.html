@@ -747,7 +747,13 @@
             ? ' (Global)'
             : u.mode === 'dm'
               ? ' (DM @' + u.target + ')'
-              : ' (Neighborhood)';
+              : u.mode === 'topic'
+                ? ' (Topics)'
+                : u.mode === 'rekindle'
+                  ? ' (ReKindle)'
+                  : u.mode === 'readium'
+                    ? ' (Readium!)'
+                    : ' (Neighborhood)';
         span.textContent = u.username + context;
         (function (user) {
           span.onclick = function () {
@@ -762,7 +768,13 @@
             ? ' (Global)'
             : u.mode === 'dm'
               ? ' (DM @' + u.target + ')'
-              : ' (Neighborhood)') +
+              : u.mode === 'topic'
+                ? ' (Topics)'
+                : u.mode === 'rekindle'
+                  ? ' (ReKindle)'
+                  : u.mode === 'readium'
+                    ? ' (Readium!)'
+                    : ' (Neighborhood)') +
           ' who ' +
           ((isAdminUser(userRoles) || isModeratorUser(userRoles)) &&
             u.username !== myUsername

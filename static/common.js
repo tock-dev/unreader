@@ -8,6 +8,42 @@ var WS_URL = DEBUG
   ? 'ws://192.168.100.64:80'
   : window.location.origin.replace('https', 'wss').replace('http', 'ws');
 
+function startRichPresence(mode) {
+  const token = localStorage.getItem('token');
+  if (!token) return;
+
+  let socket;
+  let stopped = false;
+  let reconnectTimer;
+  const connect = () => {
+    if (stopped) return;
+    socket = new WebSocket(WS_URL);
+    socket.onopen = () => socket.send(JSON.stringify({ type: 'auth', token }));
+    socket.onmessage = (event) => {
+      try {
+        const type = JSON.parse(event.data).type;
+        if (type === 'terminated') {
+          stopped = true;
+          socket.close();
+        } else if (type === 'auth_success' && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'switch_context', mode, target: '' }));
+        }
+      } catch (error) {
+        log('Invalid rich presence packet:', error);
+      }
+    };
+    socket.onclose = () => {
+      if (!stopped) reconnectTimer = setTimeout(connect, 5000);
+    };
+  };
+  window.addEventListener('pagehide', () => {
+    stopped = true;
+    clearTimeout(reconnectTimer);
+    if (socket) socket.close();
+  }, { once: true });
+  connect();
+}
+
 function log(...args) {
   if (DO_LOGGING) console.log(`[CLIENT]`, ...args);
 }

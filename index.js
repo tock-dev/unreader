@@ -1711,8 +1711,10 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => {
     if (authUser) {
       log(`WS Terminal closed: ${authUser}`);
-      activeClients.delete(authUser);
-      broadcastSystemUpdate(getRosterPayload());
+      if (activeClients.get(authUser)?.ws === ws) {
+        activeClients.delete(authUser);
+        broadcastSystemUpdate(getRosterPayload());
+      }
     }
   });
 });

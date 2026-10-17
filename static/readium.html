@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="https://louisabraham.github.io/nekojs/neko.js" data-autostart></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Readium!</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="bbs.css" />
+    <script src="common.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow-y: hidden;
+      }
+      iframe {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe src="https://readium.ink/" frameborder="0"></iframe>
+    <script>startRichPresence('readium');</script>
+    <div
+      class="paper-btn"
+      onclick="window.location.href = 'index.html'"
+      style="
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        z-index: 50;
+        border-top: none;
+        border-left: none;
+        border-bottom-right-radius: 10px;
+        padding: 1ex;
+        font-size: 14px;
+        font-family: 'Times New Roman', Times, serif;
+      "
+    >
+      Back
+    </div>
+  </body>
+</html>
