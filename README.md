@@ -28,6 +28,7 @@ go to: https://unreader-v4yf.onrender.com
 - [neighbourhood.html](neighbourhood.html) - Forum board & commentary
 - [portal-2d.html](portal-2d.html) - Flash Portal 2D puzzle game with online level packs (`portal-2d` table, `/api/portal2d/*`)
 - [index.js](index.js) - Express & WebSocket PostgreSQL backend
+- [github.htm](github.htm) - Cody's custom GitHub client optimized for Kindles
 
 ---
 
