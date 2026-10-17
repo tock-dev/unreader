@@ -26,7 +26,13 @@ go to: https://unreader-v4yf.onrender.com
 - [chat.html](chat.html) - Messaging space (Public & DMs)
 - [topics.html](topics.html) - Custom room directories
 - [neighbourhood.html](neighbourhood.html) - Forum board & commentary
-- [portal-2d.html](portal-2d.html) - Flash Portal 2D puzzle game with online level packs (`portal-2d` table, `/api/portal2d/*`)
+- [modmenu.html](modmenu.html) - Admin moderation console
+- [mod-pfps.html](mod-pfps.html) - Profile picture moderation & management
+- [profile-picture.html](profile-picture.html) - Profile picture editor (Draw or import)
+- [rekindle.html](rekindle.html) - Shortcut to what made this all possible!
+- [readium.html](readium.html) - Free advertising spot! I don't expect him to pay me back, just... it's a cool project.
+- [suggestions.html](suggestions.html) - User feedback & feature requests
+- [portal-2d.html](portal-2d.html) - Portal-inspired 2D platformer. (`portal-2d` table, `/api/portal2d/*`)
 - [index.js](index.js) - Express & WebSocket PostgreSQL backend
 - [github.htm](github.htm) - Cody's custom GitHub client optimized for Kindles
 
@@ -51,7 +57,7 @@ Brought to life by the core engineering and design team:
 Special thanks and appreciation to:
 
 - **[KodiGamingYT](https://github.com/KodiGamingYT)** — Designed and developed the updated homepage dashboard (`index.html`), introducing unified styling, preferences, and modular portal cards.
-On another note, he added a streaming system. It's not in use right now, but is being ported to kindles not only android based devices. He also added datk mode which was fixed by SuprUsr124. He also made a custom GitHub client for Kindles.
+On another note, he added a streaming system (Not in use, but is being ported to Kindles). Worked on Dark Mode (Fixed by SuprUsr124) and a GitHub client.
 
 - **[SuprUsr124](https://github.com/SuprUsr123)** — Beta Tester, Maintainer (tock almost left the site 4 dead, at least he got his mac back and fixed bugs) (oh that was mb sorry guys - tock), Oregon Trail (Kindle Web Port), Reversi (Kindle Web Port), Portal: The Kindle Version (a remake), Rewrote Pokedex, fixed Dark Mode, and very minor additions.
 
