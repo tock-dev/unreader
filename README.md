@@ -17,6 +17,8 @@ go to: https://unreader-v4yf.onrender.com
 - **Moderation Console**: Admin search tools, system bans, timeouts, and live auditor activity logs.
 - **Inline Mod Mode**: Dedicated float controls across Chat, Topics, and Neighbourhood allowing authorized moderators to purge/restore posts inline.
 - **Display Adaptability**: Direct theme synchronization including Dark Mode, Bold High-Contrast, and Monospace Typography. (@SuprUsr123 rewired them back now, god that took so long to implement them back in)
+- **Profile Picture Editor**: Draw or import custom profile pictures with a built-in editor.
+- **Portal-Inspired 2D Platformer**: A mini-game that runs directly in the browser, complete with physics and level progression. (`portal-2d` table, `/api/portal2d/*`)
 
 ---
 
@@ -40,7 +42,7 @@ go to: https://unreader-v4yf.onrender.com
 
 ## Development Team
 
-Brought to life by the core engineering and design team:
+Brought to life by a small team of dedicated developers:
 
 - **[tock-dev](https://github.com/tock-dev)**
 - **[KodiGamingYT](https://github.com/KodiGamingYT)**
