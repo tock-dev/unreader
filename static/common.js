@@ -1,11 +1,16 @@
 //! DON'T FORGET TO CHANGE TO `false` BEFORE PUSHING
 const DEBUG = false;
 const DO_LOGGING = true;
+if (DEBUG) {
+  const debugScript = document.createElement('script');
+  debugScript.src = 'debug-console.js';
+  document.head.appendChild(debugScript);
+}
 var BACKEND_URL = DEBUG
-  ? 'http://192.168.100.64:80'
+  ? 'http://127.0.0.1:80'
   : window.location.origin;
 var WS_URL = DEBUG
-  ? 'ws://192.168.100.64:80'
+  ? 'ws://127.0.0.1:80'
   : window.location.origin.replace('https', 'wss').replace('http', 'ws');
 
 function startRichPresence(mode) {
