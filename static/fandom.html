@@ -70,20 +70,19 @@ a { color: #111; text-decoration: underline; }
 }
 .topline { padding: 5px 6px; border-bottom: 1px solid #777; background: #f2f2f2; }
 .brand { font-size: 1rem; font-weight: bold; margin-bottom: 4px; }
-.search-row { display: flex; gap: 4px; align-items: stretch; }
+.search-row { display: flex; align-items: stretch; }
 .search-row input { flex: 1; min-width: 0; margin: 0; }
-.search-row button { width: auto; min-width: 58px; min-height: 32px; padding: 4px 6px; }
+.search-row button { width: auto; min-width: 58px; min-height: 32px; margin-left: 4px; padding: 4px 6px; }
 .search-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
   margin-top: 3px;
   font-size: .75rem;
 }
 .search-options label {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  margin-right: 5px;
 }
 .search-options input {
   width: auto;
@@ -118,7 +117,7 @@ a { color: #111; text-decoration: underline; }
   padding: 0 2px;
 }
 .main { padding: 5px 6px; }
-.status { border: 1px solid #777; background: #f4f4f4; padding: 5px; margin: 5px 0; overflow-wrap: anywhere; font-size: .8rem; }
+.status { border: 1px solid #777; background: #f4f4f4; padding: 5px; margin: 5px 0; overflow-wrap: break-word; font-size: .8rem; }
 .hidden { display: none !important; }
 .layout { display: block; }
 .sidebar { border: 1px solid #888; padding: 4px; margin-bottom: 5px; background: #f7f7f7; }
@@ -130,11 +129,11 @@ a { color: #111; text-decoration: underline; }
 .result-title { display: block; font-weight: bold; text-decoration: underline; margin-bottom: 3px; }
 .result-snippet { display: block; font-size: .78rem; margin-top: 2px; font-weight: normal; line-height: 1.2; }
 .article-header { border-bottom: 1px solid #222; margin-bottom: 6px; padding-bottom: 4px; }
-.article-header h1 { font-size: 1.15rem; line-height: 1.15; margin: 0 0 3px; overflow-wrap: anywhere; }
+.article-header h1 { font-size: 1.15rem; line-height: 1.15; margin: 0 0 3px; overflow-wrap: break-word; }
 .article-meta { color: #444; font-size: .85rem; }
 .article-tools { margin: 5px 0; }
 .article-tools button { margin: 0 3px 4px 0; min-height: 30px; padding: 4px 6px; }
-.article-body { overflow-wrap: anywhere; }
+.article-body { overflow-wrap: break-word; }
 .article-body h1, .article-body h2, .article-body h3, .article-body h4 { line-height: 1.15; border-bottom: 1px solid #aaa; padding-bottom: 2px; margin-top: 1em; }
 .article-body h1 { font-size: 1.2rem; }
 .article-body h2 { font-size: 1.08rem; }
@@ -149,7 +148,7 @@ a { color: #111; text-decoration: underline; }
 .article-body .infobox, .article-body .portable-infobox { border: 1px solid #555; padding: 7px; margin: 8px 0; }
 .article-body blockquote { border-left: 3px solid #777; margin-left: 0; padding-left: 10px; }
 .article-body .mw-editsection, .article-body .reference, .article-body .reflist, .article-body .navbox, .article-body .sistersitebox { display: none !important; }
-.article-body a { overflow-wrap: anywhere; }
+.article-body a { overflow-wrap: break-word; }
 .article-body sup { font-size: .75em; }
 .footer { padding: 5px 6px; border-top: 1px solid #888; color: #444; font-size: .7rem; }
 .small { font-size: .75rem; color: #444; }
@@ -158,416 +157,61 @@ a { color: #111; text-decoration: underline; }
   .app { min-height: 100vh; }
   .topline { padding: 5px 6px; }
   .brand { font-size: 1rem; margin-bottom: 4px; }
-  .search-row { gap: 4px; }
   .search-row button { width: 70px; min-height: 32px; }
   .main { padding: 6px; }
   .layout { display: block; }
   .sidebar { margin-bottom: 6px; }
 }</style>
 
-<style id="kindle-layout-overrides">
-/* Kindle viewport layout: preserve the existing appearance, only reorganize sizing. */
-html, body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-*, *::before, *::after { box-sizing: border-box; }
-
-body {
-  min-width: 0;
-  min-height: 0;
-}
-
-.app {
-  width: 100%;
-  height: 100vh;
-  min-width: 0;
-  min-height: 0;
-  max-width: none;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* Keep the existing title/search visual treatment, but don't let it consume the page. */
-.title-bar {
-  flex: 0 0 auto;
-  min-height: 30px;
-}
-
-.topbar {
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
-.topbar > * {
-  min-width: 0;
-}
-
-.search-row {
-  min-width: 0;
-  width: 100%;
-}
-
-.search-row input {
-  min-width: 0;
-  width: 100%;
-}
-
-/* Navigation and article occupy the remaining viewport. */
-.main {
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-  width: 100%;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Hide the old desktop sidebar arrangement; navigation becomes a compact row. */
-.sidebar {
-  flex: 0 0 auto;
-  width: 100%;
-  min-width: 0;
-  max-height: none;
-  overflow: visible;
-}
-
-.sidebar > * {
-  min-width: 0;
-}
-
-.nav-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  width: 100%;
-  gap: 4px;
-}
-
-.nav-buttons button {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-/* The article is the scrolling region. */
-.content {
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-  width: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Prevent tables/images/code blocks from making a Kindle-sized viewport wider. */
-.article {
-  min-width: 0;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  word-break: normal;
-}
-
-.article img,
-.article video,
-.article iframe,
-.article table {
-  max-width: 100%;
-}
-
-.article table {
-  display: block;
-  overflow-x: auto;
-}
-
-.article pre,
-.article code {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.search-results {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.result {
-  min-width: 0;
-}
-
-.result-title,
-.result-snippet {
-  overflow-wrap: anywhere;
-}
-
-/* Search controls stay on-screen instead of becoming a wide desktop row. */
-.search-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px 8px;
-}
-
-/* Remove the old desktop breakpoint that creates a sidebar/main grid. */
-@media (min-width: 700px) {
-  .main {
-    display: flex;
-    grid-template-columns: none;
-  }
-  .sidebar {
-    width: 100%;
-  }
-}
-
-/* Very narrow Kindle screens. */
-@media (max-width: 420px) {
-  .topbar {
-    padding-left: 6px;
-    padding-right: 6px;
-  }
-
-  .content,
-  .sidebar {
-    padding-left: 6px;
-    padding-right: 6px;
-  }
-
-  .nav-buttons button {
-    flex: 1 1 30%;
-  }
-
-  .search-row {
-    gap: 4px;
-  }
-}
-</style>
-
-
-<style id="kindle-layout-fixes">
-/* Kindle viewport safety: preserve the existing look, but prevent flex
-   children from being clipped/obscured. */
-html, body {
+<style id="kindle-layout">
+  html, body {
     width: 100%;
     height: 100%;
-    min-height: 0;
     margin: 0;
     padding: 0;
     overflow: hidden;
-}
-
-.app {
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  .app {
     width: 100%;
     height: 100vh;
     min-height: 0;
-    max-width: none;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.title-bar {
-    flex: 0 0 auto;
-    position: relative;
-    z-index: 10;
-}
-
-.topbar {
-    flex: 0 0 auto;
-    min-width: 0;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.main {
-    flex: 1 1 auto;
-    min-height: 0;
-    min-width: 0;
-    width: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.sidebar {
-    flex: 0 0 auto;
-    min-width: 0;
-    width: 100%;
-    max-height: none;
-    overflow: visible;
-    box-sizing: border-box;
-}
-
-.content {
-    flex: 1 1 auto;
-    min-height: 0;
-    min-width: 0;
-    width: 100%;
     overflow-x: hidden;
     overflow-y: auto;
-    box-sizing: border-box;
     -webkit-overflow-scrolling: touch;
-}
-
-.article {
+  }
+  .main, .layout, #view, #results, #article, .article-body {
     min-width: 0;
     max-width: 100%;
-    box-sizing: border-box;
-    overflow-wrap: anywhere;
-}
-
-.article img,
-.article video,
-.article iframe,
-.article object,
-.article embed {
+  }
+  .article-body { overflow-wrap: break-word; }
+  .article-body img, .article-body video, .article-body iframe,
+  .article-body object, .article-body embed {
     max-width: 100%;
     height: auto;
-}
-
-.article table {
-    max-width: 100%;
+  }
+  .article-body table {
     display: block;
+    max-width: 100%;
     overflow-x: auto;
-}
-
-.article pre {
-    max-width: 100%;
+  }
+  .article-body pre, .article-body code, .result-title, .result-snippet {
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
-.search-results,
-.search-result,
-.results-list {
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
-.nav-buttons,
-.search-options {
+    overflow-wrap: break-word;
+  }
+  .search-row, .search-options {
     min-width: 0;
     max-width: 100%;
     flex-wrap: wrap;
-}
-
-button, input, select {
+  }
+  .search-row input { min-width: 0; }
+  .app button, .app input:not([type="checkbox"]), .app select {
+    min-height: 48px;
     max-width: 100%;
-    box-sizing: border-box;
-}
-
-@media (min-width: 700px) {
-    .main {
-        display: flex;
-        flex-direction: column;
-    }
-    .sidebar {
-        width: 100%;
-    }
-}
-
-@media (max-width: 420px) {
-    .content,
-    .sidebar,
-    .topbar {
-        padding-left: 6px;
-        padding-right: 6px;
-    }
-}
-</style>
-
-
-<style id="kindle-scroll-layout">
-html, body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-}
-
-.app {
-    width: 100%;
-    height: 100vh;
-    min-height: 0;
-    max-width: none;
-    margin: 0;
-    box-sizing: border-box;
-    display: block;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* Keep the title bar visible while everything below it scrolls. */
-.title-bar {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-sizing: border-box;
-}
-
-/* These sections are allowed to grow naturally; the app itself scrolls. */
-.topline,
-.main,
-.footer {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.main {
-    min-height: 0;
-    overflow: visible;
-}
-
-.content {
-    min-height: 0;
-    overflow: visible;
-}
-
-.layout {
-    min-width: 0;
-}
-
-.article,
-#view,
-#results,
-#article {
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
-.article {
-    overflow-wrap: anywhere;
-}
-
-.article img,
-.article video,
-.article iframe,
-.article object,
-.article embed {
-    max-width: 100%;
-    height: auto;
-}
-
-.article table {
-    max-width: 100%;
-    display: block;
-    overflow-x: auto;
-}
-
-.article pre,
-.article code {
-    max-width: 100%;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
+  }
+  @media (max-width: 420px) {
+    .topline, .main { padding-left: 6px; padding-right: 6px; }
+  }
 </style>
 
 </head>
@@ -575,7 +219,7 @@ html, body {
 <div class="app">
   <div class="title-bar">
     <div class="title-stripes"></div>
-    <div class="close-box" role="button" aria-label="Home" onclick="goHome()">X</div>
+    <div class="close-box" role="button" aria-label="Home" onclick="window.location.href = 'index.html'">X</div>
     <span class="title-text">Wiki Reader</span>
   </div>
   <div class="topline">
