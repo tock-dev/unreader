@@ -37,7 +37,7 @@ go to: https://unreader-v4yf.onrender.com
 - [portal-2d.html](portal-2d.html) - Portal-inspired 2D platformer. (`portal-2d` table, `/api/portal2d/*`)
 - [index.js](index.js) - Express & WebSocket PostgreSQL backend
 - [github.htm](github.htm) - Cody's custom GitHub client optimized for Kindles
-
+- [fandom.html](fandom.html) - A Fandom wiki reader for Kindles, with no ads or intrusive popups!
 ---
 
 ## Development Team
