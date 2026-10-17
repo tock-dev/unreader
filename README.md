@@ -50,7 +50,7 @@ Brought to life by the core engineering and design team:
 Special thanks and appreciation to:
 
 - **[KodiGamingYT](https://github.com/KodiGamingYT)** — Designed and developed the updated homepage dashboard (`index.html`), introducing unified styling, preferences, and modular portal cards.
-On another note, he added a streaming system. It's not in use right now, and probably never will. Just like the dark mode.
+On another note, he added a streaming system. It's not in use right now, but is being ported to kindles not only android based devices. He also added datk mode which was fixed by SuprUsr124. He also made a custom GitHub client for Kindles.
 
 - **[SuprUsr124](https://github.com/SuprUsr123)** — Beta Tester, Maintainer (tock almost left the site 4 dead, at least he got his mac back and fixed bugs) (oh that was mb sorry guys - tock), Oregon Trail (Kindle Web Port), Reversi (Kindle Web Port), Portal: The Kindle Version (a remake), Rewrote Pokedex, fixed Dark Mode, and very minor additions.
 
