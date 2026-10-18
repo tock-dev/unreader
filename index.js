@@ -4,7 +4,6 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pkg from 'pg';
 import cors from 'cors';
-import fs from 'node:fs';
 import sanitizeHtml from 'sanitize-html';
 
 const { Pool } = pkg;
@@ -124,6 +123,16 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY, topic_slug TEXT NOT NULL, username TEXT NOT NULL, timestamp TEXT NOT NULL, content TEXT NOT NULL, 
         is_deleted BOOLEAN DEFAULT false, deleted_by TEXT, sender TEXT
       );
+      CREATE TABLE IF NOT EXISTS message_reactions (
+        channel TEXT NOT NULL CHECK (channel IN ('public', 'dm', 'topic')),
+        message_id INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        reaction_code SMALLINT NOT NULL CHECK (reaction_code BETWEEN 1 AND 32767),
+        PRIMARY KEY (channel, message_id, username)
+      );
+      ALTER TABLE message_reactions DROP CONSTRAINT IF EXISTS message_reactions_reaction_code_check;
+      ALTER TABLE message_reactions ADD CONSTRAINT message_reactions_reaction_code_check CHECK (reaction_code BETWEEN 1 AND 32767);
+      CREATE INDEX IF NOT EXISTS message_reactions_message_idx ON message_reactions (channel, message_id);
       CREATE TABLE IF NOT EXISTS neighborhood_posts (
         id SERIAL PRIMARY KEY, username TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, timestamp TEXT NOT NULL, 
         is_deleted BOOLEAN DEFAULT false, deleted_by TEXT, sender TEXT
@@ -853,7 +862,8 @@ app.get('/history', authenticateToken, async (req, res) => {
   log(`history called by ${req.user.username} (${req.user.role.role})`);
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const r = await db.query(
-    `SELECT m.*, pi.image_data, json_build_object('role', COALESCE(rr.role, ''), 'prefix', COALESCE(rr.prefix, ''), 'style', COALESCE(rr.style, ''), 'class', COALESCE(rr.class, '')) AS role
+    `SELECT m.*, pi.image_data, json_build_object('role', COALESCE(rr.role, ''), 'prefix', COALESCE(rr.prefix, ''), 'style', COALESCE(rr.style, ''), 'class', COALESCE(rr.class, '')) AS role,
+       COALESCE((SELECT json_agg(json_build_object('code', reaction_code, 'count', reaction_count, 'mine', mine)) FROM (SELECT reaction_code, COUNT(*)::int AS reaction_count, BOOL_OR(username = $2) AS mine FROM message_reactions WHERE channel = 'public' AND message_id = m.id GROUP BY reaction_code ORDER BY reaction_code) mr), '[]'::json) AS reactions
        FROM messages m
        LEFT JOIN users u ON m.username = u.username
        LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(m.username) ORDER BY (username = m.username) DESC LIMIT 1) pi ON true
@@ -863,7 +873,7 @@ app.get('/history', authenticateToken, async (req, res) => {
          ORDER BY CASE WHEN role IN ('admin', 'moderator') THEN 1 ELSE 0 END,
                   priority DESC LIMIT 1
        ) rr ON true
-       ORDER BY m.id DESC LIMIT 10 OFFSET $1;`, [off]);
+       ORDER BY m.id DESC LIMIT 10 OFFSET $1;`, [off, req.user.username]);
   res.json(r.rows.reverse());
 });
 
@@ -872,14 +882,15 @@ app.get('/dm-history', authenticateToken, async (req, res) => {
   const target = sanitizeUsername(req.query.target);
   const r = await db.query(
     `
-    SELECT d.id, d.sender AS username, d.receiver, d.timestamp, d.content, d.is_deleted, d.deleted_by, pi.image_data
+    SELECT d.id, d.sender AS username, d.receiver, d.timestamp, d.content, d.is_deleted, d.deleted_by, pi.image_data,
+      COALESCE((SELECT json_agg(json_build_object('code', reaction_code, 'count', reaction_count, 'mine', mine)) FROM (SELECT reaction_code, COUNT(*)::int AS reaction_count, BOOL_OR(username = $4) AS mine FROM message_reactions WHERE channel = 'dm' AND message_id = d.id GROUP BY reaction_code ORDER BY reaction_code) mr), '[]'::json) AS reactions
     FROM dms d 
     LEFT JOIN users u ON d.sender = u.username 
     LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(d.sender) ORDER BY (username = d.sender) DESC LIMIT 1) pi ON true
     WHERE (d.sender = $1 AND d.receiver = $2) OR (d.sender = $2 AND d.receiver = $1) 
     ORDER BY d.id DESC LIMIT 10 OFFSET $3;
   `,
-    [req.user.username, target, off],
+    [req.user.username, target, off, req.user.username],
   );
   for (const row of r.rows) row.role = (await getUserRoles(row.username)).role;
   res.json(r.rows.reverse());
@@ -889,8 +900,10 @@ app.get('/topic-history', authenticateToken, async (req, res) => {
   const off = Math.max(0, parseInt(req.query.index ?? '0', 10) * 10);
   const slug = sanitize(req.query.slug);
   const r = await db.query(
-    'SELECT tm.*, pi.image_data FROM topic_messages tm LEFT JOIN users u ON tm.username = u.username LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(tm.username) ORDER BY (username = tm.username) DESC LIMIT 1) pi ON true WHERE tm.topic_slug = $1 ORDER BY tm.id DESC LIMIT 10 OFFSET $2;',
-    [slug, off],
+    `SELECT tm.*, pi.image_data,
+      COALESCE((SELECT json_agg(json_build_object('code', reaction_code, 'count', reaction_count, 'mine', mine)) FROM (SELECT reaction_code, COUNT(*)::int AS reaction_count, BOOL_OR(username = $3) AS mine FROM message_reactions WHERE channel = 'topic' AND message_id = tm.id GROUP BY reaction_code ORDER BY reaction_code) mr), '[]'::json) AS reactions
+     FROM topic_messages tm LEFT JOIN users u ON tm.username = u.username LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(tm.username) ORDER BY (username = tm.username) DESC LIMIT 1) pi ON true WHERE tm.topic_slug = $1 ORDER BY tm.id DESC LIMIT 10 OFFSET $2;`,
+    [slug, off, req.user.username],
   );
   for (const row of r.rows) row.role = (await getUserRoles(row.username)).role;
   res.json(r.rows.reverse());
@@ -1500,6 +1513,68 @@ wss.on('connection', (ws, req) => {
           client.target = data.target;
           broadcastSystemUpdate(getRosterPayload());
         }
+        return;
+      }
+
+      if (data.type === 'message_reaction') {
+        const client = activeClients.get(authUser);
+        const channel = client && client.mode;
+        const messageId = Number(data.id);
+        const reactionCode = Number(data.code);
+        const messageTables = { public: 'messages', dm: 'dms', topic: 'topic_messages' };
+        const table = messageTables[channel];
+        if (!table || !Number.isInteger(messageId) || messageId < 1 ||
+            !Number.isInteger(reactionCode) || reactionCode < 1 || reactionCode > 32767 ||
+            (channel !== 'public' && (!client.target || typeof client.target !== 'string'))) return;
+
+        let messageQuery;
+        let messageParams;
+        if (channel === 'topic') {
+          messageQuery = `SELECT id FROM ${table} WHERE id = $1 AND topic_slug = $2 AND is_deleted = false`;
+          messageParams = [messageId, client.target];
+        } else if (channel === 'dm') {
+          const peer = sanitizeUsername(client.target);
+          messageQuery = `SELECT id FROM ${table} WHERE id = $1 AND is_deleted = false AND ((sender = $2 AND receiver = $3) OR (sender = $3 AND receiver = $2))`;
+          messageParams = [messageId, authUser, peer];
+        } else {
+          messageQuery = `SELECT id FROM ${table} WHERE id = $1 AND is_deleted = false`;
+          messageParams = [messageId];
+        }
+        const visibleMessage = await db.query(messageQuery, messageParams);
+        if (!visibleMessage.rows.length) return;
+
+        const existing = await db.query(
+          'SELECT reaction_code FROM message_reactions WHERE channel = $1 AND message_id = $2 AND username = $3',
+          [channel, messageId, authUser],
+        );
+        if (existing.rows[0] && Number(existing.rows[0].reaction_code) === reactionCode) {
+          await db.query(
+            'DELETE FROM message_reactions WHERE channel = $1 AND message_id = $2 AND username = $3',
+            [channel, messageId, authUser],
+          );
+        } else {
+          await db.query(
+            `INSERT INTO message_reactions (channel, message_id, username, reaction_code) VALUES ($1, $2, $3, $4)
+             ON CONFLICT (channel, message_id, username) DO UPDATE SET reaction_code = EXCLUDED.reaction_code`,
+            [channel, messageId, authUser, reactionCode],
+          );
+        }
+        const summary = await db.query(
+          'SELECT reaction_code AS code, COUNT(*)::int AS count, BOOL_OR(username = $3) AS mine FROM message_reactions WHERE channel = $1 AND message_id = $2 GROUP BY reaction_code ORDER BY reaction_code',
+          [channel, messageId, authUser],
+        );
+        const reactionUpdate = {
+          type: 'message_reactions_update', channel, target: client.target,
+          id: messageId, reactions: summary.rows,
+        };
+        broadcastSystemUpdate(reactionUpdate, (c, username) => {
+          if (channel === 'dm') {
+            const peer = sanitizeUsername(client.target);
+            return c.mode === 'dm' && c.target === (username === authUser ? peer : authUser) &&
+              (username === authUser || username === peer);
+          }
+          return c.mode === channel && c.target === client.target;
+        });
         return;
       }
 

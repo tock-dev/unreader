@@ -77,6 +77,15 @@
       color: black;
     }
 
+    .message-reactions { padding-top: 3px; max-width: 75%; }
+    .message-reactions-toggle, .message-reaction { min-height: 28px; margin: 2px 3px 2px 0; padding: 3px 6px; border: 2px solid black; background: white; box-shadow: 1px 1px 0 black; font: bold 10px Arial, sans-serif; cursor: pointer; }
+    .message-reaction.selected { background: black; color: white; }
+    .message-reaction-summary { margin-left: 4px; }
+    .message-reaction-count { display: inline-block; margin: 2px; padding: 3px 5px; border: 1px solid black; background: white; color: black; font: bold 11px Arial, sans-serif; cursor: pointer; }
+    .message-reactions-menu { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; max-height: 190px; overflow-y: auto; margin-top: 4px; padding: 4px; border: 2px solid black; background: #eee; }
+    .message-reaction-search, .message-reaction-no-matches { grid-column: 1 / -1; box-sizing: border-box; width: 100%; min-height: 40px; padding: 5px; border: 2px solid black; font: 13px Arial, sans-serif; }
+    .message-reaction-no-matches { background: white; }
+
     .my-msg {
       border-style: dashed;
     }
@@ -480,6 +489,12 @@
             }
             return;
           }
+          if (data.type === "message_reactions_update") {
+            if (data.channel === currentMode && (data.channel === 'public' || data.target === currentTarget)) {
+              updateMessageReactions(data, socket);
+            }
+            return;
+          }
           if (data.type === "live_neighborhood_post") return;
           if (data.type === "refresh_feed") {
             log("Broadcast: refresh_feed received.");
@@ -714,6 +729,7 @@
           }
         }
         containerDiv.appendChild(msgDiv);
+        renderMessageReactions(containerDiv, data, socket);
         injectModTray(containerDiv, data, isMe);
         chatWrapper.appendChild(containerDiv);
         chatWrapper.scrollTop = chatWrapper.scrollHeight;

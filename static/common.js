@@ -1,6 +1,55 @@
 //! DON'T FORGET TO CHANGE TO `false` BEFORE PUSHING
 const DEBUG = false;
 const DO_LOGGING = true;
+var MESSAGE_REACTIONS = {};
+var MESSAGE_REACTION_TAGS = {};
+var MESSAGE_REACTIONS_LOADED = false;
+function parseReactionCsvRow(line) {
+  var fields = [];
+  var field = '';
+  var quoted = false;
+  for (var i = 0; i < line.length; i++) {
+    var character = line.charAt(i);
+    if (character === '"' && quoted && line.charAt(i + 1) === '"') {
+      field += '"';
+      i++;
+    } else if (character === '"') {
+      quoted = !quoted;
+    } else if (character === ',' && !quoted) {
+      fields.push(field);
+      field = '';
+    } else {
+      field += character;
+    }
+  }
+  fields.push(field);
+  return fields;
+}
+var MESSAGE_REACTIONS_READY = new Promise(function (resolve) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'reaction-emoticons.csv', true);
+  xhr.onload = function () {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      var lines = xhr.responseText.replace(/^\uFEFF/, '').split(/\r?\n/);
+      for (var i = 1; i < lines.length; i++) {
+        var columns = parseReactionCsvRow(lines[i]);
+        var code = Number(columns[0]);
+        var emoticon = columns[1];
+        if (Number.isInteger(code) && code > 0 && code <= 32767 && emoticon) {
+          MESSAGE_REACTIONS[code] = emoticon;
+          MESSAGE_REACTION_TAGS[code] = columns[2] || '';
+        }
+      }
+    }
+    MESSAGE_REACTIONS_LOADED = true;
+    resolve();
+  };
+  xhr.onerror = function () {
+    MESSAGE_REACTIONS_LOADED = true;
+    resolve();
+  };
+  xhr.send();
+});
 if (DEBUG) {
   const debugScript = document.createElement('script');
   debugScript.src = 'debug-console.js';
@@ -87,6 +136,114 @@ function createProfilePicture(imageData, size) {
   image.style.imageRendering = 'pixelated';
   image.src = profilePictureDataUrl(imageData) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
   return image;
+}
+
+function renderMessageReactions(messageContainer, data, socket) {
+  if (!MESSAGE_REACTIONS_LOADED) {
+    MESSAGE_REACTIONS_READY.then(function () {
+      renderMessageReactions(messageContainer, data, socket);
+    });
+    return;
+  }
+  if (!Object.keys(MESSAGE_REACTIONS).length) return;
+  var oldBar = messageContainer.querySelector('.message-reactions');
+  if (oldBar) oldBar.parentNode.removeChild(oldBar);
+  if (data.is_deleted || data.id === -1) return;
+
+  var bar = document.createElement('div');
+  bar.className = 'message-reactions';
+  var message = messageContainer.querySelector('.message');
+  var messageSide = message && message.style.float === 'right' ? 'right' : 'left';
+  bar.style.float = messageSide;
+  bar.style.clear = messageSide;
+  var reactions = data.reactions || [];
+  var toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'message-reactions-toggle';
+  toggle.textContent = 'REACTIONS';
+  var menu = document.createElement('div');
+  menu.className = 'message-reactions-menu';
+  menu.style.display = 'none';
+  toggle.onclick = function () {
+    menu.style.display = menu.style.display === 'none' ? 'grid' : 'none';
+  };
+  bar.appendChild(toggle);
+  var summary = document.createElement('span');
+  summary.className = 'message-reaction-summary';
+  for (var s = 0; s < reactions.length; s++) {
+    var summaryItem = document.createElement('button');
+    summaryItem.type = 'button';
+    summaryItem.className = 'message-reaction-count' + (reactions[s].mine ? ' selected' : '');
+    summaryItem.textContent = (MESSAGE_REACTIONS[Number(reactions[s].code)] || '?') + ' ' + reactions[s].count;
+    summaryItem.setAttribute('aria-label', (reactions[s].mine ? 'Remove your ' : 'Add ') + (MESSAGE_REACTIONS[Number(reactions[s].code)] || 'reaction') + ' reaction');
+    summaryItem.onclick = (function (reactionCode, messageId) {
+      return function () {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'message_reaction', id: messageId, code: reactionCode }));
+        }
+      };
+    })(Number(reactions[s].code), data.id);
+    summary.appendChild(summaryItem);
+  }
+  bar.appendChild(summary);
+
+  var search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'message-reaction-search';
+  search.placeholder = 'Search faces or tags';
+  search.setAttribute('aria-label', 'Search reactions by face or tag');
+  menu.appendChild(search);
+  var noMatches = document.createElement('div');
+  noMatches.className = 'message-reaction-no-matches';
+  noMatches.textContent = 'No matching reactions.';
+  noMatches.style.display = 'none';
+  menu.appendChild(noMatches);
+  var codes = Object.keys(MESSAGE_REACTIONS);
+  var reactionButtons = [];
+  for (var c = 0; c < codes.length; c++) {
+    var code = Number(codes[c]);
+    var current = null;
+    for (var i = 0; i < reactions.length; i++) {
+      if (Number(reactions[i].code) === code) current = reactions[i];
+    }
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'message-reaction' + (current && current.mine ? ' selected' : '');
+    button.textContent = MESSAGE_REACTIONS[code] + (current ? ' ' + current.count : '');
+    button.setAttribute('aria-label', MESSAGE_REACTIONS[code] + ' reaction ' + MESSAGE_REACTION_TAGS[code]);
+    button._searchText = (MESSAGE_REACTIONS[code] + ' ' + (MESSAGE_REACTION_TAGS[code] || '')).toLowerCase();
+    button.onclick = (function (reactionCode, messageId) {
+      return function () {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'message_reaction', id: messageId, code: reactionCode }));
+          menu.style.display = 'none';
+        }
+      };
+    })(code, data.id);
+    menu.appendChild(button);
+    reactionButtons.push(button);
+  }
+  search.oninput = function () {
+    var terms = search.value.toLowerCase().trim().split(/\s+/);
+    var visibleCount = 0;
+    for (var i = 0; i < reactionButtons.length; i++) {
+      var visible = true;
+      for (var termIndex = 0; termIndex < terms.length; termIndex++) {
+        if (terms[termIndex] && reactionButtons[i]._searchText.indexOf(terms[termIndex]) === -1) visible = false;
+      }
+      reactionButtons[i].style.display = visible ? '' : 'none';
+      if (visible) visibleCount++;
+    }
+    noMatches.style.display = visibleCount ? 'none' : 'block';
+  };
+  bar.appendChild(menu);
+  messageContainer.appendChild(bar);
+}
+
+function updateMessageReactions(data, socket) {
+  var message = document.getElementById('msg-id-' + data.id);
+  if (!message || !message.parentNode) return;
+  renderMessageReactions(message.parentNode, data, socket);
 }
 
 function setupProfilePictureEditor(imageData = '') {
