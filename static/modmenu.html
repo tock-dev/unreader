@@ -264,6 +264,9 @@
         <div class="nav-item" onclick="window.location.href = 'mod-pfps.html'">
           Profile Picture Manager
         </div>
+        <div class="nav-item" onclick="window.location.href = 'roles.html'">
+          Role Manager
+        </div>
 
         <div class="panel-header">Status</div>
         <div style="padding: 12px; font-size: 13px; font-weight: bold;">
@@ -461,7 +464,6 @@
               </div>`;
               if (isAdminUser(userRoles)) {
                 html += `<div style="border-top: 1px dotted var(--border-color); padding-top:8px; margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-                <button class="retro-btn" onclick="setModeratorAction('${safeUsername}', ${!u.roles.includes('moderator')})">${u.roles.includes('moderator') ? 'REMOVE MOD ROLE' : 'PROMOTE TO MOD'}</button>
                 <button class="retro-btn danger-btn" onclick="adminAction('mod_ban', '${safeUsername}')">BAN USER</button>
                 <button class="retro-btn" onclick="adminAction('mod_pardon', '${safeUsername}')">PARDON USER</button>
                 <button class="retro-btn danger-btn" onclick="banIP('${safeUsername}')">BAN IP</button>
@@ -504,18 +506,6 @@
           searchUserAction();
           openModLogs();
         }, 500);
-      }
-
-      function setModeratorAction(target, isMod) {
-        log('Sending role update packet.');
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', BACKEND_URL + '/api/admin/set-role', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-        xhr.onreadystatechange = function () {
-          if (xhr.readyState === 4) searchUserAction();
-        };
-        xhr.send(JSON.stringify({ target: target, is_moderator: isMod }));
       }
 
       async function adminAction(type, target) {

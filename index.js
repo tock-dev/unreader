@@ -1,4 +1,5 @@
 import express from 'express';
+import { randomUUID } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -59,6 +60,8 @@ const USER_ROLE_CACHE_TTL = Number(process.env.USER_ROLE_CACHE_TTL_MS || 30000);
 const userRoleCache = new Map();
 const bannedIpCache = new Map();
 const BANNED_IP_CACHE_TTL = Number(process.env.BANNED_IP_CACHE_TTL_MS || 30000);
+const BANNED_IP_DB_RETRY_MS = Math.max(1000, Number(process.env.BANNED_IP_DB_RETRY_MS) || 10000);
+let bannedIpDbRetryAfter = 0;
 
 function invalidateUserRoleCache(username = null) {
   if (!username) return userRoleCache.clear();
@@ -86,6 +89,7 @@ async function initDatabase() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT false;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS roles TEXT NOT NULL DEFAULT '[]';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS github_token TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS "BotPasswordData" TEXT;
       UPDATE users SET is_admin = true WHERE LOWER(username) IN ('admin', 'lmao');
 
       CREATE TABLE IF NOT EXISTS mod_logs (
@@ -214,22 +218,24 @@ initDatabase();
 const app = express();
 app.set('trust proxy', true);
 app.use(cors({ origin: '*' }));
-app.use(express.json({ limit: '1mb' }));
 async function blockBannedIPs(req, res, next) {
+  const now = Date.now();
+  const clientIp = req.ip;
+  const cached = bannedIpCache.get(clientIp);
+  const cachedBanStatus = cached && cached.expiresAt > now ? cached.banned : null;
+  if (cachedBanStatus === true) return res.status(403).json({ error: 'Yo IP addwess is banned bruh.' });
+  if (cachedBanStatus === false || now < bannedIpDbRetryAfter) return next();
+
   try {
-    const clientIp = req.ip;
-    const now = Date.now();
-    const cached = bannedIpCache.get(clientIp);
-    let banned = cached && cached.expiresAt > now ? cached.banned : null;
-    if (banned === null || banned === undefined) {
-      const check = await db.query('SELECT 1 FROM banned_ips WHERE ip = $1;', [clientIp]);
-      banned = check.rowCount > 0;
-      bannedIpCache.set(clientIp, { banned, expiresAt: now + BANNED_IP_CACHE_TTL });
-    }
+    const check = await db.query('SELECT 1 FROM banned_ips WHERE ip = $1;', [clientIp]);
+    const banned = check.rowCount > 0;
+    bannedIpCache.set(clientIp, { banned, expiresAt: now + BANNED_IP_CACHE_TTL });
+    bannedIpDbRetryAfter = 0;
     if (banned) return res.status(403).json({ error: 'Yo IP addwess is banned bruh.' });
     next();
   } catch (err) {
-    log('IP validation middleware error:', err);
+    bannedIpDbRetryAfter = Date.now() + BANNED_IP_DB_RETRY_MS;
+    log('IP validation lookup unavailable; failing open for', BANNED_IP_DB_RETRY_MS + 'ms:', err.code || err.message);
     next();
   }
 }
@@ -311,11 +317,243 @@ async function authenticateToken(req, res, next) {
   }
 }
 
+const standardJsonParser = express.json({ limit: '1mb' });
+const fandomJsonParser = express.json({ limit: '5mb' });
+// Admin role CSS is stored in PostgreSQL TEXT, so its write routes have no
+// configured body-size cap. The large parser is only selected after admin auth.
+const unlimitedRoleJsonParser = express.json({ limit: Infinity });
+app.use((req, res, next) => {
+  if (req.method === 'POST' && (req.path === '/api/fandom/login' || req.path === '/api/fandom/edit')) {
+    return fandomJsonParser(req, res, next);
+  }
+
+  const roleStyleWrite =
+    (req.method === 'POST' && req.path === '/api/admin/roles') ||
+    (req.method === 'PUT' && /^\/api\/admin\/roles\/[^/]+$/.test(req.path));
+  if (!roleStyleWrite) return standardJsonParser(req, res, next);
+
+  authenticateToken(req, res, () => {
+    const parser = hasAdminPrivileges(req.user) ? unlimitedRoleJsonParser : standardJsonParser;
+    parser(req, res, next);
+  });
+});
+
 app.get('/portal-2d-editor.html', (req, res) => {
   res.sendFile('portal-2d-editor.html', { root: './static' });
 });
 
 app.use(express.static('./static/'));
+
+const fandomEditorSessions = new Map();
+const FANDOM_EDITOR_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+const FANDOM_EDITOR_REMEMBER_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+function getFandomHost(value) {
+  const host = String(value || '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/\/$/, '');
+  if (!/^[a-z0-9-]+\.fandom\.com$/.test(host)) {
+    throw new Error('Enter a Fandom wiki hostname, such as minecraft.fandom.com.');
+  }
+  return host;
+}
+
+function mergeFandomCookies(existing, response) {
+  const jar = Object.create(null);
+  String(existing || '').split(';').forEach((part) => {
+    const index = part.indexOf('=');
+    if (index > 0) jar[part.slice(0, index).trim()] = part.slice(index + 1).trim();
+  });
+  let setCookies = typeof response.headers.getSetCookie === 'function'
+    ? response.headers.getSetCookie()
+    : [response.headers.get('set-cookie') || ''];
+  setCookies.forEach((line) => {
+    const pair = String(line).split(';')[0];
+    const index = pair.indexOf('=');
+    if (index < 1) return;
+    const name = pair.slice(0, index).trim();
+    const value = pair.slice(index + 1).trim();
+    if (/max-age=0/i.test(line) || /expires=thu, 01 jan 1970/i.test(line)) delete jar[name];
+    else jar[name] = value;
+  });
+  return Object.keys(jar).map((name) => name + '=' + jar[name]).join('; ');
+}
+
+async function requestFandomApi(host, params, cookie, method) {
+  const query = new URLSearchParams();
+  let body;
+  if (method === 'POST') {
+    body = new URLSearchParams(params).toString();
+  } else {
+    Object.keys(params).forEach((key) => query.set(key, params[key]));
+  }
+  const url = 'https://' + host + '/api.php' + (method === 'POST' ? '' : '?' + query.toString());
+  const headers = { 'User-Agent': 'UnreaderWikiEditor/1.0' };
+  if (cookie) headers.Cookie = cookie;
+  if (method === 'POST') headers['Content-Type'] = 'application/x-www-form-urlencoded';
+  const response = await fetch(url, { method: method || 'GET', headers: headers, body: body });
+  let data;
+  try { data = await response.json(); }
+  catch (error) { throw new Error('The Fandom API returned an unreadable response.'); }
+  if (!response.ok) throw new Error('Fandom API request failed (HTTP ' + response.status + ').');
+  if (data && data.error) {
+    const apiError = new Error(data.error.info || data.error.code || 'Fandom API request failed.');
+    apiError.code = data.error.code || '';
+    throw apiError;
+  }
+  return { data: data, cookie: mergeFandomCookies(cookie, response) };
+}
+
+function readFandomSessionId(req) {
+  const cookies = String(req.headers.cookie || '').split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    const pair = cookies[i].trim().split('=');
+    if (pair[0] === 'fandom_editor_session') return pair.slice(1).join('=');
+  }
+  return '';
+}
+
+function setFandomSessionCookie(req, res, sessionId, ttlMs, clear) {
+  res.cookie('fandom_editor_session', clear ? '' : sessionId, {
+    httpOnly: true,
+    secure: !!req.secure,
+    sameSite: 'strict',
+    path: '/api/fandom',
+    maxAge: clear ? 0 : ttlMs,
+  });
+}
+
+function getFandomSession(req) {
+  const sessionId = readFandomSessionId(req);
+  const session = sessionId && fandomEditorSessions.get(sessionId);
+  if (!session) return null;
+  if (session.expiresAt <= Date.now()) {
+    fandomEditorSessions.delete(sessionId);
+    return null;
+  }
+  session.expiresAt = Date.now() + session.ttlMs;
+  return session;
+}
+
+app.post('/api/fandom/login', async (req, res) => {
+  let host;
+  try { host = getFandomHost(req.body && req.body.wiki); }
+  catch (error) { return res.status(400).json({ error: error.message }); }
+  const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+  const password = typeof req.body.password === 'string' ? req.body.password : '';
+  const ttlMs = req.body.remember === true ? FANDOM_EDITOR_REMEMBER_TTL_MS : FANDOM_EDITOR_SESSION_TTL_MS;
+  if (!username || username.length > 128 || !password || password.length > 512) {
+    return res.status(400).json({ error: 'Enter your Fandom BotPassword username and password.' });
+  }
+
+  try {
+    const tokenResponse = await requestFandomApi(host, {
+      action: 'query', meta: 'tokens', type: 'login', format: 'json', formatversion: '2',
+    });
+    const loginToken = tokenResponse.data.query && tokenResponse.data.query.tokens && tokenResponse.data.query.tokens.logintoken;
+    if (!loginToken) throw new Error('Fandom did not provide a login token.');
+    const loginResponse = await requestFandomApi(host, {
+      action: 'login', lgname: username, lgpassword: password, lgtoken: loginToken,
+      format: 'json', formatversion: '2',
+    }, tokenResponse.cookie, 'POST');
+    const login = loginResponse.data.login || {};
+    if (login.result !== 'Success') {
+      return res.status(401).json({ error: login.reason || login.message || 'Fandom sign-in failed. Check the BotPassword details.' });
+    }
+
+    const sessionId = randomUUID();
+    fandomEditorSessions.set(sessionId, {
+      host: host,
+      username: login.lgusername || username.split('@')[0],
+      cookie: loginResponse.cookie,
+      ttlMs: ttlMs,
+      remember: req.body.remember === true,
+      expiresAt: Date.now() + ttlMs,
+    });
+    setFandomSessionCookie(req, res, sessionId, ttlMs, false);
+    res.json({ success: true, username: login.lgusername || username.split('@')[0], wiki: host, remember: req.body.remember === true });
+  } catch (error) {
+    log('Fandom API sign-in failed:', error.message);
+    res.status(502).json({ error: 'Could not sign in through that wiki API: ' + error.message });
+  }
+});
+
+app.get('/api/fandom/session', (req, res) => {
+  const session = getFandomSession(req);
+  if (!session) return res.status(401).json({ error: 'Sign in with a Fandom BotPassword to edit.' });
+  setFandomSessionCookie(req, res, readFandomSessionId(req), session.ttlMs, false);
+  res.json({ username: session.username, wiki: session.host, remember: session.remember });
+});
+
+app.post('/api/fandom/logout', (req, res) => {
+  const sessionId = readFandomSessionId(req);
+  if (sessionId) fandomEditorSessions.delete(sessionId);
+  setFandomSessionCookie(req, res, '', 0, true);
+  res.json({ success: true });
+});
+
+app.get('/api/fandom/page', async (req, res) => {
+  const session = getFandomSession(req);
+  if (!session) return res.status(401).json({ error: 'Your Fandom editor session has expired. Sign in again.' });
+  setFandomSessionCookie(req, res, readFandomSessionId(req), session.ttlMs, false);
+  const title = String(req.query.title || '').trim();
+  if (!title || title.length > 255) return res.status(400).json({ error: 'Enter a page title (up to 255 characters).' });
+  try {
+    const result = await requestFandomApi(session.host, {
+      action: 'query', prop: 'revisions', titles: title, rvprop: 'content|timestamp',
+      rvslots: 'main', curtimestamp: '1', format: 'json', formatversion: '2',
+    }, session.cookie);
+    session.cookie = result.cookie;
+    const page = result.data.query && result.data.query.pages && result.data.query.pages[0];
+    const revision = page && page.revisions && page.revisions[0];
+    const slot = revision && revision.slots && revision.slots.main;
+    res.json({
+      title: page ? page.title : title,
+      content: slot ? (slot.content || slot['*'] || '') : '',
+      basetimestamp: revision ? revision.timestamp : '',
+      starttimestamp: result.data.curtimestamp || new Date().toISOString(),
+      missing: !!(page && page.missing),
+    });
+  } catch (error) {
+    log('Fandom page load failed:', error.message);
+    res.status(502).json({ error: error.message });
+  }
+});
+
+app.post('/api/fandom/edit', async (req, res) => {
+  const session = getFandomSession(req);
+  if (!session) return res.status(401).json({ error: 'Your Fandom editor session has expired. Sign in again.' });
+  setFandomSessionCookie(req, res, readFandomSessionId(req), session.ttlMs, false);
+  const body = req.body || {};
+  const title = typeof body.title === 'string' ? body.title.trim() : '';
+  const content = typeof body.content === 'string' ? body.content : '';
+  const summary = typeof body.summary === 'string' ? body.summary.trim().slice(0, 500) : '';
+  if (!title || title.length > 255) return res.status(400).json({ error: 'Enter a page title (up to 255 characters).' });
+  if (Buffer.byteLength(content, 'utf8') > 4 * 1024 * 1024) return res.status(413).json({ error: 'Page text exceeds the 4 MB editor limit.' });
+
+  try {
+    const tokenResult = await requestFandomApi(session.host, {
+      action: 'query', meta: 'tokens', type: 'csrf', format: 'json', formatversion: '2',
+    }, session.cookie);
+    session.cookie = tokenResult.cookie;
+    const csrfToken = tokenResult.data.query && tokenResult.data.query.tokens && tokenResult.data.query.tokens.csrftoken;
+    if (!csrfToken) throw new Error('Fandom did not provide an edit token. Please sign in again.');
+    const editParams = {
+      action: 'edit', title: title, text: content, summary: summary, token: csrfToken,
+      format: 'json', formatversion: '2',
+    };
+    if (body.basetimestamp) editParams.basetimestamp = String(body.basetimestamp);
+    if (body.starttimestamp) editParams.starttimestamp = String(body.starttimestamp);
+    const editResult = await requestFandomApi(session.host, editParams, session.cookie, 'POST');
+    session.cookie = editResult.cookie;
+    const edit = editResult.data.edit || {};
+    if (edit.result !== 'Success') return res.status(502).json({ error: 'Fandom did not save the page.' });
+    res.json({ success: true, title: edit.title || title, newrevid: edit.newrevid || null, newtimestamp: edit.newtimestamp || '' });
+  } catch (error) {
+    const status = error.code === 'editconflict' ? 409 : 502;
+    log('Fandom page save failed:', error.code || error.message);
+    res.status(status).json({ error: error.code === 'editconflict' ? 'This page changed on Fandom after you loaded it. Reload it before saving your edit.' : error.message });
+  }
+});
 
 const activeClients = new Map();
 
@@ -465,6 +703,55 @@ app.post('/api/user/github-token', authenticateToken, async (req, res) => {
   }
 });
 
+// The server never sees the PIN. It only checks that what it is asked to store
+// has the shape of a PIN-vault record, then stores it as opaque text.
+function isValidBotPasswordVault(value) {
+  return value && typeof value === 'object' && value.version === 2 &&
+    value.context === 'unreader-fandom-botpassword-pin-v2' &&
+    value.kdf === 'PBKDF2-SHA-256' && value.iterations === 600000 &&
+    value.cipher === 'AES-GCM-256' &&
+    /^[A-Za-z0-9+/]{20,24}={0,2}$/.test(value.salt || '') &&
+    /^[A-Za-z0-9+/]{16}={0,2}$/.test(value.iv || '') &&
+    /^[A-Za-z0-9+/]+={0,2}$/.test(value.ciphertext || '') && value.ciphertext.length <= 12000;
+}
+
+app.get('/api/user/fandom-botpassword', authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query('SELECT "BotPasswordData" FROM users WHERE username = $1;', [req.user.username]);
+    let data = null;
+    if (result.rows[0] && result.rows[0].BotPasswordData) {
+      try { data = JSON.parse(result.rows[0].BotPasswordData); }
+      catch (error) { return res.status(500).json({ error: 'Saved Fandom credential data is invalid.' }); }
+    }
+    res.json({ data: data });
+  } catch (error) {
+    log('Fandom credential lookup failed:', error.message);
+    res.status(500).json({ error: 'Could not load saved Fandom credential data.' });
+  }
+});
+
+app.put('/api/user/fandom-botpassword', authenticateToken, async (req, res) => {
+  const data = req.body && req.body.data;
+  if (!isValidBotPasswordVault(data)) return res.status(400).json({ error: 'Encrypted Fandom credential data is invalid.' });
+  try {
+    await db.query('UPDATE users SET "BotPasswordData" = $1 WHERE username = $2;', [JSON.stringify(data), req.user.username]);
+    res.json({ success: true });
+  } catch (error) {
+    log('Fandom credential save failed:', error.message);
+    res.status(500).json({ error: 'Could not save encrypted Fandom credential data.' });
+  }
+});
+
+app.delete('/api/user/fandom-botpassword', authenticateToken, async (req, res) => {
+  try {
+    await db.query('UPDATE users SET "BotPasswordData" = NULL WHERE username = $1;', [req.user.username]);
+    res.json({ success: true });
+  } catch (error) {
+    log('Fandom credential removal failed:', error.message);
+    res.status(500).json({ error: 'Could not remove saved Fandom credential data.' });
+  }
+});
+
 app.post('/api/register', async (req, res) => {
   let { username, password } = req.body;
   username = sanitizeUsername(username);
@@ -541,10 +828,7 @@ app.post('/api/change-password', authenticateToken, async (req, res) => {
       });
     }
     const hash = await bcrypt.hash(newPassword, 10);
-    await db.query('UPDATE users SET password_hash = $1 WHERE username = $2;', [
-      hash,
-      user.username,
-    ]);
+    await db.query('UPDATE users SET password_hash = $1 WHERE username = $2;', [hash, user.username]);
     log(`Password change SUCCESS: ${user.username}`);
     res.json({ success: true });
   } catch (err) {
@@ -779,6 +1063,128 @@ app.post('/api/admin/set-role', authenticateToken, async (req, res) => {
   ]);
   invalidateUserRoleCache(target);
   res.json({ success: true });
+});
+
+app.get('/api/admin/roles', authenticateToken, async (req, res) => {
+  if (!hasAdminPrivileges(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  try {
+    const result = await db.query('SELECT role, prefix, style, class, priority FROM roles ORDER BY priority DESC, role ASC;');
+    res.json({ roles: result.rows });
+  } catch (error) {
+    log('Role list query failed:', error.message);
+    res.status(503).json({ error: 'Database temporarily unavailable. Try again shortly.' });
+  }
+});
+
+app.post('/api/admin/roles', authenticateToken, async (req, res) => {
+  if (!hasAdminPrivileges(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  const body = req.body || {};
+  const role = typeof body.role === 'string' ? body.role.trim().toLowerCase() : '';
+  const prefix = typeof body.prefix === 'string' ? body.prefix.trim() : '';
+  const style = typeof body.style === 'string' ? body.style.trim() : '';
+  const roleClass = typeof body.class === 'string' ? body.class.trim() : '';
+  const priority = Number(body.priority || 0);
+  if (!/^[a-z][a-z0-9_-]{1,31}$/.test(role) || ['admin', 'moderator'].includes(role)) {
+    return res.status(400).json({ error: 'Use a 2–32 character role name; admin and moderator are reserved.' });
+  }
+  if (prefix.length > 32 || roleClass.length > 128 ||
+      (roleClass && !/^[a-zA-Z0-9 _-]+$/.test(roleClass)) ||
+      !Number.isInteger(priority) || priority < -1000 || priority > 1000) {
+    return res.status(400).json({ error: 'Check the prefix, CSS style, class, and priority fields.' });
+  }
+  try {
+    await db.query(
+      'INSERT INTO roles (role, prefix, style, class, priority) VALUES ($1, $2, $3, $4, $5);',
+      [role, prefix, style, roleClass, priority],
+    );
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'That role already exists.' });
+    log('Role creation failed:', error.message);
+    return res.status(503).json({ error: 'Database temporarily unavailable. Try again shortly.' });
+  }
+  try {
+    await db.query(
+      'INSERT INTO mod_logs (mod_username, action_type, reason, timestamp) VALUES ($1, $2, $3, $4);',
+      [req.user.username, 'role_create', role, Date.now()],
+    );
+  } catch (error) {
+    log('Role creation audit log failed:', error.message);
+  }
+  res.json({ success: true, role });
+});
+
+app.put('/api/admin/roles/:role', authenticateToken, async (req, res) => {
+  if (!hasAdminPrivileges(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  const role = String(req.params.role || '').trim().toLowerCase();
+  if (!/^[a-z][a-z0-9_-]{1,31}$/.test(role) || ['admin', 'moderator'].includes(role)) {
+    return res.status(400).json({ error: 'That role is reserved or invalid and cannot be edited.' });
+  }
+  const body = req.body || {};
+  const prefix = typeof body.prefix === 'string' ? body.prefix.trim() : '';
+  const style = typeof body.style === 'string' ? body.style.trim() : '';
+  const roleClass = typeof body.class === 'string' ? body.class.trim() : '';
+  const priority = Number(body.priority || 0);
+  if (prefix.length > 32 || roleClass.length > 128 ||
+      (roleClass && !/^[a-zA-Z0-9 _-]+$/.test(roleClass)) ||
+      !Number.isInteger(priority) || priority < -1000 || priority > 1000) {
+    return res.status(400).json({ error: 'Check the prefix, CSS style, class, and priority fields.' });
+  }
+  try {
+    const updated = await db.query(
+      'UPDATE roles SET prefix = $1, style = $2, class = $3, priority = $4 WHERE role = $5 RETURNING role;',
+      [prefix, style, roleClass, priority, role],
+    );
+    if (!updated.rowCount) return res.status(404).json({ error: 'Role not found.' });
+    const holders = await db.query('SELECT username FROM users WHERE roles::jsonb ? $1;', [role]);
+    for (const holder of holders.rows) invalidateUserRoleCache(holder.username);
+    try {
+      await db.query(
+        'INSERT INTO mod_logs (mod_username, action_type, reason, timestamp) VALUES ($1, $2, $3, $4);',
+        [req.user.username, 'role_edit', role, Date.now()],
+      );
+    } catch (error) {
+      log('Role update audit log failed:', error.message);
+    }
+    res.json({ success: true, role });
+  } catch (error) {
+    log('Role update failed:', error.message);
+    res.status(503).json({ error: 'Database temporarily unavailable. Try again shortly.' });
+  }
+});
+
+app.post('/api/admin/assign-role', authenticateToken, async (req, res) => {
+  if (!hasAdminPrivileges(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  const target = sanitizeUsername(req.body && req.body.target);
+  const role = typeof (req.body && req.body.role) === 'string' ? req.body.role.trim().toLowerCase() : '';
+  const enabled = req.body && req.body.enabled;
+  if (!target || !/^[a-z][a-z0-9_-]{1,31}$/.test(role) || role === 'admin' || typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: 'Choose a valid user, non-admin role, and assign or remove action.' });
+  }
+  try {
+    const userResult = await db.query('SELECT username, roles FROM users WHERE LOWER(username) = LOWER($1);', [target]);
+    if (!userResult.rows[0]) return res.status(404).json({ error: 'User not found.' });
+    if (role !== 'moderator') {
+      const roleResult = await db.query('SELECT role FROM roles WHERE role = $1;', [role]);
+      if (!roleResult.rows[0]) return res.status(404).json({ error: 'Role not found.' });
+    }
+    let assignedRoles;
+    try { assignedRoles = JSON.parse(userResult.rows[0].roles || '[]'); } catch { assignedRoles = []; }
+    if (!Array.isArray(assignedRoles)) assignedRoles = [];
+    assignedRoles = assignedRoles.filter((item) => typeof item === 'string');
+    const hasRole = assignedRoles.includes(role);
+    if (enabled && !hasRole) assignedRoles.push(role);
+    if (!enabled && hasRole) assignedRoles = assignedRoles.filter((item) => item !== role);
+    await db.query('UPDATE users SET roles = $1 WHERE username = $2;', [JSON.stringify(assignedRoles), userResult.rows[0].username]);
+    invalidateUserRoleCache(userResult.rows[0].username);
+    await db.query(
+      'INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);',
+      [req.user.username, enabled ? 'role_assign' : 'role_remove', userResult.rows[0].username, role, Date.now()],
+    );
+    res.json({ success: true, roles: assignedRoles });
+  } catch (error) {
+    log('Role assignment failed:', error.message);
+    res.status(503).json({ error: 'Database temporarily unavailable. Try again shortly.' });
+  }
 });
 
 app.post('/api/admin/ban-ip', authenticateToken, async (req, res) => {

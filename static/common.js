@@ -62,6 +62,187 @@ var WS_URL = DEBUG
   ? 'ws://127.0.0.1:80'
   : window.location.origin.replace('https', 'wss').replace('http', 'ws');
 
+var UnreaderBotPasswordVault = (function () {
+  // The saved BotPassword is locked with a PIN that exists only in the user's
+  // head and browser. It is never sent to the server and is unrelated to the
+  // account password.
+  //
+  // Optionally the browser can also remember the *derived key* on this device
+  // (a non-exportable CryptoKey kept in IndexedDB). That lets the key fill
+  // itself in with no PIN, because Fandom BotPasswords are long and cannot be
+  // changed, so retyping them is the whole problem this vault exists to solve.
+  // The remembered key can decrypt but can never be read out or copied.
+  var iterations = 600000;
+  var minPinLength = 6;
+  var contextName = 'unreader-fandom-botpassword-pin-v2';
+  var context = new TextEncoder().encode(contextName);
+  var DEVICE_DB = 'unreader-vault';
+  var DEVICE_STORE = 'keys';
+  var DEVICE_KEY = 'fandom-botpassword';
+
+  function bytesToBase64(bytes) {
+    var binary = '';
+    for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+
+  function base64ToBytes(value) {
+    var binary = atob(value);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  function pinProblem(pin) {
+    if (typeof pin !== 'string' || pin.length < minPinLength) return 'Your PIN must be at least ' + minPinLength + ' characters.';
+    return '';
+  }
+
+  function recordProblem(record) {
+    if (record && record.version === 1) return 'This saved key uses the old account-password format. Save it again with a PIN to replace it.';
+    if (!record || record.version !== 2 || record.context !== contextName || record.kdf !== 'PBKDF2-SHA-256' || record.iterations !== iterations || record.cipher !== 'AES-GCM-256') {
+      return 'Saved Fandom credential format is unsupported.';
+    }
+    return '';
+  }
+
+  function deriveKey(pin, salt) {
+    if (!window.crypto || !window.crypto.subtle) return Promise.reject(new Error('Encrypted credential storage requires HTTPS and Web Crypto support.'));
+    return window.crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey'])
+      .then(function (material) {
+        return window.crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' }, material,
+          { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+      });
+  }
+
+  // Encrypts with a fresh salt and returns both the record and the key, so the
+  // key can be remembered on this device without deriving it a second time.
+  function encryptWithNewKey(pin, value) {
+    var problem = pinProblem(pin);
+    if (problem) return Promise.reject(new Error(problem));
+    var salt = window.crypto.getRandomValues(new Uint8Array(16));
+    var iv = window.crypto.getRandomValues(new Uint8Array(12));
+    return deriveKey(pin, salt).then(function (key) {
+      return window.crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: context }, key,
+        new TextEncoder().encode(JSON.stringify(value))).then(function (encrypted) {
+        return { key: key, data: { version: 2, context: contextName, kdf: 'PBKDF2-SHA-256', iterations: iterations, cipher: 'AES-GCM-256',
+          salt: bytesToBase64(salt), iv: bytesToBase64(iv), ciphertext: bytesToBase64(new Uint8Array(encrypted)) } };
+      });
+    });
+  }
+
+  function openWithKey(key, record) {
+    return window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64ToBytes(record.iv), additionalData: context }, key, base64ToBytes(record.ciphertext))
+      .then(function (clear) {
+        return JSON.parse(new TextDecoder().decode(clear));
+      }, function () {
+        throw new Error('Could not unlock the saved Fandom BotPassword. Check your PIN.');
+      });
+  }
+
+  // ---- remembered key, per device (IndexedDB; every failure is non-fatal) ----
+  function deviceOp(mode, run) {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) return reject(new Error('This browser cannot remember a key.'));
+      var open = window.indexedDB.open(DEVICE_DB, 1);
+      open.onupgradeneeded = function () { open.result.createObjectStore(DEVICE_STORE); };
+      open.onerror = function () { reject(open.error || new Error('Could not open device storage.')); };
+      open.onsuccess = function () {
+        var db = open.result;
+        try {
+          var tx = db.transaction(DEVICE_STORE, mode);
+          var req = run(tx.objectStore(DEVICE_STORE));
+          tx.oncomplete = function () { db.close(); resolve(req.result); };
+          tx.onerror = tx.onabort = function () { db.close(); reject(tx.error || new Error('Device storage failed.')); };
+        } catch (error) { db.close(); reject(error); }
+      };
+    });
+  }
+
+  // Resolves true if the key is now remembered, false if the browser refused.
+  function rememberKey(salt, key) {
+    return deviceOp('readwrite', function (store) { return store.put({ salt: salt, key: key }, DEVICE_KEY); })
+      .then(function () { return true; }, function () { return false; });
+  }
+
+  function forgetDevice() {
+    return deviceOp('readwrite', function (store) { return store.delete(DEVICE_KEY); })
+      .then(function () { return true; }, function () { return false; });
+  }
+
+  function request(method, data) {
+    var token = localStorage.getItem('token');
+    if (!token) return Promise.reject(new Error('Sign in to your Unreader account first.'));
+    var options = { method: method, headers: { Authorization: 'Bearer ' + token } };
+    if (data) {
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(data);
+    }
+    return fetch(BACKEND_URL + '/api/user/fandom-botpassword', options).then(function (response) {
+      return response.json().then(function (body) {
+        if (!response.ok) throw new Error(body.error || 'Credential vault request failed.');
+        return body;
+      });
+    });
+  }
+
+  // Resolves { remembered } (whether this device will now fill the key in unaided).
+  function save(username, password, pin, remember) {
+    return encryptWithNewKey(pin, { username: username, password: password }).then(function (result) {
+      return request('PUT', { data: result.data }).then(function () {
+        return remember ? rememberKey(result.data.salt, result.key) : forgetDevice().then(function () { return false; });
+      });
+    }).then(function (remembered) { return { remembered: remembered }; });
+  }
+
+  // Unlocks with the PIN. Resolves { username, password, remembered }.
+  function load(pin, remember) {
+    var record;
+    return request('GET').then(function (response) {
+      if (!response.data) throw new Error('No saved Fandom BotPassword was found.');
+      record = response.data;
+      var problem = recordProblem(record);
+      if (problem) throw new Error(problem);
+      return deriveKey(pin, base64ToBytes(record.salt));
+    }).then(function (key) {
+      return openWithKey(key, record).then(function (clear) {
+        var after = remember ? rememberKey(record.salt, key) : forgetDevice().then(function () { return false; });
+        return after.then(function (remembered) {
+          return { username: clear.username, password: clear.password, remembered: remembered };
+        });
+      });
+    });
+  }
+
+  // Tries to unlock using only the key remembered on this device. Resolves
+  // { saved: false }, { saved: true, credential: null } when a PIN is needed,
+  // or { saved: true, credential: { username, password } }.
+  function unlockOnDevice() {
+    return request('GET').then(function (response) {
+      var record = response.data;
+      if (!record) return forgetDevice().then(function () { return { saved: false }; });
+      if (recordProblem(record)) return { saved: true, credential: null };
+      return deviceOp('readonly', function (store) { return store.get(DEVICE_KEY); }).then(function (cached) {
+        // A key remembered for an older save has a different salt: ignore it.
+        if (!cached || !cached.key || cached.salt !== record.salt) return { saved: true, credential: null };
+        return openWithKey(cached.key, record).then(function (clear) {
+          return { saved: true, credential: { username: clear.username, password: clear.password } };
+        }, function () {
+          return forgetDevice().then(function () { return { saved: true, credential: null }; });
+        });
+      }, function () { return { saved: true, credential: null }; });
+    });
+  }
+
+  function hasSaved() {
+    return request('GET').then(function (response) { return !!response.data; });
+  }
+
+  return { minPinLength: minPinLength, pinProblem: pinProblem, save: save, load: load,
+    unlockOnDevice: unlockOnDevice, hasSaved: hasSaved, forgetDevice: forgetDevice,
+    remove: function () { return request('DELETE').then(function (r) { return forgetDevice().then(function () { return r; }); }); } };
+}());
+
 function startRichPresence(mode) {
   const token = localStorage.getItem('token');
   if (!token) return;

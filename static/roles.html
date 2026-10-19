@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Role Manager</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="bbs.css">
+  <script src="common.js"></script>
+  <style>
+    @font-face { font-family: 'Determination Mono'; src: url('./DTM-Mono.ttf') format('truetype'); }
+    * { box-sizing: border-box; transition: none !important; animation: none !important; }
+    .window { width: 96vw; max-width: 1100px; min-height: 0; overflow: hidden; }
+    .manager { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; flex: 1; overflow: hidden; }
+    .column { min-width: 0; padding: 12px; overflow-y: auto; }
+    .column + .column { border-left: var(--border); }
+    h2 { margin: 4px 0 10px; font-size: 1rem; }
+    .field { margin: 8px 0; }
+    .field label { display: block; margin-bottom: 4px; font-weight: bold; }
+    .field input, .field select, .field textarea { display: block; width: 100%; min-height: 48px; padding: 7px; border: var(--border); border-radius: 0; background: var(--bg-color); color: var(--text-color); font: inherit; }
+    .field textarea { resize: vertical; }
+    .buttons { margin: 8px 0; }
+    .buttons button, .assignment button { min-height: 48px; margin: 3px 4px 3px 0; }
+    .status { min-height: 24px; margin: 8px 0; }
+    .role-preview { border: var(--border); background: var(--bg-color); padding: 8px; }
+    .role-preview .message-container { width: 100%; margin-bottom: 10px; clear: both; display: block; position: relative; min-height: 1px; }
+    .role-preview .message-container::after { content: ''; display: block; clear: both; }
+    .role-preview .message { border: var(--border); padding: 6px 10px; max-width: 75%; width: auto; position: relative; background: white; box-shadow: 2px 2px 0 #000; color: #000; }
+    .role-preview .message-meta { margin-bottom: 3px; font-size: 10px; font-weight: bold; color: #555; text-transform: uppercase; }
+    .role-preview .message-text { font-size: 13px; white-space: pre-wrap; line-height: 1.3; color: #000; }
+    .role-preview .admin-msg .message-meta, .role-preview .admin-msg .message-text { color: #fff !important; }
+    .assignment { margin-top: 16px; padding-top: 10px; border-top: var(--border); }
+    .hint { font-size: .85rem; }
+    @media (max-width: 700px) {
+      .window { width: 100vw; height: 100vh; }
+      .manager { grid-template-columns: minmax(0, 1fr); overflow-y: auto; }
+      .column + .column { border-left: 0; border-top: var(--border); }
+    }
+  </style>
+</head>
+<body>
+  <main class="window">
+    <header class="title-bar">
+      <div class="title-stripes"></div>
+      <button class="paper-btn" id="back-btn" type="button" onclick="window.location.href = 'index.html'">&lt; HOME</button>
+      <div class="title-text">ROLE MANAGER</div>
+    </header>
+    <div class="manager" id="manager" style="display:none;">
+      <section class="column" aria-labelledby="editor-heading">
+        <h2 id="editor-heading">Create or edit a role</h2>
+        <div class="field"><label for="existing-role">Existing role</label><select id="existing-role"><option value="">Create a new role</option></select></div>
+        <div class="field"><label for="role-name">Role name</label><input id="role-name" maxlength="32" placeholder="helper"></div>
+        <div class="field"><label for="role-prefix">Name prefix</label><input id="role-prefix" maxlength="32" placeholder="HELPER"></div>
+        <div class="field"><label for="role-style">Inline style</label><textarea id="role-style" rows="5" placeholder="color: blue;"></textarea></div>
+        <div class="field"><label for="role-class">CSS class</label><input id="role-class" maxlength="128" placeholder="helper-role"></div>
+        <div class="field"><label for="role-priority">Display priority</label><input id="role-priority" type="number" min="-1000" max="1000" value="0"></div>
+        <div class="buttons"><button id="save-role" type="button">CREATE ROLE</button></div>
+        <div id="editor-status" class="status" role="status" aria-live="polite"></div>
+        <div class="assignment">
+          <h2>Assign a role</h2>
+          <div class="field"><label for="target-user">Username</label><input id="target-user" maxlength="32" placeholder="username" autocapitalize="off"></div>
+          <div class="field"><label for="assign-role">Role</label><select id="assign-role"></select></div>
+          <div class="buttons"><button id="assign-button" type="button">ASSIGN</button><button id="remove-button" type="button">REMOVE</button></div>
+          <div id="assignment-status" class="status" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+      <section class="column" aria-labelledby="preview-heading">
+        <h2 id="preview-heading">Test messages</h2>
+        <p class="hint">Preview the selected role in sample chat messages. Changes here are only a preview until you save.</p>
+        <div id="role-preview" class="role-preview" aria-live="polite"></div>
+      </section>
+    </div>
+    <div id="access-status" class="status" role="status" aria-live="polite" style="padding:12px;">Checking administrator access...</div>
+  </main>
+  <script>
+    applySavedPreferences();
+    var token = localStorage.getItem('token');
+    var roles = [];
+    var editorStatus = document.getElementById('editor-status');
+    var assignmentStatus = document.getElementById('assignment-status');
+
+    function request(method, path, body, done) {
+      var xhr = new XMLHttpRequest();
+      xhr.open(method, BACKEND_URL + path, true);
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      if (body) xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        var data = {};
+        try { data = JSON.parse(xhr.responseText || '{}'); } catch (error) { }
+        done(xhr.status >= 200 && xhr.status < 300 ? null : (data.error || 'Request failed (' + xhr.status + ').'), data);
+      };
+      xhr.send(body ? JSON.stringify(body) : null);
+    }
+
+    function fillSelect(select, selectedValue) {
+      while (select.firstChild) select.removeChild(select.firstChild);
+      for (var i = 0; i < roles.length; i++) {
+        if (roles[i].role === 'admin' || roles[i].role === 'moderator') continue;
+        var option = document.createElement('option');
+        option.value = roles[i].role;
+        option.textContent = roles[i].role;
+        select.appendChild(option);
+      }
+      var moderator = document.createElement('option');
+      moderator.value = 'moderator';
+      moderator.textContent = 'moderator';
+      select.appendChild(moderator);
+      if (selectedValue) select.value = selectedValue;
+    }
+
+    function loadRoles(selectedRole) {
+      request('GET', '/api/admin/roles', null, function (error, result) {
+        if (error) {
+          document.getElementById('access-status').textContent = error;
+          return;
+        }
+        roles = result.roles || [];
+        var existing = document.getElementById('existing-role');
+        while (existing.options.length > 1) existing.remove(1);
+        for (var i = 0; i < roles.length; i++) {
+          if (roles[i].role === 'admin' || roles[i].role === 'moderator') continue;
+          var option = document.createElement('option');
+          option.value = roles[i].role;
+          option.textContent = roles[i].role;
+          existing.appendChild(option);
+        }
+        fillSelect(document.getElementById('assign-role'), selectedRole || '');
+        document.getElementById('access-status').style.display = 'none';
+        document.getElementById('manager').style.display = '';
+        if (selectedRole) existing.value = selectedRole;
+        loadSelectedRole();
+      });
+    }
+
+    function loadSelectedRole() {
+      var name = document.getElementById('existing-role').value;
+      var role = null;
+      for (var i = 0; i < roles.length; i++) if (roles[i].role === name) role = roles[i];
+      document.getElementById('role-name').value = role ? role.role : '';
+      document.getElementById('role-name').disabled = !!role;
+      document.getElementById('role-prefix').value = role ? role.prefix : '';
+      document.getElementById('role-style').value = role ? role.style : '';
+      document.getElementById('role-class').value = role ? role.class : '';
+      document.getElementById('role-priority').value = role ? role.priority : 0;
+      document.getElementById('save-role').textContent = role ? 'SAVE ROLE CHANGES' : 'CREATE ROLE';
+      editorStatus.textContent = '';
+      renderPreview();
+    }
+
+    function renderPreview() {
+      var preview = document.getElementById('role-preview');
+      while (preview.firstChild) preview.removeChild(preview.firstChild);
+      var prefix = document.getElementById('role-prefix').value.trim();
+      var displayName = document.getElementById('role-name').value.trim() || 'sample-role';
+      var inlineStyle = document.getElementById('role-style').value;
+      var roleClass = document.getElementById('role-class').value.trim();
+      var samples = [
+        { name: 'reader', prefix: '', text: 'This is a regular sample message.' },
+        { name: 'sample-user', prefix: prefix, text: 'This message previews the role you are editing.' },
+        { name: 'system', prefix: 'SYSTEM', text: 'A second message helps compare the role styling.' }
+      ];
+      for (var i = 0; i < samples.length; i++) {
+        var container = document.createElement('div');
+        container.className = 'message-container';
+        var message = document.createElement('div');
+        message.className = 'message other-msg' + (i === 1 && roleClass ? ' ' + roleClass : '');
+        message.style.float = i === 2 ? 'right' : 'left';
+        if (i === 1) message.style.cssText += inlineStyle;
+        var meta = document.createElement('div');
+        meta.className = 'message-meta';
+        meta.textContent = (samples[i].prefix ? samples[i].prefix + ' ' : '') + '@' + samples[i].name + ' • 10/19/2026 12:00 PM';
+        var body = document.createElement('div');
+        body.className = 'message-text';
+        body.textContent = samples[i].text;
+        message.appendChild(meta);
+        message.appendChild(body);
+        container.appendChild(message);
+        preview.appendChild(container);
+      }
+      var note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent = 'Preview role: ' + displayName + (roleClass ? ' | CSS class: ' + roleClass : '');
+      preview.appendChild(note);
+    }
+
+    document.getElementById('existing-role').onchange = loadSelectedRole;
+    ['role-name', 'role-prefix', 'role-style', 'role-class'].forEach(function (id) {
+      document.getElementById(id).oninput = renderPreview;
+    });
+    document.getElementById('save-role').onclick = function () {
+      var selected = document.getElementById('existing-role').value;
+      var payload = {
+        role: document.getElementById('role-name').value,
+        prefix: document.getElementById('role-prefix').value,
+        style: document.getElementById('role-style').value,
+        class: document.getElementById('role-class').value,
+        priority: Number(document.getElementById('role-priority').value || 0)
+      };
+      var method = selected ? 'PUT' : 'POST';
+      var path = '/api/admin/roles' + (selected ? '/' + encodeURIComponent(selected) : '');
+      request(method, path, payload, function (error) {
+        editorStatus.textContent = error || (selected ? 'Role updated.' : 'Role created.');
+        if (!error) loadRoles(selected || payload.role.trim().toLowerCase());
+      });
+    };
+
+    function assignRole(enabled) {
+      var target = document.getElementById('target-user').value.trim();
+      var role = document.getElementById('assign-role').value;
+      if (!target || !role) {
+        assignmentStatus.textContent = 'Enter a username and choose a role.';
+        return;
+      }
+      request('POST', '/api/admin/assign-role', { target: target, role: role, enabled: enabled }, function (error) {
+        assignmentStatus.textContent = error || ('Role ' + (enabled ? 'assigned to ' : 'removed from ') + target + '.');
+      });
+    }
+    document.getElementById('assign-button').onclick = function () { assignRole(true); };
+    document.getElementById('remove-button').onclick = function () { assignRole(false); };
+    loadRoles('');
+  </script>
+</body>
+</html>

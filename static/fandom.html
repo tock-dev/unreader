@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Wiki Reader</title>
+<script src="common.js"></script>
 <style>
 :root {
   --ink: #111;
@@ -18,11 +19,16 @@ html { background: var(--desk); }
 body {
   margin: 0;
   padding: 0;
-  background: var(--paper);
+  background: var(--desk);
   color: var(--ink);
   font-family: Arial, Verdana, sans-serif;
   font-size: 13px;
   line-height: 1.25;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 button, input, select {
   font: inherit;
@@ -41,18 +47,30 @@ button {
 button:active { transform: translate(2px, 2px); box-shadow: none; background: #000; color: #fff; }
 button:disabled { color: #666; background: #ddd; }
 input, select { min-height: 32px; padding: 4px; width: 100%; }
+textarea { width: 100%; min-height: 180px; padding: 6px; border: 2px solid #000; border-radius: 0; background: #fff; color: #111; font: inherit; }
+#editorPane > label, #editorWorkspace > label { display: block; margin-top: 8px; }
+#editPageContent { min-height: 280px; font-family: monospace; line-height: 1.3; }
+.remember-option { display: block; min-height: 48px; padding: 8px 0; }
+.remember-option input { width: auto; min-height: 0; margin-right: 6px; }
 a { color: #111; text-decoration: underline; }
 .app {
-  width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 95%;
+  max-width: 600px;
+  height: 90vh;
+  min-height: 0;
   margin: 0;
   background: #fff;
-  border: 0;
-  box-shadow: none;
-  min-height: 100vh;
+  border: 2px solid #000;
+  box-shadow: 4px 4px 0 #000;
+  overflow: hidden;
 }
 .title-bar {
-  height: 30px;
-  border-bottom: 1px solid #000;
+  height: 35px;
+  min-height: 35px;
+  border-bottom: 2px solid #000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -60,15 +78,25 @@ a { color: #111; text-decoration: underline; }
   padding: 4px 42px;
   background: #fff;
 }
-.title-stripes { position: absolute; top: 2px; bottom: 2px; left: 2px; right: 2px; background-image: var(--stripe-pattern); z-index: 0; }
-.title-text { position: relative; z-index: 1; background: #fff; padding: 0 12px; font-weight: bold; }
+.title-stripes { position: absolute; top: 4px; bottom: 4px; left: 4px; right: 4px; background-image: var(--stripe-pattern); z-index: 0; }
+.title-text { position: relative; z-index: 1; background: #fff; padding: 0 15px; font-weight: bold; }
+.app-tabs { display: flex; border-bottom: 2px solid #000; background: #eee; flex-shrink: 0; }
+.app-tabs button { flex: 1; min-height: 42px; box-shadow: none; border: 0; border-right: 1px solid #000; }
+.app-tabs button:last-child { border-right: 0; }
+.app-tabs button[aria-selected="true"] { background: #000; color: #fff; }
+.help-modal { position: absolute; z-index: 10000; top: 0; right: 0; bottom: 0; left: 0; padding: 10px; background: rgba(0, 0, 0, .55); overflow-y: auto; }
+.help-card { max-width: 560px; max-height: 100%; overflow-y: auto; margin: 0 auto; padding: 12px; background: #fff; border: 2px solid #000; box-shadow: 4px 4px 0 #000; }
+.help-heading { margin: 0; font-size: 1rem; }
+.help-card li { margin: 7px 0; }
+.help-card ul { padding-left: 22px; }
+.help-close { display: block; margin: 8px 0 0 auto; }
 .close-box {
-  position: absolute; left: 6px; top: 4px; z-index: 2;
+  position: absolute; left: 10px; top: 6px; z-index: 2;
   width: 18px; height: 18px; line-height: 14px; text-align: center;
   border: 2px solid #000; background: #fff; box-shadow: 2px 2px 0 #000;
   font-weight: bold; cursor: pointer;
 }
-.topline { padding: 5px 6px; border-bottom: 1px solid #777; background: #f2f2f2; }
+.topline { padding: 8px; border-bottom: 1px solid #777; background: #f2f2f2; flex-shrink: 0; }
 .brand { font-size: 1rem; font-weight: bold; margin-bottom: 4px; }
 .search-row { display: flex; align-items: stretch; }
 .search-row input { flex: 1; min-width: 0; margin: 0; }
@@ -116,8 +144,9 @@ a { color: #111; text-decoration: underline; }
   color: #fff;
   padding: 0 2px;
 }
-.main { padding: 5px 6px; }
+.main { padding: 8px; flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .status { border: 1px solid #777; background: #f4f4f4; padding: 5px; margin: 5px 0; overflow-wrap: break-word; font-size: .8rem; }
+.status.fail { border-color: #900; background: #fff0f0; }
 .hidden { display: none !important; }
 .layout { display: block; }
 .sidebar { border: 1px solid #888; padding: 4px; margin-bottom: 5px; background: #f7f7f7; }
@@ -150,7 +179,7 @@ a { color: #111; text-decoration: underline; }
 .article-body .mw-editsection, .article-body .reference, .article-body .reflist, .article-body .navbox, .article-body .sistersitebox { display: none !important; }
 .article-body a { overflow-wrap: break-word; }
 .article-body sup { font-size: .75em; }
-.footer { padding: 5px 6px; border-top: 1px solid #888; color: #444; font-size: .7rem; }
+.footer { padding: 6px 8px; border-top: 1px solid #888; color: #444; font-size: .7rem; flex-shrink: 0; }
 .small { font-size: .75rem; color: #444; }
 @media (min-width: 700px) {
   body { padding: 0; font-size: 13px; }
@@ -222,7 +251,11 @@ a { color: #111; text-decoration: underline; }
     <div class="close-box" role="button" aria-label="Home" onclick="window.location.href = 'index.html'">X</div>
     <span class="title-text">Wiki Reader</span>
   </div>
-  <div class="topline">
+  <nav class="app-tabs" aria-label="Wiki tools">
+    <button type="button" id="readTab" aria-selected="true">View wiki</button>
+    <button type="button" id="editTab" aria-selected="false">Edit wiki</button>
+  </nav>
+  <div class="topline" id="readerTopline">
     <div class="brand">Fandom Reader <span style="font-size:.65rem;border:1px solid #000;padding:2px 4px;vertical-align:middle;">BETA</span></div>
     <form id="searchForm" class="search-row">
       <input id="searchInput" type="text" value="" placeholder="Search this wiki..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search this wiki">
@@ -234,7 +267,7 @@ a { color: #111; text-decoration: underline; }
     </div>
     <div class="small" style="margin-top:6px;">Searches article titles and article text, with relevant snippets.</div>
   </div>
-  <main class="main">
+  <main class="main" id="readerMain">
     <div id="status" class="status" role="status" aria-live="polite">Enter a Fandom wiki below to get started.</div>
     <label for="wikiInput"><strong>Wiki address</strong></label>
     <input id="wikiInput" type="text" value="minecraft.fandom.com" autocapitalize="off" autocomplete="off" spellcheck="false">
@@ -282,6 +315,63 @@ a { color: #111; text-decoration: underline; }
       </section>
     </div>
   </main>
+  <section class="main hidden" id="editorPane" aria-labelledby="editorHeading">
+    <h1 id="editorHeading" class="section-heading">Edit a Fandom wiki page</h1>
+    <p class="small">Sign in with a Fandom BotPassword. Your regular Fandom password will not work here. By default, the BotPassword is sent to this app server and forwarded to Fandom to start an API session, then discarded. You can save it to your Unreader account locked with a PIN of your choice; the PIN never leaves your browser and the server stores only ciphertext. The session expires after two hours by default, or 30 days if you choose to stay signed in. A server restart ends it sooner.</p>
+    <div id="editorLogin">
+      <label for="editWikiInput"><strong>Wiki hostname</strong></label>
+      <input id="editWikiInput" type="text" value="minecraft.fandom.com" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <label for="botUsername"><strong>BotPassword username</strong></label>
+      <input id="botUsername" type="text" placeholder="FandomName@ToolName" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <label for="botPassword"><strong>BotPassword</strong></label>
+      <input id="botPassword" type="password" autocomplete="off">
+      <label class="remember-option"><input id="saveBotPassword" type="checkbox"> Save Key <span class="small">(stores this Fandom BotPassword on your Unreader account, locked with a PIN)</span></label>
+      <label for="vaultPin"><strong>Key PIN</strong> <span class="small">(at least 6 characters; needed to save or load the saved key)</span></label>
+      <input id="vaultPin" type="password" autocomplete="off">
+      <div id="vaultPinConfirmRow" class="hidden">
+        <label for="vaultPinConfirm"><strong>Confirm PIN</strong></label>
+        <input id="vaultPinConfirm" type="password" autocomplete="off">
+      </div>
+      <label class="remember-option"><input id="rememberVaultDevice" type="checkbox" checked> Remember on this device <span class="small">(fills your saved key in automatically here, with no PIN. Untick on a shared device.)</span></label>
+      <label class="remember-option"><input id="rememberEditor" type="checkbox"> Keep me signed in on this device for 30 days</label>
+      <button type="button" id="editorLoginButton">SIGN IN</button>
+      <button type="button" id="unlockBotPasswordButton" class="hidden">LOAD SAVED KEY</button>
+      <button type="button" id="removeBotPasswordButton" class="hidden">REMOVE SAVED KEY</button>
+      <button type="button" id="editorHelpButton" aria-haspopup="dialog" aria-controls="editorHelp">HELP</button>
+      <p class="small">Create a BotPassword in your Fandom account settings under Special:BotPasswords, and grant only the editing permissions you need. <a href="https://community.fandom.com/wiki/Help:Logging_in_to_third-party_tools" target="_blank" rel="noopener">Fandom's guide</a></p>
+    </div>
+    <div id="editorWorkspace" class="hidden">
+      <div><strong>Signed in as <span id="editorUsername"></span></strong> on <span id="editorWiki"></span> <button type="button" id="editorLogoutButton">SIGN OUT</button></div>
+      <label for="editPageTitle"><strong>Page title</strong></label>
+      <div class="search-row">
+        <input id="editPageTitle" type="text" placeholder="Page title" autocapitalize="off" autocomplete="off">
+        <button type="button" id="loadEditPageButton">LOAD</button>
+      </div>
+      <label for="editSummary"><strong>Edit summary</strong></label>
+      <input id="editSummary" type="text" maxlength="500" placeholder="Briefly describe your change">
+      <label for="editPageContent"><strong>Wiki text</strong></label>
+      <textarea id="editPageContent" rows="16" placeholder="Load a page, then edit its wiki text here."></textarea>
+      <button type="button" id="saveEditButton" disabled>SAVE PAGE</button>
+    </div>
+    <div id="editorStatus" class="status" role="status" aria-live="polite">Sign in to edit a page.</div>
+  </section>
+  <div class="help-modal hidden" id="editorHelp" role="dialog" aria-modal="true" aria-labelledby="helpHeading">
+    <div class="help-card">
+      <h2 class="help-heading" id="helpHeading">Set up Fandom wiki editing</h2>
+      <p>You need a BotPassword for API access. Your normal Fandom password will not work in this editor.</p>
+      <ol>
+        <li>Sign in to your Fandom account on any Fandom wiki, then open <a id="botPasswordSetupLink" href="https://community.fandom.com/wiki/Special:BotPasswords" target="_blank" rel="noopener">Special:BotPasswords</a>.</li>
+        <li>Create a BotPassword with a recognizable name, such as <code>KindleEditor</code>. Copy the generated password; Fandom shows it only once.</li>
+        <li>Leave <strong>Basic rights</strong> selected. For ordinary page editing, grant <strong>Edit existing pages</strong>. Also grant <strong>Create, edit, and move pages</strong> only if you need to create pages. <strong>High-volume (bot) access</strong> is optional; use it only if you want edits marked as bot activity. Leave protected-page, CSS/JavaScript, moderation, import, deletion, and other elevated grants unchecked unless you specifically need them.</li>
+        <li>Enter the BotPassword username in the form as <code>YourFandomName@KindleEditor</code>, along with its generated password. Enter the wiki hostname you want to edit, such as <code>minecraft.fandom.com</code>, then select <strong>SIGN IN</strong>. To save it, check the save option and choose a PIN.</li>
+        <li>Enter a page title and select <strong>LOAD</strong>. Edit the wiki text, add a short summary, then select <strong>SAVE PAGE</strong>. Review the title and text before saving.</li>
+      </ol>
+      <p>Fandom still checks your account's permissions on that specific wiki. A BotPassword cannot grant access your account does not already have, and protected pages may require additional wiki permissions. The same BotPassword works across Fandom wikis, but sign in again when switching to another wiki.</p>
+      <p>When you save a BotPassword, the browser encrypts it with your PIN before sending it to the server. The PIN is never sent anywhere and is separate from your Unreader password, so changing your Unreader password does not affect it. If you forget the PIN, the saved key cannot be recovered; remove it here and save it again, or revoke it at Special:BotPasswords. A longer PIN is much harder to guess than a short one. If you choose "Remember on this device", this browser keeps a key that can unlock the saved BotPassword but can never be read out or copied, so the key fills itself in and signs you in whenever you open the editor or your session ends. Untick it on a shared device, or use REMOVE SAVED KEY to forget it.</p>
+      <p><a href="https://community.fandom.com/wiki/Help:Logging_in_to_third-party_tools" target="_blank" rel="noopener">Read Fandom's third-party tools guide</a></p>
+      <button type="button" class="help-close" id="closeEditorHelp">CLOSE HELP</button>
+    </div>
+  </div>
   <div class="footer">Wiki Reader is an independent reader and is not affiliated with Fandom. Article text and images belong to their respective owners.</div>
 </div>
 <script>
@@ -305,6 +395,267 @@ a { color: #111; text-decoration: underline; }
   var articleMeta = document.getElementById("articleMeta");
   var articleBody = document.getElementById("articleBody");
   var backButton = document.getElementById("backButton");
+  var editSession = null;
+  var editBaseTimestamp = "";
+  var editStartTimestamp = "";
+  var editHasLoadedPage = false;
+  var helpReturnFocus = null;
+
+  function openEditorHelp() {
+    var modal = document.getElementById("editorHelp");
+    var link = document.getElementById("botPasswordSetupLink");
+    try {
+      var host = normalizeHost(document.getElementById("editWikiInput").value);
+      link.href = "https://" + host + "/wiki/Special:BotPasswords";
+    } catch (error) {
+      link.href = "https://community.fandom.com/wiki/Special:BotPasswords";
+    }
+    helpReturnFocus = document.activeElement;
+    modal.className = "help-modal";
+    document.getElementById("closeEditorHelp").focus();
+  }
+
+  function closeEditorHelp() {
+    document.getElementById("editorHelp").className = "help-modal hidden";
+    if (helpReturnFocus && helpReturnFocus.focus) { helpReturnFocus.focus(); }
+  }
+
+  function setEditorStatus(message, bad) {
+    var status = document.getElementById("editorStatus");
+    status.className = "status" + (bad ? " fail" : "");
+    status.textContent = message;
+  }
+
+  function editorApi(path, method, body) {
+    var options = { method: method || "GET", credentials: "same-origin", headers: {} };
+    if (body) {
+      options.headers["Content-Type"] = "application/json";
+      options.body = JSON.stringify(body);
+    }
+    return fetch(BACKEND_URL + path, options).then(function (response) {
+      return response.json().then(function (data) {
+        if (!response.ok) {
+          var failure = new Error(data.error || "Request failed (" + response.status + ").");
+          failure.status = response.status;
+          throw failure;
+        }
+        return data;
+      });
+    });
+  }
+
+  function showEditorSession(session) {
+    editSession = session;
+    document.getElementById("editorLogin").className = "hidden";
+    document.getElementById("editorWorkspace").className = "";
+    document.getElementById("editorUsername").textContent = session.username;
+    document.getElementById("editorWiki").textContent = session.wiki;
+    document.getElementById("editWikiInput").value = session.wiki;
+    document.getElementById("rememberEditor").checked = !!session.remember;
+    setEditorStatus(editHasLoadedPage ? "Signed in again. Your edit is still here; press SAVE PAGE to try again." : "Signed in. Load a page to start editing.", false);
+  }
+
+  function switchTab(tab) {
+    var editing = tab === "edit";
+    document.getElementById("readTab").setAttribute("aria-selected", editing ? "false" : "true");
+    document.getElementById("editTab").setAttribute("aria-selected", editing ? "true" : "false");
+    document.getElementById("readerTopline").className = editing ? "topline hidden" : "topline";
+    document.getElementById("readerMain").className = editing ? "main hidden" : "main";
+    document.getElementById("editorPane").className = editing ? "main" : "main hidden";
+    if (editing && !editSession) { autoFillSavedKey(true); }
+  }
+
+  function restoreEditorSession() {
+    editorApi("/api/fandom/session", "GET").then(function (session) {
+      showEditorSession(session);
+    }).catch(function () { });
+  }
+
+  function signInToEditor(auto) {
+    auto = auto === true; // onclick passes an Event; only a literal true means automatic
+    var button = document.getElementById("editorLoginButton");
+    var host;
+    try { host = normalizeHost(document.getElementById("editWikiInput").value); }
+    catch (error) { setEditorStatus(error.message, true); return; }
+    var username = document.getElementById("botUsername").value.replace(/^\s+|\s+$/g, "");
+    var password = document.getElementById("botPassword").value;
+    var pin = document.getElementById("vaultPin").value;
+    var pinConfirm = document.getElementById("vaultPinConfirm").value;
+    var saveCredential = document.getElementById("saveBotPassword").checked;
+    var remember = document.getElementById("rememberEditor").checked;
+    if (!username || !password) { setEditorStatus("Enter your BotPassword username and password.", true); return; }
+    if (saveCredential) {
+      var pinProblem = UnreaderBotPasswordVault.pinProblem(pin);
+      if (pinProblem) { setEditorStatus(pinProblem, true); return; }
+      if (pin !== pinConfirm) { setEditorStatus("The two PINs do not match.", true); return; }
+    }
+    button.disabled = true;
+    button.textContent = "SIGNING IN...";
+    setEditorStatus("Signing in to " + host + " through its API...", false);
+    editorApi("/api/fandom/login", "POST", { wiki: host, username: username, password: password, remember: remember })
+      .then(function (session) {
+        document.getElementById("botPassword").value = "";
+        document.getElementById("vaultPin").value = "";
+        document.getElementById("vaultPinConfirm").value = "";
+        try { localStorage.setItem("fandom-editor-details", JSON.stringify({ wiki: host, username: username })); } catch (error) { }
+        showEditorSession(session);
+        if (saveCredential) {
+          setEditorStatus("Signed in. Encrypting and saving the BotPassword...", false);
+          return UnreaderBotPasswordVault.save(username, password, pin, document.getElementById("rememberVaultDevice").checked).then(function (saved) {
+            refreshVaultButtons();
+            setEditorStatus(saved.remembered ? "Signed in and saved your Fandom key. This device will fill it in automatically." : "Signed in and saved your Fandom key. You will need your PIN to fill it in.", false);
+          }).catch(function (error) {
+            setEditorStatus("Signed in, but could not save the encrypted key: " + error.message, true);
+          });
+        }
+      }).catch(function (error) {
+        if (auto) { autoFillBlocked = true; } // never loop on a revoked or wrong key
+        setEditorStatus(error.message, true);
+      }).then(function () {
+        button.disabled = false;
+        button.textContent = "SIGN IN";
+      });
+  }
+
+  function unlockSavedBotPassword() {
+    var pin = document.getElementById("vaultPin").value;
+    if (!pin) { setEditorStatus("Enter your PIN to load the saved key.", true); return; }
+    var button = document.getElementById("unlockBotPasswordButton");
+    button.disabled = true;
+    setEditorStatus("Unlocking the saved key on this device...", false);
+    UnreaderBotPasswordVault.load(pin, document.getElementById("rememberVaultDevice").checked).then(function (credential) {
+      document.getElementById("botUsername").value = credential.username;
+      document.getElementById("botPassword").value = credential.password;
+      document.getElementById("saveBotPassword").checked = false;
+      updatePinConfirmRow();
+      document.getElementById("vaultPin").value = "";
+      document.getElementById("vaultPinConfirm").value = "";
+      autoFillBlocked = false;
+      signInToEditor();
+    }).catch(function (error) {
+      setEditorStatus(error.message, true);
+    }).then(function () { button.disabled = false; });
+  }
+
+  function removeSavedBotPassword() {
+    if (!window.confirm("Remove the saved Fandom key from your Unreader account?")) return;
+    UnreaderBotPasswordVault.remove().then(function () {
+      refreshVaultButtons();
+      setEditorStatus("Removed the saved key.", false);
+    }).catch(function (error) { setEditorStatus(error.message, true); });
+  }
+
+  var autoFillBusy = false;
+  var autoFillBlocked = false;
+
+  // Fills in (and, when asked, signs in with) the saved key using only the key
+  // remembered on this device. If this device has none, it asks for the PIN.
+  function autoFillSavedKey(signIn) {
+    if (editSession || autoFillBusy) { return; }
+    autoFillBusy = true;
+    UnreaderBotPasswordVault.unlockOnDevice().then(function (result) {
+      setVaultButtons(result.saved);
+      if (!result.saved) { return; }
+      if (result.credential) {
+        document.getElementById("botUsername").value = result.credential.username;
+        document.getElementById("botPassword").value = result.credential.password;
+        document.getElementById("saveBotPassword").checked = false;
+        updatePinConfirmRow();
+        if (signIn && !autoFillBlocked) {
+          setEditorStatus("Signing in with your saved key...", false);
+          signInToEditor(true);
+        } else {
+          setEditorStatus("Your saved key is filled in. Press SIGN IN.", false);
+        }
+      } else {
+        setEditorStatus("Your saved key is on your account. Enter your PIN and press LOAD SAVED KEY to fill it in.", false);
+        document.getElementById("vaultPin").focus();
+      }
+    }).catch(function (error) {
+      if (signIn) { setEditorStatus(error.message, true); }
+    }).then(function () { autoFillBusy = false; });
+  }
+
+  // The Fandom session lives in server memory, so it ends on restart or after
+  // its time limit. Put the form back and sign in again without losing the edit.
+  function handleEditorFailure(error) {
+    if (error && error.status === 401 && editSession) {
+      editSession = null;
+      document.getElementById("editorWorkspace").className = "hidden";
+      document.getElementById("editorLogin").className = "";
+      setEditorStatus(error.message, true);
+      autoFillSavedKey(true);
+      return;
+    }
+    setEditorStatus(error.message, true);
+  }
+
+  function setVaultButtons(saved) {
+    document.getElementById("unlockBotPasswordButton").className = saved ? "" : "hidden";
+    document.getElementById("removeBotPasswordButton").className = saved ? "" : "hidden";
+  }
+
+  // Only offer LOAD / REMOVE when a key is actually saved on the account.
+  function refreshVaultButtons() {
+    UnreaderBotPasswordVault.hasSaved().then(setVaultButtons).catch(function () { });
+  }
+
+  // The confirm box is only needed when saving a new PIN.
+  function updatePinConfirmRow() {
+    document.getElementById("vaultPinConfirmRow").className = document.getElementById("saveBotPassword").checked ? "" : "hidden";
+  }
+
+  function loadEditorPage() {
+    if (!editSession) { setEditorStatus("Sign in before loading a page.", true); return; }
+    var title = document.getElementById("editPageTitle").value.replace(/^\s+|\s+$/g, "");
+    if (!title) { setEditorStatus("Enter a page title first.", true); return; }
+    var button = document.getElementById("loadEditPageButton");
+    button.disabled = true;
+    setEditorStatus("Loading " + title + " from " + editSession.wiki + "...", false);
+    editorApi("/api/fandom/page?title=" + encodeURIComponent(title), "GET")
+      .then(function (page) {
+        document.getElementById("editPageTitle").value = page.title;
+        document.getElementById("editPageContent").value = page.content;
+        editBaseTimestamp = page.basetimestamp || "";
+        editStartTimestamp = page.starttimestamp || "";
+        editHasLoadedPage = true;
+        document.getElementById("saveEditButton").disabled = false;
+        setEditorStatus(page.missing ? "This page does not exist yet. Saving will create it." : "Page loaded. Changes are not saved until you select SAVE PAGE.", false);
+      }).catch(handleEditorFailure).then(function () { button.disabled = false; });
+  }
+
+  function saveEditorPage() {
+    if (!editSession || !editHasLoadedPage) { setEditorStatus("Load a page before saving.", true); return; }
+    var button = document.getElementById("saveEditButton");
+    button.disabled = true;
+    setEditorStatus("Saving page to " + editSession.wiki + "...", false);
+    editorApi("/api/fandom/edit", "POST", {
+      title: document.getElementById("editPageTitle").value,
+      content: document.getElementById("editPageContent").value,
+      summary: document.getElementById("editSummary").value,
+      basetimestamp: editBaseTimestamp,
+      starttimestamp: editStartTimestamp
+    }).then(function (result) {
+      if (result.newtimestamp) { editBaseTimestamp = result.newtimestamp; }
+      editStartTimestamp = new Date().toISOString();
+      setEditorStatus("Saved “" + result.title + "” on " + editSession.wiki + ".", false);
+    }).catch(handleEditorFailure).then(function () { button.disabled = false; });
+  }
+
+  function signOutOfEditor() {
+    editorApi("/api/fandom/logout", "POST", {}).then(function () {
+      editSession = null;
+      editHasLoadedPage = false;
+      editBaseTimestamp = "";
+      editStartTimestamp = "";
+      document.getElementById("editorWorkspace").className = "hidden";
+      document.getElementById("editorLogin").className = "";
+      document.getElementById("editPageContent").value = "";
+      document.getElementById("saveEditButton").disabled = true;
+      setEditorStatus("Signed out of the wiki editor.", false);
+      autoFillSavedKey(false);
+    }).catch(function (error) { setEditorStatus(error.message, true); });
+  }
 
   function setStatus(message, bad) {
     statusBox.className = "status" + (bad ? " fail" : "");
@@ -361,6 +712,7 @@ a { color: #111; text-decoration: underline; }
     try {
       wikiHost = normalizeHost(wikiInput.value);
       wikiInput.value = wikiHost;
+      if (!editSession) { document.getElementById("editWikiInput").value = wikiHost; }
       historyStack = [];
       currentTitle = "";
       lastSearch = "";
@@ -953,12 +1305,50 @@ a { color: #111; text-decoration: underline; }
     }
   };
   backButton.onclick = goBack;
+  document.getElementById("readTab").onclick = function () { switchTab("read"); };
+  document.getElementById("editTab").onclick = function () { switchTab("edit"); };
+  document.getElementById("editorLoginButton").onclick = signInToEditor;
+  document.getElementById("saveBotPassword").onchange = updatePinConfirmRow;
+  document.getElementById("vaultPin").onkeydown = function (event) {
+    if (event.key === "Enter" && !document.getElementById("saveBotPassword").checked &&
+        document.getElementById("unlockBotPasswordButton").className.indexOf("hidden") === -1) {
+      unlockSavedBotPassword();
+    }
+  };
+  document.getElementById("unlockBotPasswordButton").onclick = unlockSavedBotPassword;
+  document.getElementById("removeBotPasswordButton").onclick = removeSavedBotPassword;
+  refreshVaultButtons();
+  document.getElementById("editorHelpButton").onclick = openEditorHelp;
+  document.getElementById("closeEditorHelp").onclick = closeEditorHelp;
+  document.getElementById("editorHelp").onclick = function (event) {
+    if (event.target === this) { closeEditorHelp(); }
+  };
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && document.getElementById("editorHelp").className.indexOf("hidden") === -1) {
+      closeEditorHelp();
+    }
+  });
+  document.getElementById("loadEditPageButton").onclick = loadEditorPage;
+  document.getElementById("saveEditButton").onclick = saveEditorPage;
+  document.getElementById("editorLogoutButton").onclick = signOutOfEditor;
+  document.getElementById("editPageTitle").onkeydown = function (event) {
+    if (event.key === "Enter") { loadEditorPage(); }
+  };
+  document.getElementById("editPageContent").oninput = function () {
+    document.getElementById("saveEditButton").disabled = !editHasLoadedPage;
+  };
+  try {
+    var savedEditorDetails = JSON.parse(localStorage.getItem("fandom-editor-details") || "{}");
+    if (savedEditorDetails.wiki) { document.getElementById("editWikiInput").value = savedEditorDetails.wiki; }
+    if (savedEditorDetails.username) { document.getElementById("botUsername").value = savedEditorDetails.username; }
+  } catch (error) { }
   wikiInput.onkeydown = function (event) {
     if (event.key === "Enter") { setWiki(); }
   };
   searchInput.onkeydown = function (event) {
     if (event.key === "Enter") { search(searchInput.value, 0); }
   };
+  restoreEditorSession();
 }());
 </script>
 
