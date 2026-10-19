@@ -1009,12 +1009,6 @@
         var newPass = document.getElementById("change-pass-new").value;
         if (!currentPass || !newPass)
           return await unAlert("Please fill out both password fields.");
-        var encryptedBotPassword;
-        try {
-          encryptedBotPassword = await UnreaderBotPasswordVault.reencryptForPasswordChange(currentPass, newPass);
-        } catch (error) {
-          return await unAlert(error.message);
-        }
         log("Sending security parameter update packet.");
         var xhr = new XMLHttpRequest();
         xhr.open("POST", BACKEND_URL + "/api/change-password", true);
@@ -1033,7 +1027,6 @@
           JSON.stringify({
             currentPassword: currentPass,
             newPassword: newPass,
-            BotPasswordData: encryptedBotPassword || undefined,
           }),
         );
       }

@@ -99,7 +99,7 @@ var UnreaderBotPasswordVault = (function () {
   }
 
   function recordProblem(record) {
-    if (record && record.version === 1) return 'This saved key uses the old account-password format. Save it again with a PIN to replace it.';
+    if (record && record.version === 1) return 'This saved key uses an older format. Save it again with a PIN to replace it.';
     if (!record || record.version !== 2 || record.context !== contextName || record.kdf !== 'PBKDF2-SHA-256' || record.iterations !== iterations || record.cipher !== 'AES-GCM-256') {
       return 'Saved Fandom credential format is unsupported.';
     }
