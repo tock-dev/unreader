@@ -60,7 +60,10 @@ const USER_ROLE_CACHE_TTL = Number(process.env.USER_ROLE_CACHE_TTL_MS || 30000);
 const userRoleCache = new Map();
 const bannedIpCache = new Map();
 const BANNED_IP_CACHE_TTL = Number(process.env.BANNED_IP_CACHE_TTL_MS || 30000);
-const BANNED_IP_DB_RETRY_MS = Math.max(1000, Number(process.env.BANNED_IP_DB_RETRY_MS) || 10000);
+const BANNED_IP_DB_RETRY_MS = Math.max(
+  1000,
+  Number(process.env.BANNED_IP_DB_RETRY_MS) || 10000,
+);
 let bannedIpDbRetryAfter = 0;
 
 function invalidateUserRoleCache(username = null) {
@@ -222,20 +225,32 @@ async function blockBannedIPs(req, res, next) {
   const now = Date.now();
   const clientIp = req.ip;
   const cached = bannedIpCache.get(clientIp);
-  const cachedBanStatus = cached && cached.expiresAt > now ? cached.banned : null;
-  if (cachedBanStatus === true) return res.status(403).json({ error: 'Yo IP addwess is banned bruh.' });
+  const cachedBanStatus =
+    cached && cached.expiresAt > now ? cached.banned : null;
+  if (cachedBanStatus === true)
+    return res.status(403).json({ error: 'Yo IP addwess is banned bruh.' });
   if (cachedBanStatus === false || now < bannedIpDbRetryAfter) return next();
 
   try {
-    const check = await db.query('SELECT 1 FROM banned_ips WHERE ip = $1;', [clientIp]);
+    const check = await db.query('SELECT 1 FROM banned_ips WHERE ip = $1;', [
+      clientIp,
+    ]);
     const banned = check.rowCount > 0;
-    bannedIpCache.set(clientIp, { banned, expiresAt: now + BANNED_IP_CACHE_TTL });
+    bannedIpCache.set(clientIp, {
+      banned,
+      expiresAt: now + BANNED_IP_CACHE_TTL,
+    });
     bannedIpDbRetryAfter = 0;
-    if (banned) return res.status(403).json({ error: 'Yo IP addwess is banned bruh.' });
+    if (banned)
+      return res.status(403).json({ error: 'Yo IP addwess is banned bruh.' });
     next();
   } catch (err) {
     bannedIpDbRetryAfter = Date.now() + BANNED_IP_DB_RETRY_MS;
-    log('IP validation lookup unavailable; failing open for', BANNED_IP_DB_RETRY_MS + 'ms:', err.code || err.message);
+    log(
+      'IP validation lookup unavailable; failing open for',
+      BANNED_IP_DB_RETRY_MS + 'ms:',
+      err.code || err.message,
+    );
     next();
   }
 }
@@ -278,17 +293,37 @@ async function getUserRoles(username) {
   );
 
   const res = r.rows[0] || {
-    roles: '[]', timeout_until: 0, is_banned: false, last_ip: null,
-    is_admin: false, is_moderator: false, role_name: '', role_prefix: '', role_style: '', role_class: '',
+    roles: '[]',
+    timeout_until: 0,
+    is_banned: false,
+    last_ip: null,
+    is_admin: false,
+    is_moderator: false,
+    role_name: '',
+    role_prefix: '',
+    role_style: '',
+    role_class: '',
   };
   const adminEntity = ADMIN_ENTITY_USERNAMES.has(cacheKey);
-  try { res.roles = JSON.parse(res.roles || '[]'); } catch { res.roles = []; }
+  try {
+    res.roles = JSON.parse(res.roles || '[]');
+  } catch {
+    res.roles = [];
+  }
   const roleList = Array.isArray(res.roles) ? res.roles : [];
   res.is_admin = !!res.is_admin || adminEntity || roleList.includes('admin');
   res.is_moderator = !!res.is_moderator || roleList.includes('moderator');
   res.role = {
-    role: res.role_name || (res.is_admin ? 'admin' : res.is_moderator ? 'moderator' : ''),
-    prefix: res.role_name ? res.role_prefix : res.is_admin ? 'ADMIN' : res.is_moderator ? 'MOD' : '',
+    role:
+      res.role_name ||
+      (res.is_admin ? 'admin' : res.is_moderator ? 'moderator' : ''),
+    prefix: res.role_name
+      ? res.role_prefix
+      : res.is_admin
+        ? 'ADMIN'
+        : res.is_moderator
+          ? 'MOD'
+          : '',
     style: res.role_style || '',
     class: res.role_class || '',
   };
@@ -298,7 +333,10 @@ async function getUserRoles(username) {
   delete res.role_class;
   delete res.roles;
 
-  userRoleCache.set(cacheKey, { value: res, expiresAt: now + USER_ROLE_CACHE_TTL });
+  userRoleCache.set(cacheKey, {
+    value: res,
+    expiresAt: now + USER_ROLE_CACHE_TTL,
+  });
   return res;
 }
 
@@ -323,7 +361,10 @@ const fandomJsonParser = express.json({ limit: '5mb' });
 // configured body-size cap. The large parser is only selected after admin auth.
 const unlimitedRoleJsonParser = express.json({ limit: Infinity });
 app.use((req, res, next) => {
-  if (req.method === 'POST' && (req.path === '/api/fandom/login' || req.path === '/api/fandom/edit')) {
+  if (
+    req.method === 'POST' &&
+    (req.path === '/api/fandom/login' || req.path === '/api/fandom/edit')
+  ) {
     return fandomJsonParser(req, res, next);
   }
 
@@ -333,7 +374,9 @@ app.use((req, res, next) => {
   if (!roleStyleWrite) return standardJsonParser(req, res, next);
 
   authenticateToken(req, res, () => {
-    const parser = hasAdminPrivileges(req.user) ? unlimitedRoleJsonParser : standardJsonParser;
+    const parser = hasAdminPrivileges(req.user)
+      ? unlimitedRoleJsonParser
+      : standardJsonParser;
     parser(req, res, next);
   });
 });
@@ -349,33 +392,45 @@ const FANDOM_EDITOR_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const FANDOM_EDITOR_REMEMBER_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 function getFandomHost(value) {
-  const host = String(value || '').trim().toLowerCase()
-    .replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const host = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
   if (!/^[a-z0-9-]+\.fandom\.com$/.test(host)) {
-    throw new Error('Enter a Fandom wiki hostname, such as minecraft.fandom.com.');
+    throw new Error(
+      'Enter a Fandom wiki hostname, such as minecraft.fandom.com.',
+    );
   }
   return host;
 }
 
 function mergeFandomCookies(existing, response) {
   const jar = Object.create(null);
-  String(existing || '').split(';').forEach((part) => {
-    const index = part.indexOf('=');
-    if (index > 0) jar[part.slice(0, index).trim()] = part.slice(index + 1).trim();
-  });
-  let setCookies = typeof response.headers.getSetCookie === 'function'
-    ? response.headers.getSetCookie()
-    : [response.headers.get('set-cookie') || ''];
+  String(existing || '')
+    .split(';')
+    .forEach((part) => {
+      const index = part.indexOf('=');
+      if (index > 0)
+        jar[part.slice(0, index).trim()] = part.slice(index + 1).trim();
+    });
+  let setCookies =
+    typeof response.headers.getSetCookie === 'function'
+      ? response.headers.getSetCookie()
+      : [response.headers.get('set-cookie') || ''];
   setCookies.forEach((line) => {
     const pair = String(line).split(';')[0];
     const index = pair.indexOf('=');
     if (index < 1) return;
     const name = pair.slice(0, index).trim();
     const value = pair.slice(index + 1).trim();
-    if (/max-age=0/i.test(line) || /expires=thu, 01 jan 1970/i.test(line)) delete jar[name];
+    if (/max-age=0/i.test(line) || /expires=thu, 01 jan 1970/i.test(line))
+      delete jar[name];
     else jar[name] = value;
   });
-  return Object.keys(jar).map((name) => name + '=' + jar[name]).join('; ');
+  return Object.keys(jar)
+    .map((name) => name + '=' + jar[name])
+    .join('; ');
 }
 
 async function requestFandomApi(host, params, cookie, method) {
@@ -386,17 +441,34 @@ async function requestFandomApi(host, params, cookie, method) {
   } else {
     Object.keys(params).forEach((key) => query.set(key, params[key]));
   }
-  const url = 'https://' + host + '/api.php' + (method === 'POST' ? '' : '?' + query.toString());
+  const url =
+    'https://' +
+    host +
+    '/api.php' +
+    (method === 'POST' ? '' : '?' + query.toString());
   const headers = { 'User-Agent': 'UnreaderWikiEditor/1.0' };
   if (cookie) headers.Cookie = cookie;
-  if (method === 'POST') headers['Content-Type'] = 'application/x-www-form-urlencoded';
-  const response = await fetch(url, { method: method || 'GET', headers: headers, body: body });
+  if (method === 'POST')
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+  const response = await fetch(url, {
+    method: method || 'GET',
+    headers: headers,
+    body: body,
+  });
   let data;
-  try { data = await response.json(); }
-  catch (error) { throw new Error('The Fandom API returned an unreadable response.'); }
-  if (!response.ok) throw new Error('Fandom API request failed (HTTP ' + response.status + ').');
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error('The Fandom API returned an unreadable response.');
+  }
+  if (!response.ok)
+    throw new Error(
+      'Fandom API request failed (HTTP ' + response.status + ').',
+    );
   if (data && data.error) {
-    const apiError = new Error(data.error.info || data.error.code || 'Fandom API request failed.');
+    const apiError = new Error(
+      data.error.info || data.error.code || 'Fandom API request failed.',
+    );
     apiError.code = data.error.code || '';
     throw apiError;
   }
@@ -436,28 +508,66 @@ function getFandomSession(req) {
 
 app.post('/api/fandom/login', async (req, res) => {
   let host;
-  try { host = getFandomHost(req.body && req.body.wiki); }
-  catch (error) { return res.status(400).json({ error: error.message }); }
-  const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
-  const password = typeof req.body.password === 'string' ? req.body.password : '';
-  const ttlMs = req.body.remember === true ? FANDOM_EDITOR_REMEMBER_TTL_MS : FANDOM_EDITOR_SESSION_TTL_MS;
-  if (!username || username.length > 128 || !password || password.length > 512) {
-    return res.status(400).json({ error: 'Enter your Fandom BotPassword username and password.' });
+  try {
+    host = getFandomHost(req.body && req.body.wiki);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+  const username =
+    typeof req.body.username === 'string' ? req.body.username.trim() : '';
+  const password =
+    typeof req.body.password === 'string' ? req.body.password : '';
+  const ttlMs =
+    req.body.remember === true
+      ? FANDOM_EDITOR_REMEMBER_TTL_MS
+      : FANDOM_EDITOR_SESSION_TTL_MS;
+  if (
+    !username ||
+    username.length > 128 ||
+    !password ||
+    password.length > 512
+  ) {
+    return res
+      .status(400)
+      .json({ error: 'Enter your Fandom BotPassword username and password.' });
   }
 
   try {
     const tokenResponse = await requestFandomApi(host, {
-      action: 'query', meta: 'tokens', type: 'login', format: 'json', formatversion: '2',
+      action: 'query',
+      meta: 'tokens',
+      type: 'login',
+      format: 'json',
+      formatversion: '2',
     });
-    const loginToken = tokenResponse.data.query && tokenResponse.data.query.tokens && tokenResponse.data.query.tokens.logintoken;
+    const loginToken =
+      tokenResponse.data.query &&
+      tokenResponse.data.query.tokens &&
+      tokenResponse.data.query.tokens.logintoken;
     if (!loginToken) throw new Error('Fandom did not provide a login token.');
-    const loginResponse = await requestFandomApi(host, {
-      action: 'login', lgname: username, lgpassword: password, lgtoken: loginToken,
-      format: 'json', formatversion: '2',
-    }, tokenResponse.cookie, 'POST');
+    const loginResponse = await requestFandomApi(
+      host,
+      {
+        action: 'login',
+        lgname: username,
+        lgpassword: password,
+        lgtoken: loginToken,
+        format: 'json',
+        formatversion: '2',
+      },
+      tokenResponse.cookie,
+      'POST',
+    );
     const login = loginResponse.data.login || {};
     if (login.result !== 'Success') {
-      return res.status(401).json({ error: login.reason || login.message || 'Fandom sign-in failed. Check the BotPassword details.' });
+      return res
+        .status(401)
+        .json({
+          error:
+            login.reason ||
+            login.message ||
+            'Fandom sign-in failed. Check the BotPassword details.',
+        });
     }
 
     const sessionId = randomUUID();
@@ -470,18 +580,40 @@ app.post('/api/fandom/login', async (req, res) => {
       expiresAt: Date.now() + ttlMs,
     });
     setFandomSessionCookie(req, res, sessionId, ttlMs, false);
-    res.json({ success: true, username: login.lgusername || username.split('@')[0], wiki: host, remember: req.body.remember === true });
+    res.json({
+      success: true,
+      username: login.lgusername || username.split('@')[0],
+      wiki: host,
+      remember: req.body.remember === true,
+    });
   } catch (error) {
     log('Fandom API sign-in failed:', error.message);
-    res.status(502).json({ error: 'Could not sign in through that wiki API: ' + error.message });
+    res
+      .status(502)
+      .json({
+        error: 'Could not sign in through that wiki API: ' + error.message,
+      });
   }
 });
 
 app.get('/api/fandom/session', (req, res) => {
   const session = getFandomSession(req);
-  if (!session) return res.status(401).json({ error: 'Sign in with a Fandom BotPassword to edit.' });
-  setFandomSessionCookie(req, res, readFandomSessionId(req), session.ttlMs, false);
-  res.json({ username: session.username, wiki: session.host, remember: session.remember });
+  if (!session)
+    return res
+      .status(401)
+      .json({ error: 'Sign in with a Fandom BotPassword to edit.' });
+  setFandomSessionCookie(
+    req,
+    res,
+    readFandomSessionId(req),
+    session.ttlMs,
+    false,
+  );
+  res.json({
+    username: session.username,
+    wiki: session.host,
+    remember: session.remember,
+  });
 });
 
 app.post('/api/fandom/logout', (req, res) => {
@@ -493,22 +625,49 @@ app.post('/api/fandom/logout', (req, res) => {
 
 app.get('/api/fandom/page', async (req, res) => {
   const session = getFandomSession(req);
-  if (!session) return res.status(401).json({ error: 'Your Fandom editor session has expired. Sign in again.' });
-  setFandomSessionCookie(req, res, readFandomSessionId(req), session.ttlMs, false);
+  if (!session)
+    return res
+      .status(401)
+      .json({
+        error: 'Your Fandom editor session has expired. Sign in again.',
+      });
+  setFandomSessionCookie(
+    req,
+    res,
+    readFandomSessionId(req),
+    session.ttlMs,
+    false,
+  );
   const title = String(req.query.title || '').trim();
-  if (!title || title.length > 255) return res.status(400).json({ error: 'Enter a page title (up to 255 characters).' });
+  if (!title || title.length > 255)
+    return res
+      .status(400)
+      .json({ error: 'Enter a page title (up to 255 characters).' });
   try {
-    const result = await requestFandomApi(session.host, {
-      action: 'query', prop: 'revisions', titles: title, rvprop: 'content|timestamp',
-      rvslots: 'main', curtimestamp: '1', format: 'json', formatversion: '2',
-    }, session.cookie);
+    const result = await requestFandomApi(
+      session.host,
+      {
+        action: 'query',
+        prop: 'revisions',
+        titles: title,
+        rvprop: 'content|timestamp',
+        rvslots: 'main',
+        curtimestamp: '1',
+        format: 'json',
+        formatversion: '2',
+      },
+      session.cookie,
+    );
     session.cookie = result.cookie;
-    const page = result.data.query && result.data.query.pages && result.data.query.pages[0];
+    const page =
+      result.data.query &&
+      result.data.query.pages &&
+      result.data.query.pages[0];
     const revision = page && page.revisions && page.revisions[0];
     const slot = revision && revision.slots && revision.slots.main;
     res.json({
       title: page ? page.title : title,
-      content: slot ? (slot.content || slot['*'] || '') : '',
+      content: slot ? slot.content || slot['*'] || '' : '',
       basetimestamp: revision ? revision.timestamp : '',
       starttimestamp: result.data.curtimestamp || new Date().toISOString(),
       missing: !!(page && page.missing),
@@ -521,41 +680,99 @@ app.get('/api/fandom/page', async (req, res) => {
 
 app.post('/api/fandom/edit', async (req, res) => {
   const session = getFandomSession(req);
-  if (!session) return res.status(401).json({ error: 'Your Fandom editor session has expired. Sign in again.' });
-  setFandomSessionCookie(req, res, readFandomSessionId(req), session.ttlMs, false);
+  if (!session)
+    return res
+      .status(401)
+      .json({
+        error: 'Your Fandom editor session has expired. Sign in again.',
+      });
+  setFandomSessionCookie(
+    req,
+    res,
+    readFandomSessionId(req),
+    session.ttlMs,
+    false,
+  );
   const body = req.body || {};
   const title = typeof body.title === 'string' ? body.title.trim() : '';
   const content = typeof body.content === 'string' ? body.content : '';
-  const summary = typeof body.summary === 'string' ? body.summary.trim().slice(0, 500) : '';
-  if (!title || title.length > 255) return res.status(400).json({ error: 'Enter a page title (up to 255 characters).' });
-  if (Buffer.byteLength(content, 'utf8') > 4 * 1024 * 1024) return res.status(413).json({ error: 'Page text exceeds the 4 MB editor limit.' });
+  const summary =
+    typeof body.summary === 'string' ? body.summary.trim().slice(0, 500) : '';
+  if (!title || title.length > 255)
+    return res
+      .status(400)
+      .json({ error: 'Enter a page title (up to 255 characters).' });
+  if (Buffer.byteLength(content, 'utf8') > 4 * 1024 * 1024)
+    return res
+      .status(413)
+      .json({ error: 'Page text exceeds the 4 MB editor limit.' });
 
   try {
-    const tokenResult = await requestFandomApi(session.host, {
-      action: 'query', meta: 'tokens', type: 'csrf', format: 'json', formatversion: '2',
-    }, session.cookie);
+    const tokenResult = await requestFandomApi(
+      session.host,
+      {
+        action: 'query',
+        meta: 'tokens',
+        type: 'csrf',
+        format: 'json',
+        formatversion: '2',
+      },
+      session.cookie,
+    );
     session.cookie = tokenResult.cookie;
-    const csrfToken = tokenResult.data.query && tokenResult.data.query.tokens && tokenResult.data.query.tokens.csrftoken;
-    if (!csrfToken) throw new Error('Fandom did not provide an edit token. Please sign in again.');
+    const csrfToken =
+      tokenResult.data.query &&
+      tokenResult.data.query.tokens &&
+      tokenResult.data.query.tokens.csrftoken;
+    if (!csrfToken)
+      throw new Error(
+        'Fandom did not provide an edit token. Please sign in again.',
+      );
     const editParams = {
-      action: 'edit', title: title, text: content, summary: summary, token: csrfToken,
-      format: 'json', formatversion: '2',
+      action: 'edit',
+      title: title,
+      text: content,
+      summary: summary,
+      token: csrfToken,
+      format: 'json',
+      formatversion: '2',
     };
-    if (body.basetimestamp) editParams.basetimestamp = String(body.basetimestamp);
-    if (body.starttimestamp) editParams.starttimestamp = String(body.starttimestamp);
-    const editResult = await requestFandomApi(session.host, editParams, session.cookie, 'POST');
+    if (body.basetimestamp)
+      editParams.basetimestamp = String(body.basetimestamp);
+    if (body.starttimestamp)
+      editParams.starttimestamp = String(body.starttimestamp);
+    const editResult = await requestFandomApi(
+      session.host,
+      editParams,
+      session.cookie,
+      'POST',
+    );
     session.cookie = editResult.cookie;
     const edit = editResult.data.edit || {};
-    if (edit.result !== 'Success') return res.status(502).json({ error: 'Fandom did not save the page.' });
-    res.json({ success: true, title: edit.title || title, newrevid: edit.newrevid || null, newtimestamp: edit.newtimestamp || '' });
+    if (edit.result !== 'Success')
+      return res.status(502).json({ error: 'Fandom did not save the page.' });
+    res.json({
+      success: true,
+      title: edit.title || title,
+      newrevid: edit.newrevid || null,
+      newtimestamp: edit.newtimestamp || '',
+    });
   } catch (error) {
     const status = error.code === 'editconflict' ? 409 : 502;
     log('Fandom page save failed:', error.code || error.message);
-    res.status(status).json({ error: error.code === 'editconflict' ? 'This page changed on Fandom after you loaded it. Reload it before saving your edit.' : error.message });
+    res
+      .status(status)
+      .json({
+        error:
+          error.code === 'editconflict'
+            ? 'This page changed on Fandom after you loaded it. Reload it before saving your edit.'
+            : error.message,
+      });
   }
 });
 
 const activeClients = new Map();
+const screenshares = {};
 
 function broadcastSystemUpdate(payloadObj, filterFn = null) {
   const msgStr = JSON.stringify(payloadObj);
@@ -563,7 +780,9 @@ function broadcastSystemUpdate(payloadObj, filterFn = null) {
     if (client.ws.readyState === WebSocket.OPEN) {
       if (!filterFn || filterFn(client, username)) {
         if (client.ws.bufferedAmount > 1024 * 1024) {
-          log(`Backpressure: skipping oversized WebSocket queue for ${username}`);
+          log(
+            `Backpressure: skipping oversized WebSocket queue for ${username}`,
+          );
           return;
         }
         client.ws.send(msgStr);
@@ -583,6 +802,7 @@ function getRosterPayload() {
       mode: c.mode || 'public',
       target: c.target || '',
       userRoles: c.userRoles,
+      screensharing: screenshares[username] != null
     });
   });
   return { type: 'roster_update', users };
@@ -606,33 +826,57 @@ function isValidPetFrame(value) {
     typeof value !== 'string' ||
     value.length > 12000 ||
     !value.startsWith(PET_PNG_PREFIX)
-  ) return false;
+  )
+    return false;
 
   const base64 = value.slice(PET_PNG_PREFIX.length);
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return false;
   const png = Buffer.from(base64, 'base64');
-  return png.toString('base64') === base64 &&
+  return (
+    png.toString('base64') === base64 &&
     png.length >= 24 &&
     png.subarray(0, 8).equals(PNG_SIGNATURE) &&
     png.readUInt32BE(16) === 32 &&
-    png.readUInt32BE(20) === 32;
+    png.readUInt32BE(20) === 32
+  );
 }
 
 function isValidPetData(value) {
-  if (typeof value !== 'string' || value.length > PET_DATA_MAX_LENGTH) return false;
+  if (typeof value !== 'string' || value.length > PET_DATA_MAX_LENGTH)
+    return false;
   if (value.startsWith(PET_PNG_PREFIX)) return isValidPetFrame(value);
   try {
     const pet = JSON.parse(value);
-    if (Array.isArray(pet)) return pet.length === 32 && pet.every(isValidPetFrame);
-    if (!pet || pet.version !== 2 || !Array.isArray(pet.frames) ||
-      pet.frames.length < 32 || pet.frames.length > PET_MAX_FRAMES ||
-      !pet.frames.every(isValidPetFrame) || !Array.isArray(pet.actions) || pet.actions.length !== 18) return false;
+    if (Array.isArray(pet))
+      return pet.length === 32 && pet.every(isValidPetFrame);
+    if (
+      !pet ||
+      pet.version !== 2 ||
+      !Array.isArray(pet.frames) ||
+      pet.frames.length < 32 ||
+      pet.frames.length > PET_MAX_FRAMES ||
+      !pet.frames.every(isValidPetFrame) ||
+      !Array.isArray(pet.actions) ||
+      pet.actions.length !== 18
+    )
+      return false;
     const states = new Set();
     return pet.actions.every((action) => {
-      if (!action || !Number.isInteger(action.state) || action.state < 0 || action.state >= 18 ||
-        states.has(action.state) || !Array.isArray(action.frames) || action.frames.length === 0 ||
+      if (
+        !action ||
+        !Number.isInteger(action.state) ||
+        action.state < 0 ||
+        action.state >= 18 ||
+        states.has(action.state) ||
+        !Array.isArray(action.frames) ||
+        action.frames.length === 0 ||
         action.frames.length > PET_MAX_FRAMES ||
-        !action.frames.every((frame) => Number.isInteger(frame) && frame >= 0 && frame < pet.frames.length)) return false;
+        !action.frames.every(
+          (frame) =>
+            Number.isInteger(frame) && frame >= 0 && frame < pet.frames.length,
+        )
+      )
+        return false;
       states.add(action.state);
       return true;
     });
@@ -650,9 +894,15 @@ app.get('/api/pets', authenticateToken, async (req, res) => {
         ORDER BY "date-release" DESC NULLS LAST, "pet-name" ASC
         LIMIT 100;`,
     );
-    res.json(result.rows.filter((pet) =>
-      pet.name && pet.created_by && pet.date_release && isValidPetData(pet.pet_data),
-    ));
+    res.json(
+      result.rows.filter(
+        (pet) =>
+          pet.name &&
+          pet.created_by &&
+          pet.date_release &&
+          isValidPetData(pet.pet_data),
+      ),
+    );
   } catch (err) {
     log('Pet library load failed:', err.message);
     res.status(500).json({ error: 'Could not load the pet library.' });
@@ -663,10 +913,14 @@ app.post('/api/pets', authenticateToken, async (req, res) => {
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   const petData = req.body?.pet_data;
   if (!name || name.length > 255) {
-    return res.status(400).json({ error: 'Pet name must be between 1 and 255 characters.' });
+    return res
+      .status(400)
+      .json({ error: 'Pet name must be between 1 and 255 characters.' });
   }
   if (!isValidPetData(petData)) {
-    return res.status(400).json({ error: 'Pet must contain valid 32x32 PNG frames.' });
+    return res
+      .status(400)
+      .json({ error: 'Pet must contain valid 32x32 PNG frames.' });
   }
 
   try {
@@ -689,11 +943,11 @@ app.post('/api/user/github-token', authenticateToken, async (req, res) => {
     if (!github_token) {
       return res.status(400).json({ error: 'Missing github_token' });
     }
-    
-    await db.query(
-      'UPDATE users SET github_token = $1 WHERE username = $2;',
-      [sanitize(github_token), req.user.username]
-    );
+
+    await db.query('UPDATE users SET github_token = $1 WHERE username = $2;', [
+      sanitize(github_token),
+      req.user.username,
+    ]);
 
     log(`GitHub token updated for user: ${req.user.username}`);
     res.json({ success: true });
@@ -706,51 +960,84 @@ app.post('/api/user/github-token', authenticateToken, async (req, res) => {
 // The server never sees the PIN. It only checks that what it is asked to store
 // has the shape of a PIN-vault record, then stores it as opaque text.
 function isValidBotPasswordVault(value) {
-  return value && typeof value === 'object' && value.version === 2 &&
+  return (
+    value &&
+    typeof value === 'object' &&
+    value.version === 2 &&
     value.context === 'unreader-fandom-botpassword-pin-v2' &&
-    value.kdf === 'PBKDF2-SHA-256' && value.iterations === 600000 &&
+    value.kdf === 'PBKDF2-SHA-256' &&
+    value.iterations === 600000 &&
     value.cipher === 'AES-GCM-256' &&
     /^[A-Za-z0-9+/]{20,24}={0,2}$/.test(value.salt || '') &&
     /^[A-Za-z0-9+/]{16}={0,2}$/.test(value.iv || '') &&
-    /^[A-Za-z0-9+/]+={0,2}$/.test(value.ciphertext || '') && value.ciphertext.length <= 12000;
+    /^[A-Za-z0-9+/]+={0,2}$/.test(value.ciphertext || '') &&
+    value.ciphertext.length <= 12000
+  );
 }
 
 app.get('/api/user/fandom-botpassword', authenticateToken, async (req, res) => {
   try {
-    const result = await db.query('SELECT "BotPasswordData" FROM users WHERE username = $1;', [req.user.username]);
+    const result = await db.query(
+      'SELECT "BotPasswordData" FROM users WHERE username = $1;',
+      [req.user.username],
+    );
     let data = null;
     if (result.rows[0] && result.rows[0].BotPasswordData) {
-      try { data = JSON.parse(result.rows[0].BotPasswordData); }
-      catch (error) { return res.status(500).json({ error: 'Saved Fandom credential data is invalid.' }); }
+      try {
+        data = JSON.parse(result.rows[0].BotPasswordData);
+      } catch (error) {
+        return res
+          .status(500)
+          .json({ error: 'Saved Fandom credential data is invalid.' });
+      }
     }
     res.json({ data: data });
   } catch (error) {
     log('Fandom credential lookup failed:', error.message);
-    res.status(500).json({ error: 'Could not load saved Fandom credential data.' });
+    res
+      .status(500)
+      .json({ error: 'Could not load saved Fandom credential data.' });
   }
 });
 
 app.put('/api/user/fandom-botpassword', authenticateToken, async (req, res) => {
   const data = req.body && req.body.data;
-  if (!isValidBotPasswordVault(data)) return res.status(400).json({ error: 'Encrypted Fandom credential data is invalid.' });
+  if (!isValidBotPasswordVault(data))
+    return res
+      .status(400)
+      .json({ error: 'Encrypted Fandom credential data is invalid.' });
   try {
-    await db.query('UPDATE users SET "BotPasswordData" = $1 WHERE username = $2;', [JSON.stringify(data), req.user.username]);
+    await db.query(
+      'UPDATE users SET "BotPasswordData" = $1 WHERE username = $2;',
+      [JSON.stringify(data), req.user.username],
+    );
     res.json({ success: true });
   } catch (error) {
     log('Fandom credential save failed:', error.message);
-    res.status(500).json({ error: 'Could not save encrypted Fandom credential data.' });
+    res
+      .status(500)
+      .json({ error: 'Could not save encrypted Fandom credential data.' });
   }
 });
 
-app.delete('/api/user/fandom-botpassword', authenticateToken, async (req, res) => {
-  try {
-    await db.query('UPDATE users SET "BotPasswordData" = NULL WHERE username = $1;', [req.user.username]);
-    res.json({ success: true });
-  } catch (error) {
-    log('Fandom credential removal failed:', error.message);
-    res.status(500).json({ error: 'Could not remove saved Fandom credential data.' });
-  }
-});
+app.delete(
+  '/api/user/fandom-botpassword',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      await db.query(
+        'UPDATE users SET "BotPasswordData" = NULL WHERE username = $1;',
+        [req.user.username],
+      );
+      res.json({ success: true });
+    } catch (error) {
+      log('Fandom credential removal failed:', error.message);
+      res
+        .status(500)
+        .json({ error: 'Could not remove saved Fandom credential data.' });
+    }
+  },
+);
 
 app.post('/api/register', async (req, res) => {
   let { username, password } = req.body;
@@ -828,7 +1115,10 @@ app.post('/api/change-password', authenticateToken, async (req, res) => {
       });
     }
     const hash = await bcrypt.hash(newPassword, 10);
-    await db.query('UPDATE users SET password_hash = $1 WHERE username = $2;', [hash, user.username]);
+    await db.query('UPDATE users SET password_hash = $1 WHERE username = $2;', [
+      hash,
+      user.username,
+    ]);
     log(`Password change SUCCESS: ${user.username}`);
     res.json({ success: true });
   } catch (err) {
@@ -868,7 +1158,12 @@ app.post('/api/profile', authenticateToken, async (req, res) => {
   avatar_emoji = sanitize(avatar_emoji);
 
   if (image_data !== undefined && image_data !== null && image_data !== '') {
-    if (!validProfileImage(image_data)) return res.status(400).json({ error: 'Profile picture must be a valid base64 PNG under 512 KB.' });
+    if (!validProfileImage(image_data))
+      return res
+        .status(400)
+        .json({
+          error: 'Profile picture must be a valid base64 PNG under 512 KB.',
+        });
   }
 
   await db.query(
@@ -876,7 +1171,9 @@ app.post('/api/profile', authenticateToken, async (req, res) => {
     [bio, location, avatar_emoji, req.user.username],
   );
   if (image_data === '') {
-    await db.query('DELETE FROM profile_images WHERE username = $1;', [req.user.username]);
+    await db.query('DELETE FROM profile_images WHERE username = $1;', [
+      req.user.username,
+    ]);
   } else if (image_data !== undefined && image_data !== null) {
     await db.query(
       'INSERT INTO profile_images (username, image_data, "user") VALUES ($1, $2, \'user\') ON CONFLICT (username) DO UPDATE SET image_data = EXCLUDED.image_data;',
@@ -915,15 +1212,30 @@ function canManageProfilePictures(user) {
 }
 
 function validProfileImage(imageData) {
-  if (typeof imageData !== 'string' || imageData.length > 700000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(imageData)) return false;
+  if (
+    typeof imageData !== 'string' ||
+    imageData.length > 700000 ||
+    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+      imageData,
+    )
+  )
+    return false;
   const bytes = Buffer.from(imageData, 'base64');
-  return bytes.length > 0 && bytes.length <= 512000 && bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a';
+  return (
+    bytes.length > 0 &&
+    bytes.length <= 512000 &&
+    bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a'
+  );
 }
 
 app.get('/api/mod/profile-images', authenticateToken, async (req, res) => {
-  if (!canManageProfilePictures(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  if (!canManageProfilePictures(req.user))
+    return res.status(403).json({ error: 'Unauthorized' });
   const page = Math.max(0, parseInt(req.query.index, 10) || 0);
-  const search = String(req.query.search || '').trim().replace(/^@+/, '').slice(0, 32);
+  const search = String(req.query.search || '')
+    .trim()
+    .replace(/^@+/, '')
+    .slice(0, 32);
   const result = await db.query(
     `WITH pictures AS (
        SELECT u.username, pi.image_data
@@ -946,51 +1258,91 @@ app.get('/api/mod/profile-images', authenticateToken, async (req, res) => {
      LIMIT 21 OFFSET $2;`,
     [search, page * 20],
   );
-  res.json({ images: result.rows.slice(0, 20), hasMore: result.rows.length > 20 });
+  res.json({
+    images: result.rows.slice(0, 20),
+    hasMore: result.rows.length > 20,
+  });
 });
 
-app.put('/api/mod/profile-images/:username', authenticateToken, async (req, res) => {
-  if (!canManageProfilePictures(req.user)) return res.status(403).json({ error: 'Unauthorized' });
-  const target = sanitizeUsername(req.params.username);
-  const imageData = req.body.image_data;
-  if (!validProfileImage(imageData)) return res.status(400).json({ error: 'A valid PNG profile picture under 512 KB is required.' });
-  const existing = await db.query(
-    `SELECT username FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER($1) ORDER BY (username = $1) DESC LIMIT 1;`,
-    [target],
-  );
-  const row = existing.rows[0];
-  if (row) {
-    await db.query('UPDATE profile_images SET image_data = $1 WHERE username = $2;', [imageData, row.username]);
-  } else {
-    const user = await db.query('SELECT username FROM users WHERE LOWER(username) = LOWER($1);', [target]);
-    if (!user.rows[0]) return res.status(404).json({ error: 'User not found.' });
-    await db.query(
-      'INSERT INTO profile_images (username, image_data, "user") VALUES ($1, $2, \'user\');',
-      [user.rows[0].username, imageData],
+app.put(
+  '/api/mod/profile-images/:username',
+  authenticateToken,
+  async (req, res) => {
+    if (!canManageProfilePictures(req.user))
+      return res.status(403).json({ error: 'Unauthorized' });
+    const target = sanitizeUsername(req.params.username);
+    const imageData = req.body.image_data;
+    if (!validProfileImage(imageData))
+      return res
+        .status(400)
+        .json({
+          error: 'A valid PNG profile picture under 512 KB is required.',
+        });
+    const existing = await db.query(
+      `SELECT username FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER($1) ORDER BY (username = $1) DESC LIMIT 1;`,
+      [target],
     );
-  }
-  await db.query(
-    'INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);',
-    [req.user.username, 'profile_picture_change', target, 'Moderator updated profile picture', Date.now()],
-  );
-  res.json({ success: true });
-});
+    const row = existing.rows[0];
+    if (row) {
+      await db.query(
+        'UPDATE profile_images SET image_data = $1 WHERE username = $2;',
+        [imageData, row.username],
+      );
+    } else {
+      const user = await db.query(
+        'SELECT username FROM users WHERE LOWER(username) = LOWER($1);',
+        [target],
+      );
+      if (!user.rows[0])
+        return res.status(404).json({ error: 'User not found.' });
+      await db.query(
+        'INSERT INTO profile_images (username, image_data, "user") VALUES ($1, $2, \'user\');',
+        [user.rows[0].username, imageData],
+      );
+    }
+    await db.query(
+      'INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);',
+      [
+        req.user.username,
+        'profile_picture_change',
+        target,
+        'Moderator updated profile picture',
+        Date.now(),
+      ],
+    );
+    res.json({ success: true });
+  },
+);
 
-app.delete('/api/mod/profile-images/:username', authenticateToken, async (req, res) => {
-  if (!canManageProfilePictures(req.user)) return res.status(403).json({ error: 'Unauthorized' });
-  const target = sanitizeUsername(req.params.username);
-  const existing = await db.query(
-    `SELECT username FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER($1) ORDER BY (username = $1) DESC LIMIT 1;`,
-    [target],
-  );
-  if (!existing.rows[0]) return res.status(404).json({ error: 'Profile picture not found.' });
-  await db.query('DELETE FROM profile_images WHERE username = $1;', [existing.rows[0].username]);
-  await db.query(
-    'INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);',
-    [req.user.username, 'profile_picture_delete', target, 'Moderator deleted profile picture', Date.now()],
-  );
-  res.json({ success: true });
-});
+app.delete(
+  '/api/mod/profile-images/:username',
+  authenticateToken,
+  async (req, res) => {
+    if (!canManageProfilePictures(req.user))
+      return res.status(403).json({ error: 'Unauthorized' });
+    const target = sanitizeUsername(req.params.username);
+    const existing = await db.query(
+      `SELECT username FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER($1) ORDER BY (username = $1) DESC LIMIT 1;`,
+      [target],
+    );
+    if (!existing.rows[0])
+      return res.status(404).json({ error: 'Profile picture not found.' });
+    await db.query('DELETE FROM profile_images WHERE username = $1;', [
+      existing.rows[0].username,
+    ]);
+    await db.query(
+      'INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);',
+      [
+        req.user.username,
+        'profile_picture_delete',
+        target,
+        'Moderator deleted profile picture',
+        Date.now(),
+      ],
+    );
+    res.json({ success: true });
+  },
+);
 
 app.get(
   '/api/admin/find-user/:username',
@@ -1066,31 +1418,55 @@ app.post('/api/admin/set-role', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/admin/roles', authenticateToken, async (req, res) => {
-  if (!hasAdminPrivileges(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  if (!hasAdminPrivileges(req.user))
+    return res.status(403).json({ error: 'Unauthorized' });
   try {
-    const result = await db.query('SELECT role, prefix, style, class, priority FROM roles ORDER BY priority DESC, role ASC;');
+    const result = await db.query(
+      'SELECT role, prefix, style, class, priority FROM roles ORDER BY priority DESC, role ASC;',
+    );
     res.json({ roles: result.rows });
   } catch (error) {
     log('Role list query failed:', error.message);
-    res.status(503).json({ error: 'Database temporarily unavailable. Try again shortly.' });
+    res
+      .status(503)
+      .json({ error: 'Database temporarily unavailable. Try again shortly.' });
   }
 });
 
 app.post('/api/admin/roles', authenticateToken, async (req, res) => {
-  if (!hasAdminPrivileges(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  if (!hasAdminPrivileges(req.user))
+    return res.status(403).json({ error: 'Unauthorized' });
   const body = req.body || {};
-  const role = typeof body.role === 'string' ? body.role.trim().toLowerCase() : '';
+  const role =
+    typeof body.role === 'string' ? body.role.trim().toLowerCase() : '';
   const prefix = typeof body.prefix === 'string' ? body.prefix.trim() : '';
   const style = typeof body.style === 'string' ? body.style.trim() : '';
   const roleClass = typeof body.class === 'string' ? body.class.trim() : '';
   const priority = Number(body.priority || 0);
-  if (!/^[a-z][a-z0-9_-]{1,31}$/.test(role) || ['admin', 'moderator'].includes(role)) {
-    return res.status(400).json({ error: 'Use a 2–32 character role name; admin and moderator are reserved.' });
+  if (
+    !/^[a-z][a-z0-9_-]{1,31}$/.test(role) ||
+    ['admin', 'moderator'].includes(role)
+  ) {
+    return res
+      .status(400)
+      .json({
+        error:
+          'Use a 2–32 character role name; admin and moderator are reserved.',
+      });
   }
-  if (prefix.length > 32 || roleClass.length > 128 ||
-      (roleClass && !/^[a-zA-Z0-9 _-]+$/.test(roleClass)) ||
-      !Number.isInteger(priority) || priority < -1000 || priority > 1000) {
-    return res.status(400).json({ error: 'Check the prefix, CSS style, class, and priority fields.' });
+  if (
+    prefix.length > 32 ||
+    roleClass.length > 128 ||
+    (roleClass && !/^[a-zA-Z0-9 _-]+$/.test(roleClass)) ||
+    !Number.isInteger(priority) ||
+    priority < -1000 ||
+    priority > 1000
+  ) {
+    return res
+      .status(400)
+      .json({
+        error: 'Check the prefix, CSS style, class, and priority fields.',
+      });
   }
   try {
     await db.query(
@@ -1098,9 +1474,12 @@ app.post('/api/admin/roles', authenticateToken, async (req, res) => {
       [role, prefix, style, roleClass, priority],
     );
   } catch (error) {
-    if (error.code === '23505') return res.status(409).json({ error: 'That role already exists.' });
+    if (error.code === '23505')
+      return res.status(409).json({ error: 'That role already exists.' });
     log('Role creation failed:', error.message);
-    return res.status(503).json({ error: 'Database temporarily unavailable. Try again shortly.' });
+    return res
+      .status(503)
+      .json({ error: 'Database temporarily unavailable. Try again shortly.' });
   }
   try {
     await db.query(
@@ -1114,28 +1493,51 @@ app.post('/api/admin/roles', authenticateToken, async (req, res) => {
 });
 
 app.put('/api/admin/roles/:role', authenticateToken, async (req, res) => {
-  if (!hasAdminPrivileges(req.user)) return res.status(403).json({ error: 'Unauthorized' });
-  const role = String(req.params.role || '').trim().toLowerCase();
-  if (!/^[a-z][a-z0-9_-]{1,31}$/.test(role) || ['admin', 'moderator'].includes(role)) {
-    return res.status(400).json({ error: 'That role is reserved or invalid and cannot be edited.' });
+  if (!hasAdminPrivileges(req.user))
+    return res.status(403).json({ error: 'Unauthorized' });
+  const role = String(req.params.role || '')
+    .trim()
+    .toLowerCase();
+  if (
+    !/^[a-z][a-z0-9_-]{1,31}$/.test(role) ||
+    ['admin', 'moderator'].includes(role)
+  ) {
+    return res
+      .status(400)
+      .json({
+        error: 'That role is reserved or invalid and cannot be edited.',
+      });
   }
   const body = req.body || {};
   const prefix = typeof body.prefix === 'string' ? body.prefix.trim() : '';
   const style = typeof body.style === 'string' ? body.style.trim() : '';
   const roleClass = typeof body.class === 'string' ? body.class.trim() : '';
   const priority = Number(body.priority || 0);
-  if (prefix.length > 32 || roleClass.length > 128 ||
-      (roleClass && !/^[a-zA-Z0-9 _-]+$/.test(roleClass)) ||
-      !Number.isInteger(priority) || priority < -1000 || priority > 1000) {
-    return res.status(400).json({ error: 'Check the prefix, CSS style, class, and priority fields.' });
+  if (
+    prefix.length > 32 ||
+    roleClass.length > 128 ||
+    (roleClass && !/^[a-zA-Z0-9 _-]+$/.test(roleClass)) ||
+    !Number.isInteger(priority) ||
+    priority < -1000 ||
+    priority > 1000
+  ) {
+    return res
+      .status(400)
+      .json({
+        error: 'Check the prefix, CSS style, class, and priority fields.',
+      });
   }
   try {
     const updated = await db.query(
       'UPDATE roles SET prefix = $1, style = $2, class = $3, priority = $4 WHERE role = $5 RETURNING role;',
       [prefix, style, roleClass, priority, role],
     );
-    if (!updated.rowCount) return res.status(404).json({ error: 'Role not found.' });
-    const holders = await db.query('SELECT username FROM users WHERE roles::jsonb ? $1;', [role]);
+    if (!updated.rowCount)
+      return res.status(404).json({ error: 'Role not found.' });
+    const holders = await db.query(
+      'SELECT username FROM users WHERE roles::jsonb ? $1;',
+      [role],
+    );
     for (const holder of holders.rows) invalidateUserRoleCache(holder.username);
     try {
       await db.query(
@@ -1148,42 +1550,82 @@ app.put('/api/admin/roles/:role', authenticateToken, async (req, res) => {
     res.json({ success: true, role });
   } catch (error) {
     log('Role update failed:', error.message);
-    res.status(503).json({ error: 'Database temporarily unavailable. Try again shortly.' });
+    res
+      .status(503)
+      .json({ error: 'Database temporarily unavailable. Try again shortly.' });
   }
 });
 
 app.post('/api/admin/assign-role', authenticateToken, async (req, res) => {
-  if (!hasAdminPrivileges(req.user)) return res.status(403).json({ error: 'Unauthorized' });
+  if (!hasAdminPrivileges(req.user))
+    return res.status(403).json({ error: 'Unauthorized' });
   const target = sanitizeUsername(req.body && req.body.target);
-  const role = typeof (req.body && req.body.role) === 'string' ? req.body.role.trim().toLowerCase() : '';
+  const role =
+    typeof (req.body && req.body.role) === 'string'
+      ? req.body.role.trim().toLowerCase()
+      : '';
   const enabled = req.body && req.body.enabled;
-  if (!target || !/^[a-z][a-z0-9_-]{1,31}$/.test(role) || role === 'admin' || typeof enabled !== 'boolean') {
-    return res.status(400).json({ error: 'Choose a valid user, non-admin role, and assign or remove action.' });
+  if (
+    !target ||
+    !/^[a-z][a-z0-9_-]{1,31}$/.test(role) ||
+    role === 'admin' ||
+    typeof enabled !== 'boolean'
+  ) {
+    return res
+      .status(400)
+      .json({
+        error:
+          'Choose a valid user, non-admin role, and assign or remove action.',
+      });
   }
   try {
-    const userResult = await db.query('SELECT username, roles FROM users WHERE LOWER(username) = LOWER($1);', [target]);
-    if (!userResult.rows[0]) return res.status(404).json({ error: 'User not found.' });
+    const userResult = await db.query(
+      'SELECT username, roles FROM users WHERE LOWER(username) = LOWER($1);',
+      [target],
+    );
+    if (!userResult.rows[0])
+      return res.status(404).json({ error: 'User not found.' });
     if (role !== 'moderator') {
-      const roleResult = await db.query('SELECT role FROM roles WHERE role = $1;', [role]);
-      if (!roleResult.rows[0]) return res.status(404).json({ error: 'Role not found.' });
+      const roleResult = await db.query(
+        'SELECT role FROM roles WHERE role = $1;',
+        [role],
+      );
+      if (!roleResult.rows[0])
+        return res.status(404).json({ error: 'Role not found.' });
     }
     let assignedRoles;
-    try { assignedRoles = JSON.parse(userResult.rows[0].roles || '[]'); } catch { assignedRoles = []; }
+    try {
+      assignedRoles = JSON.parse(userResult.rows[0].roles || '[]');
+    } catch {
+      assignedRoles = [];
+    }
     if (!Array.isArray(assignedRoles)) assignedRoles = [];
     assignedRoles = assignedRoles.filter((item) => typeof item === 'string');
     const hasRole = assignedRoles.includes(role);
     if (enabled && !hasRole) assignedRoles.push(role);
-    if (!enabled && hasRole) assignedRoles = assignedRoles.filter((item) => item !== role);
-    await db.query('UPDATE users SET roles = $1 WHERE username = $2;', [JSON.stringify(assignedRoles), userResult.rows[0].username]);
+    if (!enabled && hasRole)
+      assignedRoles = assignedRoles.filter((item) => item !== role);
+    await db.query('UPDATE users SET roles = $1 WHERE username = $2;', [
+      JSON.stringify(assignedRoles),
+      userResult.rows[0].username,
+    ]);
     invalidateUserRoleCache(userResult.rows[0].username);
     await db.query(
       'INSERT INTO mod_logs (mod_username, action_type, target_username, reason, timestamp) VALUES ($1, $2, $3, $4, $5);',
-      [req.user.username, enabled ? 'role_assign' : 'role_remove', userResult.rows[0].username, role, Date.now()],
+      [
+        req.user.username,
+        enabled ? 'role_assign' : 'role_remove',
+        userResult.rows[0].username,
+        role,
+        Date.now(),
+      ],
     );
     res.json({ success: true, roles: assignedRoles });
   } catch (error) {
     log('Role assignment failed:', error.message);
-    res.status(503).json({ error: 'Database temporarily unavailable. Try again shortly.' });
+    res
+      .status(503)
+      .json({ error: 'Database temporarily unavailable. Try again shortly.' });
   }
 });
 
@@ -1217,7 +1659,12 @@ app.post('/api/admin/ban-ip', authenticateToken, async (req, res) => {
 
     for (const row of checkProtectedIp.rows) {
       const roles = JSON.parse(row.roles || '[]');
-      if (row.is_bot || row.is_admin || ADMIN_ENTITY_USERNAMES.has(String(row.username || '').toLowerCase()) || roles.includes('admin')) {
+      if (
+        row.is_bot ||
+        row.is_admin ||
+        ADMIN_ENTITY_USERNAMES.has(String(row.username || '').toLowerCase()) ||
+        roles.includes('admin')
+      ) {
         return res.status(400).json({
           error: `Operation Denied: This IP address is currently used by a protected account (@${row.username}).`,
         });
@@ -1279,7 +1726,9 @@ app.get('/history', authenticateToken, async (req, res) => {
          ORDER BY CASE WHEN role IN ('admin', 'moderator') THEN 1 ELSE 0 END,
                   priority DESC LIMIT 1
        ) rr ON true
-       ORDER BY m.id DESC LIMIT 10 OFFSET $1;`, [off, req.user.username]);
+       ORDER BY m.id DESC LIMIT 10 OFFSET $1;`,
+    [off, req.user.username],
+  );
   res.json(r.rows.reverse());
 });
 
@@ -1344,15 +1793,24 @@ const SUGG_MAX_BODY = 4000;
 const SUGG_MAX_FILTER = 200;
 
 function suggClean(value, maxLen) {
-  return sanitize(value).replace(/[\u0000-\u001f\u007f]/g, (c) => (c === '\n' ? c : '')).trim().slice(0, maxLen);
+  return sanitize(value)
+    .replace(/[\u0000-\u001f\u007f]/g, (c) => (c === '\n' ? c : ''))
+    .trim()
+    .slice(0, maxLen);
 }
 
 app.get('/suggestions-history', authenticateToken, async (req, res) => {
   try {
-    const limit = Math.min(30, Math.max(1, parseInt(req.query.limit, 10) || 10));
-    const off = Math.max(0, (parseInt(req.query.index ?? '0', 10) || 0) * limit);
+    const limit = Math.min(
+      30,
+      Math.max(1, parseInt(req.query.limit, 10) || 10),
+    );
+    const off = Math.max(
+      0,
+      (parseInt(req.query.index ?? '0', 10) || 0) * limit,
+    );
     const r = await db.query(
-      'SELECT s.id, s.date::text AS date, s.suggestions, s.username, s.admin_filter, s.completion, pi.image_data FROM suggestions s LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(s.username) ORDER BY (username = s.username) DESC LIMIT 1) pi ON true ORDER BY s.id DESC LIMIT $2 OFFSET $1;',
+      "SELECT s.id, s.date::text AS date, s.suggestions, s.username, s.admin_filter, s.completion, pi.image_data FROM suggestions s LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(s.username) ORDER BY (username = s.username) DESC LIMIT 1) pi ON true ORDER BY s.id DESC LIMIT $2 OFFSET $1;",
       [off, limit],
     );
     res.json(r.rows.reverse());
@@ -1369,7 +1827,9 @@ app.post('/api/suggestions', authenticateToken, async (req, res) => {
     const title = suggClean(req.body?.title, SUGG_MAX_TITLE);
     const body = suggClean(req.body?.body, SUGG_MAX_BODY);
     if (!title || !body)
-      return res.status(400).json({ error: 'Title and description are required.' });
+      return res
+        .status(400)
+        .json({ error: 'Title and description are required.' });
     const r = await db.query(
       'INSERT INTO suggestions (date, suggestions, username) VALUES (CURRENT_DATE, $1, $2) RETURNING id;',
       [`${title}\n${body}`, req.user.username],
@@ -1388,18 +1848,25 @@ app.put('/api/suggestions/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Staff only.' });
     const id = p2dParseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid suggestion ID.' });
-    const found = await db.query('SELECT admin_filter, completion FROM suggestions WHERE id = $1;', [id]);
-    if (!found.rows[0]) return res.status(404).json({ error: 'No suggestion with that ID.' });
+    const found = await db.query(
+      'SELECT admin_filter, completion FROM suggestions WHERE id = $1;',
+      [id],
+    );
+    if (!found.rows[0])
+      return res.status(404).json({ error: 'No suggestion with that ID.' });
     const body = req.body || {};
     const touchesFilter = 'admin_filter' in body;
     const touchesCompletion = 'completion' in body;
     if (!touchesFilter && !touchesCompletion)
       return res.status(400).json({ error: 'Nothing to update.' });
-    const admin_filter = touchesFilter ? suggClean(body.admin_filter ?? '', SUGG_MAX_FILTER) || null : found.rows[0].admin_filter;
+    const admin_filter = touchesFilter
+      ? suggClean(body.admin_filter ?? '', SUGG_MAX_FILTER) || null
+      : found.rows[0].admin_filter;
     let completion = found.rows[0].completion;
     if (touchesCompletion) {
       const v = body.completion;
-      completion = v === null || v === undefined || v === '' || v === false ? null : true;
+      completion =
+        v === null || v === undefined || v === '' || v === false ? null : true;
     }
     await db.query(
       'UPDATE suggestions SET admin_filter = $1, completion = $2 WHERE id = $3;',
@@ -1407,7 +1874,14 @@ app.put('/api/suggestions/:id', authenticateToken, async (req, res) => {
     );
     await db.query(
       'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
-      [req.user.username, 'suggestion update', null, id, `filter=${admin_filter || ''} completion=${completion === null ? 'unset' : completion}`, Date.now()],
+      [
+        req.user.username,
+        'suggestion update',
+        null,
+        id,
+        `filter=${admin_filter || ''} completion=${completion === null ? 'unset' : completion}`,
+        Date.now(),
+      ],
     );
     log(`Suggestion #${id} annotated by ${req.user.username}`);
     res.json({ success: true, id });
@@ -1421,16 +1895,29 @@ app.delete('/api/suggestions/:id', authenticateToken, async (req, res) => {
   try {
     const id = p2dParseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid suggestion ID.' });
-    const r = await db.query('SELECT username FROM suggestions WHERE id = $1;', [id]);
-    if (!r.rows[0]) return res.status(404).json({ error: 'No suggestion with that ID.' });
+    const r = await db.query(
+      'SELECT username FROM suggestions WHERE id = $1;',
+      [id],
+    );
+    if (!r.rows[0])
+      return res.status(404).json({ error: 'No suggestion with that ID.' });
     const owner = r.rows[0].username;
     if (owner !== req.user.username && !p2dIsStaff(req.user))
-      return res.status(403).json({ error: 'You can only delete your own suggestions.' });
+      return res
+        .status(403)
+        .json({ error: 'You can only delete your own suggestions.' });
     await db.query('DELETE FROM suggestions WHERE id = $1;', [id]);
     if (owner !== req.user.username) {
       await db.query(
         'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
-        [req.user.username, 'suggestion delete', owner, id, 'Removed suggestion', Date.now()],
+        [
+          req.user.username,
+          'suggestion delete',
+          owner,
+          id,
+          'Removed suggestion',
+          Date.now(),
+        ],
       );
     }
     log(`Suggestion #${id} deleted by ${req.user.username}`);
@@ -1455,7 +1942,12 @@ const P2D_OFFICIAL = '[official]';
 const P2D_OFFICIAL_MAX_LEVELS = 80;
 const P2D_OFFICIAL_MAX_CHARS = 400000;
 
-const p2dIsAdmin = (user) => !!(user && (user.is_admin || ADMIN_ENTITY_USERNAMES.has(String(user.username || '').toLowerCase())));
+const p2dIsAdmin = (user) =>
+  !!(
+    user &&
+    (user.is_admin ||
+      ADMIN_ENTITY_USERNAMES.has(String(user.username || '').toLowerCase()))
+  );
 const p2dIsStaff = (user) => p2dIsAdmin(user) || hasModeratorPrivileges(user);
 
 function p2dName(value, fallback, maxLen) {
@@ -1468,18 +1960,21 @@ function p2dName(value, fallback, maxLen) {
 
 function p2dInt(value, min, max) {
   const n = Number(value);
-  if (!Number.isFinite(n)) throw new Error('Level contains a non-numeric value.');
+  if (!Number.isFinite(n))
+    throw new Error('Level contains a non-numeric value.');
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
 function p2dNum(value, min, max) {
   const n = Number(value);
-  if (!Number.isFinite(n)) throw new Error('Level contains a non-numeric value.');
+  if (!Number.isFinite(n))
+    throw new Error('Level contains a non-numeric value.');
   return Math.round(Math.min(max, Math.max(min, n)) * 100) / 100;
 }
 
 function p2dPoint(o) {
-  if (!o || typeof o !== 'object') throw new Error('Level is missing a position.');
+  if (!o || typeof o !== 'object')
+    throw new Error('Level is missing a position.');
   return { x: p2dInt(o.x, 0, P2D_CANVAS_W), y: p2dInt(o.y, 0, P2D_CANVAS_H) };
 }
 
@@ -1495,7 +1990,8 @@ function p2dRect(o) {
 function p2dList(list, max, label, mapper = p2dRect) {
   if (list === undefined || list === null) return [];
   if (!Array.isArray(list)) throw new Error(`Level ${label} must be a list.`);
-  if (list.length > max) throw new Error(`Too many ${label} in one level (max ${max}).`);
+  if (list.length > max)
+    throw new Error(`Too many ${label} in one level (max ${max}).`);
   return list.map(mapper);
 }
 
@@ -1518,13 +2014,22 @@ function p2dWire(o) {
   if (!o || typeof o !== 'object') throw new Error('Wire is invalid.');
   const sourceType = String(o.sourceType || o.source_type || '').toLowerCase();
   const targetType = String(o.targetType || o.target_type || '').toLowerCase();
-  if (sourceType !== 'button' && sourceType !== 'trigger') throw new Error('Wire source must be a button or trigger.');
+  if (sourceType !== 'button' && sourceType !== 'trigger')
+    throw new Error('Wire source must be a button or trigger.');
   if (targetType !== 'door') throw new Error('Wire target must be a door.');
   return {
     sourceType,
-    sourceId: p2dInt(o.sourceId !== undefined ? o.sourceId : o.source_id, 0, P2D_MAX_EXTRAS - 1),
+    sourceId: p2dInt(
+      o.sourceId !== undefined ? o.sourceId : o.source_id,
+      0,
+      P2D_MAX_EXTRAS - 1,
+    ),
     targetType,
-    targetId: p2dInt(o.targetId !== undefined ? o.targetId : o.target_id, 0, P2D_MAX_EXTRAS - 1),
+    targetId: p2dInt(
+      o.targetId !== undefined ? o.targetId : o.target_id,
+      0,
+      P2D_MAX_EXTRAS - 1,
+    ),
   };
 }
 
@@ -1539,12 +2044,14 @@ function p2dNormalizePack(input, fallbackName, maxLevels = P2D_MAX_LEVELS) {
   }
   if (!raw || typeof raw !== 'object' || !Array.isArray(raw.levels))
     throw new Error('Pack data must contain a list of levels.');
-  if (raw.levels.length < 1) throw new Error('A pack needs at least one level.');
+  if (raw.levels.length < 1)
+    throw new Error('A pack needs at least one level.');
   if (raw.levels.length > maxLevels)
     throw new Error(`Too many levels in one pack (max ${maxLevels}).`);
 
   const levels = raw.levels.map((lvl, i) => {
-    if (!lvl || typeof lvl !== 'object') throw new Error(`Level ${i + 1} is invalid.`);
+    if (!lvl || typeof lvl !== 'object')
+      throw new Error(`Level ${i + 1} is invalid.`);
     const explicitWires = Array.isArray(lvl.wires);
     const out = {
       name: p2dName(lvl.name, `Level ${i + 1}`, 60),
@@ -1556,17 +2063,27 @@ function p2dNormalizePack(input, fallbackName, maxLevels = P2D_MAX_LEVELS) {
       }),
       hazards: p2dList(lvl.hazards, P2D_MAX_HAZARDS, 'hazards'),
       buttons: p2dList(
-        Array.isArray(lvl.buttons) ? lvl.buttons : (lvl.button ? [lvl.button] : []),
+        Array.isArray(lvl.buttons)
+          ? lvl.buttons
+          : lvl.button
+            ? [lvl.button]
+            : [],
         P2D_MAX_EXTRAS,
         'buttons',
         (b) => ({ ...p2dRect(b), pressed: false }),
       ),
       button: lvl.button ? { ...p2dRect(lvl.button), pressed: false } : null,
-      triggers: p2dList(lvl.triggers, P2D_MAX_EXTRAS, 'triggers', (t) => ({ ...p2dRect(t), active: false })),
+      triggers: p2dList(lvl.triggers, P2D_MAX_EXTRAS, 'triggers', (t) => ({
+        ...p2dRect(t),
+        active: false,
+      })),
       exitClosed: !!lvl.exitClosed,
       cubeStart: lvl.cubeStart ? p2dRect(lvl.cubeStart) : null,
       noPortal: p2dList(lvl.noPortal, P2D_MAX_EXTRAS, 'no-portal zones'),
-      doors: p2dList(lvl.doors, P2D_MAX_EXTRAS, 'doors', (d) => ({ ...p2dRect(d), logic: p2dLogic(d.logic || d.wireMode) })),
+      doors: p2dList(lvl.doors, P2D_MAX_EXTRAS, 'doors', (d) => ({
+        ...p2dRect(d),
+        logic: p2dLogic(d.logic || d.wireMode),
+      })),
       wires: p2dList(lvl.wires, P2D_MAX_WIRES, 'wires', p2dWire),
       lasers: p2dList(lvl.lasers, P2D_MAX_EXTRAS, 'lasers', p2dLaser),
       grids: p2dList(lvl.grids, P2D_MAX_EXTRAS, 'grids'),
@@ -1578,15 +2095,26 @@ function p2dNormalizePack(input, fallbackName, maxLevels = P2D_MAX_LEVELS) {
     };
     if (!explicitWires && lvl.button && out.doors.length) {
       out.wires = out.doors.map((_, doorId) => ({
-        sourceType: 'button', sourceId: 0, targetType: 'door', targetId: doorId,
+        sourceType: 'button',
+        sourceId: 0,
+        targetType: 'door',
+        targetId: doorId,
       }));
     }
     for (const wire of out.wires) {
-      const sourceCount = wire.sourceType === 'button' ? out.buttons.length : out.triggers.length;
-      if (wire.sourceId >= sourceCount) throw new Error(`Wire ${wire.sourceType} source ${wire.sourceId + 1} does not exist.`);
-      if (wire.targetId >= out.doors.length) throw new Error(`Wire door target ${wire.targetId + 1} does not exist.`);
+      const sourceCount =
+        wire.sourceType === 'button' ? out.buttons.length : out.triggers.length;
+      if (wire.sourceId >= sourceCount)
+        throw new Error(
+          `Wire ${wire.sourceType} source ${wire.sourceId + 1} does not exist.`,
+        );
+      if (wire.targetId >= out.doors.length)
+        throw new Error(
+          `Wire door target ${wire.targetId + 1} does not exist.`,
+        );
     }
-    if (out.platforms.length < 1) throw new Error(`Level ${i + 1} needs at least one platform.`);
+    if (out.platforms.length < 1)
+      throw new Error(`Level ${i + 1} needs at least one platform.`);
     return out;
   });
   return { name: p2dName(raw.name, fallbackName, 100), levels };
@@ -1638,7 +2166,11 @@ app.get('/api/portal2d/levels', authenticateToken, async (req, res) => {
     res.json({
       levels,
       hasMore: r.rows.length > P2D_PAGE_SIZE,
-      viewer: { username: req.user.username, isAdmin: p2dIsAdmin(req.user), isStaff: staff },
+      viewer: {
+        username: req.user.username,
+        isAdmin: p2dIsAdmin(req.user),
+        isStaff: staff,
+      },
     });
   } catch (err) {
     log('Portal2D list failure:', err.message);
@@ -1655,7 +2187,8 @@ app.get('/api/portal2d/levels/:id', authenticateToken, async (req, res) => {
        FROM "portal-2d" p LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(p."username") ORDER BY (username = p."username") DESC LIMIT 1) pi ON true WHERE p."level-id" = $1;`,
       [id],
     );
-    if (!r.rows[0]) return res.status(404).json({ error: 'No pack with that ID.' });
+    if (!r.rows[0])
+      return res.status(404).json({ error: 'No pack with that ID.' });
     const row = r.rows[0];
     try {
       row.data = JSON.parse(row.data);
@@ -1684,7 +2217,12 @@ app.post('/api/portal2d/levels', authenticateToken, async (req, res) => {
     pack.name = name;
     const json = JSON.stringify(pack);
     if (json.length > P2D_MAX_DATA_CHARS)
-      return res.status(413).json({ error: 'Pack is too large to publish. Remove some levels or platforms.' });
+      return res
+        .status(413)
+        .json({
+          error:
+            'Pack is too large to publish. Remove some levels or platforms.',
+        });
 
     const count = await db.query(
       'SELECT COUNT(*)::int AS n FROM "portal-2d" WHERE "username" = $1;',
@@ -1715,10 +2253,16 @@ app.put('/api/portal2d/levels/:id', authenticateToken, async (req, res) => {
     const id = p2dParseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid pack ID.' });
 
-    const found = await db.query('SELECT "username" FROM "portal-2d" WHERE "level-id" = $1;', [id]);
-    if (!found.rows[0]) return res.status(404).json({ error: 'No pack with that ID.' });
+    const found = await db.query(
+      'SELECT "username" FROM "portal-2d" WHERE "level-id" = $1;',
+      [id],
+    );
+    if (!found.rows[0])
+      return res.status(404).json({ error: 'No pack with that ID.' });
     if (found.rows[0].username !== req.user.username)
-      return res.status(403).json({ error: 'You can only update your own packs.' });
+      return res
+        .status(403)
+        .json({ error: 'You can only update your own packs.' });
 
     const name = p2dName(req.body?.name, 'Untitled pack', 100);
     let pack;
@@ -1730,7 +2274,12 @@ app.put('/api/portal2d/levels/:id', authenticateToken, async (req, res) => {
     pack.name = name;
     const json = JSON.stringify(pack);
     if (json.length > P2D_MAX_DATA_CHARS)
-      return res.status(413).json({ error: 'Pack is too large to publish. Remove some levels or platforms.' });
+      return res
+        .status(413)
+        .json({
+          error:
+            'Pack is too large to publish. Remove some levels or platforms.',
+        });
 
     await db.query(
       'UPDATE "portal-2d" SET "level-name" = $1, "level-data" = $2 WHERE "level-id" = $3;',
@@ -1752,19 +2301,33 @@ app.delete('/api/portal2d/levels/:id', authenticateToken, async (req, res) => {
       'SELECT "username" FROM "portal-2d" WHERE "level-id" = $1;',
       [id],
     );
-    if (!r.rows[0]) return res.status(404).json({ error: 'No pack with that ID.' });
+    if (!r.rows[0])
+      return res.status(404).json({ error: 'No pack with that ID.' });
 
     const owner = r.rows[0].username;
     if (owner === P2D_OFFICIAL)
-      return res.status(403).json({ error: 'The official pack is managed from the admin dev tools.' });
+      return res
+        .status(403)
+        .json({
+          error: 'The official pack is managed from the admin dev tools.',
+        });
     if (owner !== req.user.username && !p2dIsStaff(req.user))
-      return res.status(403).json({ error: 'You can only delete your own packs.' });
+      return res
+        .status(403)
+        .json({ error: 'You can only delete your own packs.' });
 
     await db.query('DELETE FROM "portal-2d" WHERE "level-id" = $1;', [id]);
     if (owner !== req.user.username) {
       await db.query(
         'INSERT INTO mod_logs (mod_username, action_type, target_username, target_id, reason, timestamp) VALUES ($1, $2, $3, $4, $5, $6);',
-        [req.user.username, 'portal2d delete', owner, id, 'Removed published Portal 2D pack', Date.now()],
+        [
+          req.user.username,
+          'portal2d delete',
+          owner,
+          id,
+          'Removed published Portal 2D pack',
+          Date.now(),
+        ],
       );
     }
     log(`Portal2D delete: #${id} by ${req.user.username}`);
@@ -1789,7 +2352,13 @@ async function p2dReadOfficial() {
 app.get('/api/portal2d/official', authenticateToken, async (req, res) => {
   try {
     const official = await p2dReadOfficial();
-    if (!official) return res.status(404).json({ error: 'No official pack has been published yet.', code: 'NO_OFFICIAL' });
+    if (!official)
+      return res
+        .status(404)
+        .json({
+          error: 'No official pack has been published yet.',
+          code: 'NO_OFFICIAL',
+        });
     res.json(official);
   } catch (err) {
     log('Portal2D official read failure:', err.message);
@@ -1798,15 +2367,34 @@ app.get('/api/portal2d/official', authenticateToken, async (req, res) => {
 });
 
 app.put('/api/portal2d/official', authenticateToken, async (req, res) => {
-  res.status(410).json({ error: 'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.' });
+  res
+    .status(410)
+    .json({
+      error:
+        'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.',
+    });
 });
 
-app.post('/api/portal2d/official/levels', authenticateToken, async (req, res) => {
-  res.status(410).json({ error: 'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.' });
-});
+app.post(
+  '/api/portal2d/official/levels',
+  authenticateToken,
+  async (req, res) => {
+    res
+      .status(410)
+      .json({
+        error:
+          'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.',
+      });
+  },
+);
 
 app.delete('/api/portal2d/official', authenticateToken, async (req, res) => {
-  res.status(410).json({ error: 'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.' });
+  res
+    .status(410)
+    .json({
+      error:
+        'Official packs are updated by replacing the exported Portal: The Kindle Version HTML. Use Sledgehammer Editor export.',
+    });
 });
 
 const server = app.listen(process.env.PORT || 10000, '0.0.0.0', () =>
@@ -1823,7 +2411,11 @@ const heartbeatTimer = setInterval(() => {
       return client.ws.terminate();
     }
     client.ws.isAlive = false;
-    try { client.ws.ping(); } catch { client.ws.terminate(); }
+    try {
+      client.ws.ping();
+    } catch {
+      client.ws.terminate();
+    }
   });
 }, WS_HEARTBEAT_MS);
 heartbeatTimer.unref();
@@ -1839,7 +2431,9 @@ const ALLOWED_CHANNELS = {
 
 wss.on('connection', (ws, req) => {
   ws.isAlive = true;
-  ws.on('pong', () => { ws.isAlive = true; });
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
   let authUser = null;
   let userRoles = {
     role: {
@@ -1927,11 +2521,23 @@ wss.on('connection', (ws, req) => {
         const channel = client && client.mode;
         const messageId = Number(data.id);
         const reactionCode = Number(data.code);
-        const messageTables = { public: 'messages', dm: 'dms', topic: 'topic_messages' };
+        const messageTables = {
+          public: 'messages',
+          dm: 'dms',
+          topic: 'topic_messages',
+        };
         const table = messageTables[channel];
-        if (!table || !Number.isInteger(messageId) || messageId < 1 ||
-            !Number.isInteger(reactionCode) || reactionCode < 1 || reactionCode > 32767 ||
-            (channel !== 'public' && (!client.target || typeof client.target !== 'string'))) return;
+        if (
+          !table ||
+          !Number.isInteger(messageId) ||
+          messageId < 1 ||
+          !Number.isInteger(reactionCode) ||
+          reactionCode < 1 ||
+          reactionCode > 32767 ||
+          (channel !== 'public' &&
+            (!client.target || typeof client.target !== 'string'))
+        )
+          return;
 
         let messageQuery;
         let messageParams;
@@ -1953,7 +2559,10 @@ wss.on('connection', (ws, req) => {
           'SELECT reaction_code FROM message_reactions WHERE channel = $1 AND message_id = $2 AND username = $3',
           [channel, messageId, authUser],
         );
-        if (existing.rows[0] && Number(existing.rows[0].reaction_code) === reactionCode) {
+        if (
+          existing.rows[0] &&
+          Number(existing.rows[0].reaction_code) === reactionCode
+        ) {
           await db.query(
             'DELETE FROM message_reactions WHERE channel = $1 AND message_id = $2 AND username = $3',
             [channel, messageId, authUser],
@@ -1970,14 +2579,20 @@ wss.on('connection', (ws, req) => {
           [channel, messageId, authUser],
         );
         const reactionUpdate = {
-          type: 'message_reactions_update', channel, target: client.target,
-          id: messageId, reactions: summary.rows,
+          type: 'message_reactions_update',
+          channel,
+          target: client.target,
+          id: messageId,
+          reactions: summary.rows,
         };
         broadcastSystemUpdate(reactionUpdate, (c, username) => {
           if (channel === 'dm') {
             const peer = sanitizeUsername(client.target);
-            return c.mode === 'dm' && c.target === (username === authUser ? peer : authUser) &&
-              (username === authUser || username === peer);
+            return (
+              c.mode === 'dm' &&
+              c.target === (username === authUser ? peer : authUser) &&
+              (username === authUser || username === peer)
+            );
           }
           return c.mode === channel && c.target === client.target;
         });
@@ -2063,31 +2678,73 @@ wss.on('connection', (ws, req) => {
         let livePayload = null;
         if (data.type === 'message') {
           const role = (await getUserRoles(authUser)).role;
-          const latest = await db.query('SELECT m.id, m.username, m.timestamp, m.content, m.is_deleted, m.deleted_by, m.sender, pi.image_data FROM messages m LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(m.username) ORDER BY (username = m.username) DESC LIMIT 1) pi ON true WHERE m.username = $1 AND m.timestamp = $2 ORDER BY m.id DESC LIMIT 1;', [authUser, tStr]);
-          if (latest.rows[0]) livePayload = { type: 'live_message', channel: 'public', message: { ...latest.rows[0], role } };
+          const latest = await db.query(
+            "SELECT m.id, m.username, m.timestamp, m.content, m.is_deleted, m.deleted_by, m.sender, pi.image_data FROM messages m LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(m.username) ORDER BY (username = m.username) DESC LIMIT 1) pi ON true WHERE m.username = $1 AND m.timestamp = $2 ORDER BY m.id DESC LIMIT 1;",
+            [authUser, tStr],
+          );
+          if (latest.rows[0])
+            livePayload = {
+              type: 'live_message',
+              channel: 'public',
+              message: { ...latest.rows[0], role },
+            };
         } else if (data.type === 'topic_message') {
           const role = (await getUserRoles(authUser)).role;
-          const latest = await db.query('SELECT m.id, m.username, m.timestamp, m.content, m.is_deleted, m.deleted_by, m.sender, m.topic_slug, pi.image_data FROM topic_messages m LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(m.username) ORDER BY (username = m.username) DESC LIMIT 1) pi ON true WHERE m.username = $1 AND m.timestamp = $2 AND m.topic_slug = $3 ORDER BY m.id DESC LIMIT 1;', [authUser, tStr, target]);
-          if (latest.rows[0]) livePayload = { type: 'live_message', channel: 'topic', target, message: { ...latest.rows[0], role } };
+          const latest = await db.query(
+            "SELECT m.id, m.username, m.timestamp, m.content, m.is_deleted, m.deleted_by, m.sender, m.topic_slug, pi.image_data FROM topic_messages m LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(m.username) ORDER BY (username = m.username) DESC LIMIT 1) pi ON true WHERE m.username = $1 AND m.timestamp = $2 AND m.topic_slug = $3 ORDER BY m.id DESC LIMIT 1;",
+            [authUser, tStr, target],
+          );
+          if (latest.rows[0])
+            livePayload = {
+              type: 'live_message',
+              channel: 'topic',
+              target,
+              message: { ...latest.rows[0], role },
+            };
         } else if (data.type === 'dm') {
           const role = (await getUserRoles(authUser)).role;
-          const latest = await db.query('SELECT d.id, d.sender AS username, d.receiver, d.timestamp, d.content, d.is_deleted, d.deleted_by, pi.image_data FROM dms d LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(d.sender) ORDER BY (username = d.sender) DESC LIMIT 1) pi ON true WHERE d.sender = $1 AND d.receiver = $2 AND d.timestamp = $3 ORDER BY d.id DESC LIMIT 1;', [authUser, target, tStr]);
-          if (latest.rows[0]) livePayload = { type: 'live_message', channel: 'dm', target, receiver: target, sender: authUser, message: { ...latest.rows[0], role } };
+          const latest = await db.query(
+            "SELECT d.id, d.sender AS username, d.receiver, d.timestamp, d.content, d.is_deleted, d.deleted_by, pi.image_data FROM dms d LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(d.sender) ORDER BY (username = d.sender) DESC LIMIT 1) pi ON true WHERE d.sender = $1 AND d.receiver = $2 AND d.timestamp = $3 ORDER BY d.id DESC LIMIT 1;",
+            [authUser, target, tStr],
+          );
+          if (latest.rows[0])
+            livePayload = {
+              type: 'live_message',
+              channel: 'dm',
+              target,
+              receiver: target,
+              sender: authUser,
+              message: { ...latest.rows[0], role },
+            };
         } else if (data.type === 'neighborhood_post') {
           const role = (await getUserRoles(authUser)).role;
-          const latest = await db.query('SELECT p.id, p.username, p.title, p.content, p.timestamp, p.is_deleted, p.deleted_by, p.sender, pi.image_data FROM neighborhood_posts p LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING \'@\' FROM username)) = LOWER(p.username) ORDER BY (username = p.username) DESC LIMIT 1) pi ON true WHERE p.username = $1 AND p.timestamp = $2 ORDER BY p.id DESC LIMIT 1;', [authUser, tStr]);
-          if (latest.rows[0]) livePayload = { type: 'live_neighborhood_post', message: { ...latest.rows[0], role, comments: [] } };
+          const latest = await db.query(
+            "SELECT p.id, p.username, p.title, p.content, p.timestamp, p.is_deleted, p.deleted_by, p.sender, pi.image_data FROM neighborhood_posts p LEFT JOIN LATERAL (SELECT image_data FROM profile_images WHERE LOWER(TRIM(LEADING '@' FROM username)) = LOWER(p.username) ORDER BY (username = p.username) DESC LIMIT 1) pi ON true WHERE p.username = $1 AND p.timestamp = $2 ORDER BY p.id DESC LIMIT 1;",
+            [authUser, tStr],
+          );
+          if (latest.rows[0])
+            livePayload = {
+              type: 'live_neighborhood_post',
+              message: { ...latest.rows[0], role, comments: [] },
+            };
         }
 
         if (livePayload) {
           broadcastSystemUpdate(livePayload, (c, username) => {
             if (mode === 'dm') {
-              return c.mode === 'dm' && c.target === (username === authUser ? target : authUser) && (username === authUser || username === target);
+              return (
+                c.mode === 'dm' &&
+                c.target === (username === authUser ? target : authUser) &&
+                (username === authUser || username === target)
+              );
             }
             return c.mode === mode && c.target === target;
           });
         } else if (data.type === 'neighborhood_comment') {
-          broadcastSystemUpdate({ type: 'refresh_feed' }, (c) => c.mode === 'neighborhood');
+          broadcastSystemUpdate(
+            { type: 'refresh_feed' },
+            (c) => c.mode === 'neighborhood',
+          );
         }
       }
 
@@ -2168,10 +2825,35 @@ wss.on('connection', (ws, req) => {
         }
       }
 
-      if (
-        hasAdminPrivileges(userRoles) ||
-        hasModeratorPrivileges(userRoles)
-      ) {
+      if (data.type === 'scrshare_send') {
+        if (screenshares[authUser])
+          clearTimeout(screenshares[authUser].endTimer);
+        else broadcastSystemUpdate(getRosterPayload())
+        screenshares[authUser] = {
+          frame: data.frame,
+          endTimer: setTimeout(() => {
+            screenshares[authUser] = null
+            broadcastSystemUpdate(getRosterPayload())
+          }, 2000),
+        };
+      }
+
+      if (data.type === 'scrshare_receive') {
+        if (screenshares[data.sender]) {
+          ws.send(JSON.stringify({
+            type: 'scrshare_frame',
+            frame: screenshares[data.sender].frame,
+            sender: data.sender
+          }))
+        } else {
+          ws.send(JSON.stringify({
+            type: 'scrshare_error',
+            error: 'The selected user is not sharing their screen.'
+          }))
+        }
+      }
+
+      if (hasAdminPrivileges(userRoles) || hasModeratorPrivileges(userRoles)) {
         if (data.type === 'mod_timeout') {
           const target = sanitizeUsername(data.target);
           const targetRoles = await getUserRoles(target);

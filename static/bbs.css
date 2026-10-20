@@ -173,7 +173,18 @@
   box-sizing: border-box;
   resize: none;
   overflow-y: hidden;
-  box-shadow: 2px 2px 0 black;
+}
+
+#scrshare {
+  min-width: calc(max-content+1em);
+  aspect-ratio: 1;
+  cursor: pointer;
+  font-family: monospace;
+  font-weight: bold;
+  font-size: 12px;
+  background: white;
+  border: var(--border);
+  margin-right: 8px;
 }
 
 #send {
@@ -185,7 +196,6 @@
   font-size: 12px;
   background: white;
   border: var(--border);
-  box-shadow: 2px 2px 0 black;
   margin-left: 8px;
 }
 
@@ -290,7 +300,7 @@
 
 .auth-box button:active {
   box-shadow: none;
-  transform: translate(2px, 2px);
+  translate: 4px 4px;
 }
 
 #auth-screen {
@@ -328,4 +338,10 @@
 
 .shadow {
   box-shadow: 2px 2px 0px black;
+}
+
+.shadow:active,
+.shadow-pressed {
+  box-shadow: 0px 0px 0px black;
+  translate: 2px 2px;
 }

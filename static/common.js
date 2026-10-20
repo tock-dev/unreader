@@ -4,6 +4,7 @@ const DO_LOGGING = true;
 var MESSAGE_REACTIONS = {};
 var MESSAGE_REACTION_TAGS = {};
 var MESSAGE_REACTIONS_LOADED = false;
+
 function parseReactionCsvRow(line) {
   var fields = [];
   var field = '';
@@ -55,12 +56,12 @@ if (DEBUG) {
   debugScript.src = 'debug-console.js';
   document.head.appendChild(debugScript);
 }
-var BACKEND_URL = DEBUG
-  ? 'http://127.0.0.1:80'
-  : window.location.origin;
-var WS_URL = DEBUG
-  ? 'ws://127.0.0.1:80'
-  : window.location.origin.replace('https', 'wss').replace('http', 'ws');
+var BACKEND_URL = DEBUG ?
+  'http://127.0.0.1:80' :
+  window.location.origin;
+var WS_URL = DEBUG ?
+  'ws://127.0.0.1:80' :
+  window.location.origin.replace('https', 'wss').replace('http', 'ws');
 
 var UnreaderBotPasswordVault = (function () {
   // The saved BotPassword is locked with a PIN that exists only in the user's
@@ -110,8 +111,7 @@ var UnreaderBotPasswordVault = (function () {
     if (!window.crypto || !window.crypto.subtle) return Promise.reject(new Error('Encrypted credential storage requires HTTPS and Web Crypto support.'));
     return window.crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey'])
       .then(function (material) {
-        return window.crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' }, material,
-          { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        return window.crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
       });
   }
 
@@ -125,9 +125,20 @@ var UnreaderBotPasswordVault = (function () {
     return deriveKey(pin, salt).then(function (key) {
       return window.crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: context }, key,
         new TextEncoder().encode(JSON.stringify(value))).then(function (encrypted) {
-        return { key: key, data: { version: 2, context: contextName, kdf: 'PBKDF2-SHA-256', iterations: iterations, cipher: 'AES-GCM-256',
-          salt: bytesToBase64(salt), iv: bytesToBase64(iv), ciphertext: bytesToBase64(new Uint8Array(encrypted)) } };
-      });
+          return {
+            key: key,
+            data: {
+              version: 2,
+              context: contextName,
+              kdf: 'PBKDF2-SHA-256',
+              iterations: iterations,
+              cipher: 'AES-GCM-256',
+              salt: bytesToBase64(salt),
+              iv: bytesToBase64(iv),
+              ciphertext: bytesToBase64(new Uint8Array(encrypted))
+            }
+          };
+        });
     });
   }
 
@@ -152,9 +163,18 @@ var UnreaderBotPasswordVault = (function () {
         try {
           var tx = db.transaction(DEVICE_STORE, mode);
           var req = run(tx.objectStore(DEVICE_STORE));
-          tx.oncomplete = function () { db.close(); resolve(req.result); };
-          tx.onerror = tx.onabort = function () { db.close(); reject(tx.error || new Error('Device storage failed.')); };
-        } catch (error) { db.close(); reject(error); }
+          tx.oncomplete = function () {
+            db.close();
+            resolve(req.result);
+          };
+          tx.onerror = tx.onabort = function () {
+            db.close();
+            reject(tx.error || new Error('Device storage failed.'));
+          };
+        } catch (error) {
+          db.close();
+          reject(error);
+        }
       };
     });
   }
@@ -238,9 +258,16 @@ var UnreaderBotPasswordVault = (function () {
     return request('GET').then(function (response) { return !!response.data; });
   }
 
-  return { minPinLength: minPinLength, pinProblem: pinProblem, save: save, load: load,
-    unlockOnDevice: unlockOnDevice, hasSaved: hasSaved, forgetDevice: forgetDevice,
-    remove: function () { return request('DELETE').then(function (r) { return forgetDevice().then(function () { return r; }); }); } };
+  return {
+    minPinLength: minPinLength,
+    pinProblem: pinProblem,
+    save: save,
+    load: load,
+    unlockOnDevice: unlockOnDevice,
+    hasSaved: hasSaved,
+    forgetDevice: forgetDevice,
+    remove: function () { return request('DELETE').then(function (r) { return forgetDevice().then(function () { return r; }); }); }
+  };
 }());
 
 function startRichPresence(mode) {
@@ -292,9 +319,9 @@ function show(selector) {
 }
 
 function profilePictureDataUrl(imageData) {
-  return typeof imageData === 'string' && imageData.length <= 700000 && /^[A-Za-z0-9+/]+={0,2}$/.test(imageData)
-    ? `data:image/png;base64,${imageData}`
-    : '';
+  return typeof imageData === 'string' && imageData.length <= 700000 && /^[A-Za-z0-9+/]+={0,2}$/.test(imageData) ?
+    `data:image/png;base64,${imageData}` :
+    '';
 }
 
 function profilePictureDimensions(imageData) {
@@ -611,7 +638,10 @@ function setupProfilePictureEditor(imageData = '') {
       URL.revokeObjectURL(image.src);
       file.value = '';
     };
-    image.onerror = () => { URL.revokeObjectURL(image.src); unAlert('Could not import that image.'); };
+    image.onerror = () => {
+      URL.revokeObjectURL(image.src);
+      unAlert('Could not import that image.');
+    };
     image.src = URL.createObjectURL(selected);
   };
 
@@ -645,9 +675,9 @@ function showProfilePicture(imageData, fallback) {
   const element = document.getElementById('info-avatar');
   while (element.firstChild) element.removeChild(element.firstChild);
   if (!profilePictureDataUrl(imageData)) {
-    element.textContent = navigator.userAgent.toLowerCase().includes('kindle')
-      ? ':)'
-      : fallback || '';
+    element.textContent = navigator.userAgent.toLowerCase().includes('kindle') ?
+      ':)' :
+      fallback || '';
     return;
   }
   const image = document.createElement('img');
@@ -760,9 +790,9 @@ function parseMarkup(text) {
   const escaped = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
   if (navigator.userAgent.toLowerCase().includes('kindle')) return escaped;
   if (typeof marked === 'undefined' || typeof marked.parse !== 'function') {
-    return typeof DOMPurify === 'undefined'
-      ? escaped.trim()
-      : DOMPurify.sanitize(escaped).trim();
+    return typeof DOMPurify === 'undefined' ?
+      escaped.trim() :
+      DOMPurify.sanitize(escaped).trim();
   }
   return DOMPurify.sanitize(marked.parse(escaped)).trim();
 }
