@@ -311,11 +311,13 @@ function log(...args) {
 }
 
 function hide(selector) {
-  document.querySelector(selector).classList.add('hide');
+  if (typeof selector === Element) selector.classList.add('hide');
+  else document.querySelector(selector).classList.add('hide');
 }
 
 function show(selector) {
-  document.querySelector(selector).classList.remove('hide');
+  if (typeof selector === Element) selector.classList.remove('hide');
+  else document.querySelector(selector).classList.remove('hide');
 }
 
 function profilePictureDataUrl(imageData) {

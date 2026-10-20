@@ -1431,53 +1431,55 @@
             }
             // -----------------------------------------------------------------
             // Screen sharing
-            let screenShareSendingInterval, stream, video, canvas, ctx;
             const scrShareBtn = document.querySelector('#scrshare');
-            scrShareBtn.onclick = async function() {
-                try {
-                    if (!screenShareSendingInterval) {
-                        stream = await navigator.mediaDevices.getDisplayMedia({
-                            video: {
-                                displaySurface: 'monitor'
-                            },
-                            audio: {
-                                suppressLocalAudioPlayback: false
-                            },
-                            systemAudio: 'include'
-                        });
-                        video = document.createElement('video');
-                        video.srcObject = stream;
-                        await video.play();
+            if (!navigator.userAgent.includes('kindle')) {
+                let screenShareSendingInterval, stream, video, canvas, ctx;
+                scrShareBtn.onclick = async function() {
+                    try {
+                        if (!screenShareSendingInterval) {
+                            stream = await navigator.mediaDevices.getDisplayMedia({
+                                video: {
+                                    displaySurface: 'monitor'
+                                },
+                                audio: {
+                                    suppressLocalAudioPlayback: false
+                                },
+                                systemAudio: 'include'
+                            });
+                            video = document.createElement('video');
+                            video.srcObject = stream;
+                            await video.play();
 
-                        canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth || 640;
-                        canvas.height = video.videoHeight || 480;
-                        ctx = canvas.getContext('2d');
+                            canvas = document.createElement('canvas');
+                            canvas.width = video.videoWidth || 640;
+                            canvas.height = video.videoHeight || 480;
+                            ctx = canvas.getContext('2d');
 
-                        screenShareSendingInterval = setInterval(function() {
-                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                            const dataUrl = canvas.toDataURL('image/jpeg');
-                            // document.write('<img src="'+dataUrl+'">')
-                            socket.send(JSON.stringify({
-                                type: 'scrshare_send',
-                                frame: dataUrl
-                            }));
-                        }, 1000);
-                    } else {
-                        clearInterval(screenShareSendingInterval);
-                        stream.getTracks().forEach(track => track.stop());
-                        await video.pause();
-                        screenShareSendingInterval = stream = video = canvas = ctx = null;
+                            screenShareSendingInterval = setInterval(function() {
+                                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                                const dataUrl = canvas.toDataURL('image/jpeg');
+                                // document.write('<img src="'+dataUrl+'">')
+                                socket.send(JSON.stringify({
+                                    type: 'scrshare_send',
+                                    frame: dataUrl
+                                }));
+                            }, 1000);
+                        } else {
+                            clearInterval(screenShareSendingInterval);
+                            stream.getTracks().forEach(track => track.stop());
+                            await video.pause();
+                            screenShareSendingInterval = stream = video = canvas = ctx = null;
+                        }
+                        
+                        const icon = document.querySelector('#scrshare-btn-icon');
+                        if (icon.textContent === 'cast') icon.textContent = 'stop_circle';
+                        else icon.textContent = 'cast';
+                    } catch (e) {
+                        log('Error starting screen capture:', e);
                     }
-                    
-                    const icon = document.querySelector('#scrshare-btn-icon');
-                    if (icon.textContent === 'cast') icon.textContent = 'stop_circle';
-                    else icon.textContent = 'cast';
-                } catch (e) {
-                    log('Error starting screen capture:', e)
                 }
-            }
+            } else hide(scrShareBtn);
 
             // -----------------------------------------------------------------
             const sendBtn = document.querySelector("#send")
