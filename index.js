@@ -211,6 +211,13 @@ async function initDatabase() {
         completion BOOLEAN
       );
 
+      CREATE TABLE IF NOT EXISTS doodle_scores (
+        username TEXT PRIMARY KEY REFERENCES users(username) ON DELETE CASCADE,
+        score INTEGER NOT NULL CHECK (score >= 0),
+        updated_at BIGINT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS doodle_scores_rank_idx ON doodle_scores (score DESC, updated_at ASC);
+
       CREATE TABLE IF NOT EXISTS wikipedia (
         id SERIAL PRIMARY KEY,
         name TEXT UNIQUE NOT NULL,
@@ -1131,6 +1138,41 @@ app.post('/api/change-password', authenticateToken, async (req, res) => {
   } catch (err) {
     log('Password change logic breakdown:', err.message);
     res.status(500).json({ error: 'Server error: ' + err.message });
+  }
+});
+
+app.get('/api/doodle/leaderboard', async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT username, score FROM doodle_scores ORDER BY score DESC, updated_at ASC, LOWER(username) ASC LIMIT 25;',
+    );
+    res.json({ scores: result.rows });
+  } catch (err) {
+    log('Doodle leaderboard load failed:', err.message);
+    res.status(500).json({ error: 'Could not load leaderboard.' });
+  }
+});
+
+app.post('/api/doodle/score', authenticateToken, async (req, res) => {
+  const score = req.body && req.body.score;
+  if (!Number.isInteger(score) || score < 1 || score > 10000000) {
+    return res.status(400).json({ error: 'Score is invalid.' });
+  }
+  try {
+    const result = await db.query(
+      `INSERT INTO doodle_scores (username, score, updated_at)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (username) DO UPDATE
+       SET score = GREATEST(doodle_scores.score, EXCLUDED.score),
+           updated_at = CASE WHEN EXCLUDED.score > doodle_scores.score
+                             THEN EXCLUDED.updated_at ELSE doodle_scores.updated_at END
+       RETURNING score;`,
+      [req.user.username, score, Date.now()],
+    );
+    res.json({ success: true, score: result.rows[0].score });
+  } catch (err) {
+    log('Doodle score save failed:', err.message);
+    res.status(500).json({ error: 'Could not save score.' });
   }
 });
 

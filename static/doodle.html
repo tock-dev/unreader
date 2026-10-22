@@ -18,13 +18,22 @@ body { margin: 0; padding: 10px; background: #fff; color: #000; font-family: mon
 .paper-btn:active { background: #000; color: #fff; }
 .body { padding: 10px; }
 canvas { display: block; margin: 0 auto; width: 100%; max-width: 480px; height: auto; border: 2px solid #000; touch-action: none; -webkit-user-select: none; user-select: none; }
-.ctl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 480px; margin: 10px auto 0; }
-.joy-cell { grid-column: 1; grid-row: 2 / 4; }
-#js { display: block; margin: 0 auto; width: 100%; max-width: 132px; height: auto; touch-action: none; -webkit-user-select: none; user-select: none; }
-#bf { grid-column: 2; grid-row: 2; }
-#bs { grid-column: 2; grid-row: 3; }
+.ctl { display: grid; grid-template-columns: minmax(0, 1fr) 112px minmax(0, 1fr); gap: 8px; max-width: 480px; margin: 10px auto 0; }
+.joy-cell { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+#js { display: block; margin: 0 auto; width: 100%; max-width: 112px; height: auto; touch-action: none; -webkit-user-select: none; user-select: none; }
+#bl { grid-column: 1; grid-row: 1; }
+#br { grid-column: 3; grid-row: 1; }
+#bf { grid-column: 1; grid-row: 2; }
+#bs { grid-column: 3; grid-row: 2; }
+#lb { grid-column: 1 / 4; grid-row: 3; min-height: 42px; }
 .big { min-height: 60px; font-size: 18px; line-height: 24px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 p { font-size: 12px; margin: 10px auto 2px; max-width: 480px; }
+.leaderboard-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(0,0,0,.65); }
+.leaderboard-overlay[hidden] { display: none; }
+.leaderboard-card { width: 100%; max-width: 420px; max-height: 80vh; overflow-y: auto; padding: 12px; border: 2px solid #000; background: #fff; box-shadow: 4px 4px 0 #000; text-align: left; }
+.leaderboard-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 8px; }
+.leaderboard-card ol { padding-left: 28px; }
+.leaderboard-card li { padding: 4px 0; }
 </style>
 </head>
 <body>
@@ -42,8 +51,19 @@ p { font-size: 12px; margin: 10px auto 2px; max-width: 480px; }
       <div class="joy-cell"><canvas id="js" width="132" height="132"></canvas></div>
       <button id="bf" type="button" class="paper-btn big">SHOOT</button>
       <button id="bs" type="button" class="paper-btn big">START</button>
+      <button id="lb" type="button" class="paper-btn big">LEADERBOARD</button>
     </div>
     <p>Hold the left or right half of the screen to steer. Drag the round stick to aim; it stays where you leave it. SHOOT fires that way. Stomp monsters from above. Grab jetpacks, propellers, rockets, spring shoes and shields; avoid black holes and UFO beams. Keys: arrows or A/D, Space to shoot.</p>
+  </div>
+</div>
+<div id="leaderboard-overlay" class="leaderboard-overlay" hidden>
+  <div class="leaderboard-card" role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
+    <div class="leaderboard-head">
+      <strong id="leaderboard-title">LEADERBOARD</strong>
+      <button id="leaderboard-close" type="button" class="paper-btn">CLOSE</button>
+    </div>
+    <p id="leaderboard-status">Loading scores...</p>
+    <ol id="leaderboard-list"></ol>
   </div>
 </div>
 <script>
@@ -84,7 +104,7 @@ p { font-size: 12px; margin: 10px auto 2px; max-width: 480px; }
   var PICK = { jet: 1, prop: 1, rocket: 1, shoes: 1, shield: 1 };
   var FLYV = { jet: -800, prop: -620, rocket: -1100 }, FLYT = { jet: 5, prop: 4, rocket: 3.5 };
   var cv = document.getElementById('c'), cx = cv.getContext('2d');
-  var state = 'ready', height = 0, best = 0, newBest = false, dirty = true, why = '';
+  var state = 'ready', height = 0, best = 0, newBest = false, dirty = true, why = '', scoreStatus = '', leaderboardPaused = false;
   var plats = [], mons = [], holes = [], shots = [], p, topY = 0, lastSafeY = 0, lastMonY = 0, lastSafeX = 0, hasSafePlat = false;
   var last = 0, overAt = 0, cool = 0;
   var bL = false, bR = false, tL = false, tR = false, kL = false, kR = false, sH = false, kS = false;
@@ -178,7 +198,7 @@ p { font-size: 12px; margin: 10px auto 2px; max-width: 480px; }
 
   function start() {
     plats = []; mons = []; holes = []; shots = [];
-    height = 0; newBest = false; why = ''; cool = 0;
+    height = 0; newBest = false; why = ''; cool = 0; scoreStatus = '';
     plats.push({ x: W / 2 - PLW / 2, y: H - 40, t: 'n', dir: 1, d: 0, vd: 1, item: null, ox: 0, gone: false });
     topY = H - 40; lastSafeY = topY; lastMonY = topY;
     lastSafeX = plats[0].x;
@@ -197,6 +217,8 @@ p { font-size: 12px; margin: 10px auto 2px; max-width: 480px; }
   function end(msg) {
     state = 'over'; overAt = Date.now(); dirty = true; why = msg;
     var s = score();
+    scoreStatus = '';
+    submitScore(s);
     if (s > best) {
       best = s; newBest = true;
       try { localStorage.setItem('dh_best', String(best)); } catch (e) {}
@@ -214,6 +236,49 @@ p { font-size: 12px; margin: 10px auto 2px; max-width: 480px; }
 
   function hit(ax, ay, aw, ah, bx, by, bw, bh) {
     return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+  }
+
+  function submitScore(value) {
+    var token = '';
+    if (value < 1) { scoreStatus = 'No score to save'; dirty = true; return; }
+    try { token = localStorage.getItem('token') || ''; } catch (e) {}
+    if (!token) { scoreStatus = 'Sign in to save'; dirty = true; return; }
+    scoreStatus = 'Saving score...'; dirty = true;
+    fetch('/api/doodle/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ score: value })
+    }).then(function (response) {
+      return response.json().then(function (data) {
+        if (!response.ok) throw new Error(data.error || 'Score could not be saved');
+        return data;
+      });
+    }).then(function () {
+      scoreStatus = 'Score saved'; dirty = true;
+    }).catch(function () {
+      scoreStatus = 'Online save failed'; dirty = true;
+    });
+  }
+
+  function showLeaderboard() {
+    var overlay = document.getElementById('leaderboard-overlay');
+    var status = document.getElementById('leaderboard-status');
+    var list = document.getElementById('leaderboard-list');
+    leaderboardPaused = state === 'play';
+    overlay.hidden = false; status.textContent = 'Loading scores...'; list.innerHTML = '';
+    fetch('/api/doodle/leaderboard').then(function (response) {
+      if (!response.ok) throw new Error('Could not load scores');
+      return response.json();
+    }).then(function (data) {
+      var rows = data && Array.isArray(data.scores) ? data.scores : [];
+      if (!rows.length) { status.textContent = 'No scores yet.'; return; }
+      status.textContent = 'Top 25 players';
+      rows.forEach(function (row) {
+        var item = document.createElement('li');
+        item.textContent = String(row.username || 'Player') + ' — ' + (Number(row.score) || 0).toLocaleString();
+        list.appendChild(item);
+      });
+    }).catch(function () { status.textContent = 'Leaderboard unavailable.'; });
   }
 
   function shoot() {
@@ -481,11 +546,11 @@ p { font-size: 12px; margin: 10px auto 2px; max-width: 480px; }
       cx.font = 'bold 11px monospace'; cx.textAlign = 'center'; cx.fillText(st.join(' '), W / 2, 19);
     }
     if (state === 'ready') box(['CLAUDE JUMP', 'Tap or press START', 'Hold left / right to steer']);
-    if (state === 'over') box(['GAME OVER', why, 'Score ' + score() + (newBest ? '  NEW BEST!' : ''), 'Tap to play again']);
+    if (state === 'over') box(['GAME OVER', why, 'Score ' + score() + (newBest ? '  NEW BEST!' : ''), scoreStatus, 'Tap to play again']);
   }
 
   function loop(t) {
-    if (state === 'play') {
+    if (state === 'play' && !leaderboardPaused) {
       var dt = Math.min((t - last) / 1000, 0.2) * SLOW, n = Math.ceil(dt / 0.034), k;
       last = t;
       for (k = 0; k < n && state === 'play'; k++) step(dt / n);
@@ -562,6 +627,14 @@ p { font-size: 12px; margin: 10px auto 2px; max-width: 480px; }
   hold('br', function (v) { bR = v; }, true);
   hold('bf', function (v) { sH = v; }, false);
   document.getElementById('bs').addEventListener('click', tryStart);
+  document.getElementById('lb').addEventListener('click', showLeaderboard);
+  document.getElementById('leaderboard-close').addEventListener('click', function () {
+    document.getElementById('leaderboard-overlay').hidden = true;
+    leaderboardPaused = false;
+  });
+  document.getElementById('leaderboard-overlay').addEventListener('click', function (e) {
+    if (e.target === e.currentTarget) { e.currentTarget.hidden = true; leaderboardPaused = false; }
+  });
 
   document.addEventListener('keydown', function (e) {
     var k = e.key;
