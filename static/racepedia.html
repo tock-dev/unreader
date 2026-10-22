@@ -72,9 +72,18 @@
       z-index: 5;
     }
 
-    #game-display>iframe {
+    #game-display>div {
       width: 100%;
       height: 100%;
+      display: flex;
+      flex-flow: column nowrap;
+      align-items: start;
+      justify-content: stretch;
+    }
+
+    #game-display iframe {
+      flex: 1 1 0;
+      align-self: stretch;
       border: none;
     }
 
@@ -107,7 +116,10 @@
         <p id='wip-message'>WIP: only singleplayer available</p>
 
         <div id='game-display' class='hide'>
-          <iframe frameborder="0"></iframe>
+          <div>
+            <h1 style='margin-left: 8px;'></h1>
+            <iframe frameborder="0"></iframe>
+          </div>
         </div>
 
         <div id='win-display' class='hide'>
@@ -139,7 +151,7 @@
   </div>
 
   <script>
-    let startPage, finishPage;
+    let startPage, currentPage, finishPage;
     let stack = [];
     let timer = new Date(0), interval;
     const title = document.querySelector('#page-display-index');
@@ -300,17 +312,22 @@
     initializeGame('#game-display', '#start-btn', '#win-display');
 
     function recordUrl(url, gameDisplay, winDisplay) {
+      if (typeof gameDisplay === 'string') gameDisplay = document.querySelector(gameDisplay);
+      if (typeof winDisplay === 'string') winDisplay = document.querySelector(winDisplay);
+      const nameLabel = gameDisplay.querySelector('h1');
       if (stack[stack.length - 1] !== url) {
         const name = url.match(/.*\/([^\/#]*).*/si)[1];
-        stack.push({ name, url });
+        nameLabel.textContent = humanName(name);
+        currentPage = { name, url };
+        stack.push(currentPage);
         console.log('iFrame navigated to:', url, stack);
 
         if (name === finishPage.name) endGame(gameDisplay, winDisplay);
       }
     }
 
-    function humanName(uriName) { return decodeURIComponent(uriName).replace('_', ' '); }
-    function uriName(humanName) { return encodeURIComponent(humanName.replace(' ', '_')); }
+    function humanName(uriName) { return decodeURIComponent(uriName).replaceAll('_', ' '); }
+    function uriName(humanName) { return encodeURIComponent(humanName.replaceAll(' ', '_')); }
     function formatTimer(date) {
       const hours = date.getUTCHours();
       const minutes = date.getUTCMinutes();
