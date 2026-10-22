@@ -6,6 +6,7 @@
     [15, 16], [3, 4], [11, 12], [7, 8], [17, 18], [23, 24], [21, 22], [19, 20],
   ];
   let script;
+  let createPending = false;
 
   function getNekoPet(spriteData) {
     if (!spriteData) return null;
@@ -55,6 +56,27 @@
   }
 
   function createNeko() {
+    if (!document.body) {
+      if (createPending) return;
+      createPending = true;
+
+      function createWhenReady() {
+        if (!document.body) {
+          setTimeout(createWhenReady, 0);
+          return;
+        }
+        createPending = false;
+        if (localStorage.getItem(settingKey) !== 'false' && window.createNeko) createNeko();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', createWhenReady);
+      } else {
+        setTimeout(createWhenReady, 0);
+      }
+      return;
+    }
+
     const neko = window.createNeko();
     const pet = getNekoPet(localStorage.getItem(spriteKey));
     installAnimationSupport(neko);

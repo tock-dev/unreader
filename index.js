@@ -61,6 +61,10 @@ const USER_ROLE_CACHE_TTL = Number(process.env.USER_ROLE_CACHE_TTL_MS || 30000);
 const userRoleCache = new Map();
 const bannedIpCache = new Map();
 const BANNED_IP_CACHE_TTL = Number(process.env.BANNED_IP_CACHE_TTL_MS || 30000);
+const CHANGELOG_CACHE_TTL_MS = 60 * 60 * 1000;
+const CHANGELOG_CACHE_MAX_ENTRIES = 200;
+const changelogCache = new Map();
+const changelogRequests = new Map();
 const BANNED_IP_DB_RETRY_MS = Math.max(
   1000,
   Number(process.env.BANNED_IP_DB_RETRY_MS) || 10000,
@@ -400,6 +404,91 @@ app.get('/portal-2d-editor.html', (req, res) => {
 });
 
 app.use(express.static('./static/'));
+
+app.get('/api/commits', async (req, res) => {
+  const page = Number.parseInt(req.query.page, 10);
+  const perPage = Number.parseInt(req.query.per_page, 10);
+  if (!Number.isInteger(page) || page < 1 || page > 2000) {
+    return res.status(400).json({ error: 'Invalid commit page.' });
+  }
+  if (!Number.isInteger(perPage) || perPage < 1 || perPage > 100) {
+    return res.status(400).json({ error: 'Invalid commits per page.' });
+  }
+
+  const key = `${page}:${perPage}`;
+  const cached = changelogCache.get(key);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) {
+    return res
+      .set('Cache-Control', 'public, max-age=300')
+      .set('X-Changelog-Cache', 'HIT')
+      .json(cached.commits);
+  }
+
+  let request = changelogRequests.get(key);
+  if (!request) {
+    request = (async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const url = new URL(
+          `https://api.github.com/repos/tock-dev/unreader/commits`,
+        );
+        url.searchParams.set('per_page', String(perPage));
+        url.searchParams.set('page', String(page));
+        const response = await fetch(url, {
+          headers: {
+            Accept: 'application/vnd.github+json',
+            'User-Agent': 'Unreader-Changelog',
+          },
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          const error = new Error(`GitHub returned HTTP ${response.status}`);
+          error.status = response.status;
+          throw error;
+        }
+        const commits = await response.json();
+        if (!Array.isArray(commits)) throw new Error('Invalid GitHub response');
+
+        changelogCache.delete(key);
+        changelogCache.set(key, {
+          commits,
+          expiresAt: Date.now() + CHANGELOG_CACHE_TTL_MS,
+        });
+        while (changelogCache.size > CHANGELOG_CACHE_MAX_ENTRIES) {
+          changelogCache.delete(changelogCache.keys().next().value);
+        }
+        return commits;
+      } finally {
+        clearTimeout(timeout);
+      }
+    })();
+    changelogRequests.set(key, request);
+  }
+
+  try {
+    const commits = await request;
+    res
+      .set('Cache-Control', 'public, max-age=300')
+      .set('X-Changelog-Cache', 'MISS')
+      .json(commits);
+  } catch (error) {
+    if (cached) {
+      return res
+        .set('Cache-Control', 'public, max-age=60')
+        .set('X-Changelog-Cache', 'STALE')
+        .json(cached.commits);
+    }
+    const rateLimited = error.status === 403 || error.status === 429;
+    log('GitHub changelog request failed:', error.message);
+    res.status(502).json({
+      error: rateLimited ? 'rate_limited' : 'github_unavailable',
+    });
+  } finally {
+    if (changelogRequests.get(key) === request) changelogRequests.delete(key);
+  }
+});
 
 const fandomEditorSessions = new Map();
 const FANDOM_EDITOR_SESSION_TTL_MS = 2 * 60 * 60 * 1000;

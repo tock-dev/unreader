@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Un-Reader Changelog</title>
+  <style>
+    * { box-sizing: border-box; transition: none !important; animation: none !important; }
+    body { margin: 0; padding: 8px; color: #000; background: #fff; font-family: Arial, sans-serif; }
+    .window { width: 100%; max-width: 760px; margin: 0 auto; border: 2px solid #000; box-shadow: 4px 4px 0 #000; }
+    .title-bar { position: relative; min-height: 42px; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #000; padding: 4px; }
+    .stripes { position: absolute; top: 7px; right: 7px; bottom: 7px; left: 7px; background: repeating-linear-gradient(to bottom, #000 0, #000 2px, #fff 2px, #fff 4px); }
+    .title { position: relative; z-index: 1; padding: 0 10px; background: #fff; font-weight: bold; }
+    .home { position: absolute; z-index: 2; left: 8px; top: 6px; padding: 3px 8px; border: 2px solid #000; box-shadow: 2px 2px 0 #000; color: #000; background: #fff; font: bold 12px Arial, sans-serif; text-decoration: none; }
+    main { padding: 12px; }
+    .intro { margin: 0 0 12px; font-size: 13px; }
+    .repo-link { color: #000; }
+    #status { min-height: 20px; margin: 8px 0; font-size: 12px; }
+    .commit { margin: 0 0 10px; padding: 10px; border: 2px solid #000; box-shadow: 2px 2px 0 #aaa; overflow-wrap: break-word; word-wrap: break-word; }
+    .commit-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 7px; font-size: 11px; font-weight: bold; }
+    .commit-message { white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word; font: 13px/1.4 monospace; }
+    .commit-sha { margin-left: 8px; color: #000; }
+    button { min-height: 40px; padding: 6px 12px; border: 2px solid #000; box-shadow: 2px 2px 0 #000; color: #000; background: #fff; font-weight: bold; cursor: pointer; }
+    button:active, .home:active { color: #fff; background: #000; }
+    #older { display: block; width: 100%; margin-top: 12px; }
+    #older[hidden] { display: none; }
+    @media (max-width: 420px) {
+      .title { margin-left: 72px; font-size: 13px; }
+      .commit-meta { display: block; line-height: 1.5; }
+      .commit-sha { margin-left: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="window">
+    <header class="title-bar">
+      <div class="stripes" aria-hidden="true"></div>
+      <a class="home" href="index.html">&lt; HOME</a>
+      <div class="title">UN-READER CHANGELOG</div>
+    </header>
+    <main>
+      <p class="intro">Recent commits from <a class="repo-link" href="https://github.com/tock-dev/unreader" target="_blank" rel="noopener noreferrer">tock-dev/unreader</a>.</p>
+      <div id="status" role="status" aria-live="polite">Loading commits...</div>
+      <section id="commits" aria-label="Repository commits"></section>
+      <button id="older" type="button" hidden>LOAD OLDER COMMITS</button>
+    </main>
+  </div>
+  <script>
+    (function () {
+      var owner = 'tock-dev';
+      var repo = 'unreader';
+      var perPage = 25;
+      var page = 1;
+      var loading = false;
+      var hasMore = true;
+      var seen = {};
+      var status = document.getElementById('status');
+      var commits = document.getElementById('commits');
+      var older = document.getElementById('older');
+
+      function displayDate(value) {
+        var date = new Date(value);
+        return isNaN(date.getTime()) ? '' : date.toLocaleString();
+      }
+
+      function addCommit(entry) {
+        if (!entry || !entry.sha || seen[entry.sha]) return;
+        seen[entry.sha] = true;
+        var data = entry.commit || {};
+        var author = data.author || {};
+        var card = document.createElement('article');
+        var meta = document.createElement('div');
+        var who = document.createElement('span');
+        var date = document.createElement('span');
+        var message = document.createElement('div');
+        var link = document.createElement('a');
+
+        card.className = 'commit';
+        meta.className = 'commit-meta';
+        message.className = 'commit-message';
+        who.textContent = author.name || (entry.author && entry.author.login) || 'Unknown author';
+        date.textContent = displayDate(author.date);
+        link.className = 'commit-sha';
+        link.href = 'https://github.com/' + owner + '/' + repo + '/commit/' + encodeURIComponent(entry.sha);
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = entry.sha.slice(0, 7);
+        message.textContent = data.message || '(no commit message)';
+        meta.appendChild(who);
+        meta.appendChild(date);
+        meta.appendChild(link);
+        card.appendChild(meta);
+        card.appendChild(message);
+        commits.appendChild(card);
+      }
+
+      function loadPage() {
+        if (loading || !hasMore) return;
+        loading = true;
+        older.disabled = true;
+        older.textContent = 'LOADING...';
+        status.textContent = 'Loading commits...';
+        var request = new XMLHttpRequest();
+        request.open('GET', '/api/commits?per_page=' + perPage + '&page=' + page, true);
+        request.timeout = 15000;
+        request.onreadystatechange = function () {
+          if (request.readyState !== 4) return;
+          loading = false;
+          older.disabled = false;
+          if (request.status < 200 || request.status >= 300) {
+            var errorData;
+            try { errorData = JSON.parse(request.responseText); } catch (e) { errorData = null; }
+            status.textContent = errorData && errorData.error === 'rate_limited' ? 'GitHub is rate-limiting requests. Please try again later.' : 'Could not load commits. Please try again later.';
+            older.hidden = false;
+            older.textContent = 'RETRY';
+            return;
+          }
+          var rows;
+          try { rows = JSON.parse(request.responseText); } catch (e) { rows = null; }
+          if (!Array.isArray(rows)) {
+            status.textContent = 'GitHub returned an unexpected response.';
+            older.hidden = false;
+            older.textContent = 'RETRY';
+            return;
+          }
+          rows.forEach(addCommit);
+          page++;
+          hasMore = rows.length === perPage;
+          status.textContent = commits.children.length ? 'Showing repository commits, newest first.' : 'No commits found.';
+          older.hidden = !hasMore;
+          older.textContent = 'LOAD OLDER COMMITS';
+        };
+        request.onerror = function () {
+          loading = false;
+          older.disabled = false;
+          older.hidden = false;
+          older.textContent = 'RETRY';
+          status.textContent = 'Could not reach GitHub. Check your connection and try again.';
+        };
+        request.ontimeout = request.onerror;
+        request.send();
+      }
+
+      older.addEventListener('click', loadPage);
+      loadPage();
+    })();
+  </script>
+</body>
+</html>
