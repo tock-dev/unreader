@@ -1,0 +1,326 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://w3.org">
+<html lang="en">
+
+<head>
+  <script src="neko-loader.js"></script>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="An online Wikipedia race game." />
+  <meta name="robots" content="index, follow" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&icon_names=close" rel="stylesheet" />
+  <link rel="stylesheet" media="screen" href="https://fontlibrary.org/face/symbola/css/symbola.css" type="text/css" />
+  <!-- <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&icon_names=cast,screen_share,stop_screen_share,stop_circle,close" rel="stylesheet" /> -->
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="bbs.css" />
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+  <script src="common.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.2/purify.min.js"></script>
+  <style>
+    #content-cell {
+      align-items: center;
+    }
+
+    #pagination-header-bar {
+      align-self: stretch;
+    }
+
+    #main-menu {
+      display: flex;
+      flex-flow: column nowrap;
+      align-items: stretch;
+      justify-items: center;
+      width: 50%;
+      height: max-content;
+    }
+
+    .wiki-page-input {
+      display: flex;
+      flex-flow: column nowrap;
+      align-items: stretch;
+      position: relative;
+    }
+
+    .wiki-page-input input {
+      margin-top: 2px;
+      box-sizing: border-box;
+    }
+
+    .autocomplete-dropdown {
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    .autocomplete-entry {
+      border: 2px solid black;
+      border-top: none;
+      padding: 1px 5px;
+    }
+
+    .autocomplete-entry:hover {
+      cursor: pointer;
+      text-decoration: underline gray;
+    }
+
+    #game-display,
+    #win-display {
+      /* position: fixed;
+      top: 0;
+      left: 0; */
+      width: 100%;
+      height: 100%;
+      background-color: white;
+      z-index: 5;
+    }
+
+    #game-display>iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    #win-display>div {
+      margin-top: 10vh;
+      display: flex;
+      flex-flow: column nowrap;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+  <title>Racepedia</title>
+</head>
+
+<body>
+  <div class="window">
+    <div class="title-bar">
+      <div class="title-stripes"></div>
+      <button id="back-btn" onclick="window.location.href = 'index.html'">
+        ◀ HOME
+      </button>
+      <div class="title-text">un-reader BBS - Racepedia</div>
+    </div>
+
+    <div id="workspace-table">
+      <div id="content-cell">
+        <div id="pagination-header-bar">
+          <span id="page-display-index">Racepedia</span>
+        </div>
+        <p id='wip-message'>WIP: only singleplayer available</p>
+
+        <div id='game-display' class='hide'>
+          <iframe frameborder="0"></iframe>
+        </div>
+
+        <div id='win-display' class='hide'>
+          <div>
+            <button style='position: absolute;top: 5px;left: 5px;' onclick='document.location.href="/";'
+              class='paper-btn shadow'><span class="material-symbols-outlined">close</span></button>
+            <h1>You won in [HH:]MM:SS!</h1>
+            <ul></ul>
+            <button class='paper-btn' onclick='restartGame("#game-display","#win-display");'>Restart</button>
+          </div>
+        </div>
+
+        <div id='main-menu'>
+          <div class='wiki-page-input' id="start-input">
+            <label for="start-input">Starting page</label>
+            <input class="paper-input" type="text" placeholder="Start entering a page name..." />
+            <div class='autocomplete-dropdown'></div>
+          </div>
+          <div class='wiki-page-input' id="finish-input">
+            <label for="finish-input">Finishing page</label>
+            <input class="paper-input" type="text" placeholder="Start entering a page name..." />
+            <div class='autocomplete-dropdown'></div>
+          </div>
+          <button class='paper-btn shadow' style='margin-block:5px;' id='start-btn'>Start</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <script>
+    let startPage, finishPage;
+    let stack = [];
+    let timer = new Date(0), interval;
+    const title = document.querySelector('#page-display-index');
+
+    function initializeTextField(element) {
+      let autocompleteTimeout;
+
+      if (typeof element === 'string') element = document.querySelector(element);
+      const inputField = element.querySelector('input')
+      const dropdown = element.querySelector('.autocomplete-dropdown');
+
+      inputField.value = '';
+
+      element.addEventListener('input', (e) => {
+        let value = inputField.value;
+        if (typeof value !== 'string') throw new Error('<input>.value is not String');
+        value = value.trim();
+        if (value !== '') {
+          if (autocompleteTimeout) clearTimeout(autocompleteTimeout);
+          autocompleteTimeout = setTimeout(() => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('get', `https://en.wikipedia.org/w/api.php?action=opensearch&search=${value}&limit=3&format=json&origin=*`);
+            xhr.send();
+            xhr.onreadystatechange = e => {
+              if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                  dropdown.textContent = '';
+                  const results = JSON.parse(xhr.responseText);
+                  for (let i = 0; i < results[1].length; i++) {
+                    let name = results[1][i];
+                    // const url = results[3][i];
+
+                    const entry = document.createElement('div');
+                    entry.classList.add('autocomplete-entry');
+                    entry.textContent = name;
+                    entry.addEventListener('click', () => {
+                      inputField.value = name;
+                      dropdown.textContent = '';
+
+                      name = uriName(name);
+                      const url = BACKEND_URL + '/api/wikipedia/' + name;
+                      const page = { name, url };
+                      if (element.id === 'start-input') startPage = page; else finishPage = page;
+                    });
+                    dropdown.appendChild(entry);
+                  }
+                }
+              }
+            };
+          }, 500);
+        }
+      });
+    }
+
+    function initializeGame(gameDisplay, startButton, winDisplay) {
+      if (typeof gameDisplay === 'string') gameDisplay = document.querySelector(gameDisplay);
+      if (typeof startButton === 'string') startButton = document.querySelector(startButton);
+      if (typeof winDisplay === 'string') winDisplay = document.querySelector(winDisplay);
+
+      hide(gameDisplay);
+      hide(winDisplay);
+
+      startButton.addEventListener('click', () => {
+        if (!startPage && !finishPage) {
+          unAlert('Choose both starting and finishing pages');
+          return;
+        }
+
+        startGame(gameDisplay, startButton, winDisplay);
+      });
+    }
+
+    function startGame(gameDisplay, startButton, winDisplay) {
+      if (typeof gameDisplay === 'string') gameDisplay = document.querySelector(gameDisplay);
+      if (typeof startButton === 'string') startButton = document.querySelector(startButton);
+      if (typeof winDisplay === 'string') winDisplay = document.querySelector(winDisplay);
+      const iframe = gameDisplay.querySelector('iframe');
+
+      refreshTimer();
+      interval = setInterval(() => { timer.setSeconds(timer.getSeconds() + 1); refreshTimer(); }, 1000);
+
+      iframe.src = startPage.url;
+      iframe.addEventListener('load', () => {
+        show(gameDisplay);
+        hide('#wip-message');
+        document.querySelector('#main-menu').style = 'display:none;';
+
+        try {
+          const win = iframe.contentWindow;
+          recordUrl(win.location.href, gameDisplay, winDisplay);
+
+          const originalPushState = win.history.pushState;
+          const originalReplaceState = win.history.replaceState;
+
+          win.history.pushState = function (...args) {
+            originalPushState.apply(this, args);
+            recordUrl(win.location.href, gameDisplay, winDisplay);
+          };
+
+          win.history.replaceState = function (...args) {
+            originalReplaceState.apply(this, args);
+            recordUrl(win.location.href, gameDisplay, winDisplay);
+          };
+
+          win.addEventListener('popstate', () => {
+            recordUrl(win.location.href, gameDisplay, winDisplay);
+          });
+
+        } catch (e) {
+          console.error('Cannot access iFrame content:', e);
+        }
+      });
+    }
+
+    function endGame(gameDisplay, winDisplay) {
+      if (typeof gameDisplay === 'string') gameDisplay = document.querySelector(gameDisplay);
+      if (typeof winDisplay === 'string') winDisplay = document.querySelector(winDisplay);
+      const pageList = winDisplay.querySelector('ul');
+
+      hide(gameDisplay);
+      clearInterval(interval);
+      title.textContent = 'You won!';
+      winDisplay.querySelector('h1').textContent = `You won in ${formatTimer(timer)}!`;
+
+      pageList.textContent = '';
+      for (const page of stack) {
+        const listItem = document.createElement('li');
+        listItem.textContent = humanName(page.name);
+        pageList.appendChild(listItem);
+      }
+      show(winDisplay);
+    }
+
+    function restartGame(gameDisplay, winDisplay) {
+      if (typeof gameDisplay === 'string') gameDisplay = document.querySelector(gameDisplay);
+      if (typeof winDisplay === 'string') winDisplay = document.querySelector(winDisplay);
+      const pageList = winDisplay.querySelector('ul');
+
+      initializeTextField('#start-input');
+      initializeTextField('#finish-input');
+
+      hide(gameDisplay);
+      hide(winDisplay);
+      show('#wip-message');
+      document.querySelector('#main-menu').style = '';
+      title.textContent = 'Racepedia';
+      pageList.textContent = '';
+
+      timer = new Date(0);
+    }
+
+    function refreshTimer() {
+      title.innerHTML = `${formatTimer(timer)} - Get to <b>${humanName(finishPage.name)}</b>`;
+    }
+
+    initializeTextField('#start-input');
+    initializeTextField('#finish-input');
+    initializeGame('#game-display', '#start-btn', '#win-display');
+
+    function recordUrl(url, gameDisplay, winDisplay) {
+      if (stack[stack.length - 1] !== url) {
+        const name = url.match(/.*\/([^\/#]*).*/si)[1];
+        stack.push({ name, url });
+        console.log('iFrame navigated to:', url, stack);
+
+        if (name === finishPage.name) endGame(gameDisplay, winDisplay);
+      }
+    }
+
+    function humanName(uriName) { return decodeURIComponent(uriName).replace('_', ' '); }
+    function uriName(humanName) { return encodeURIComponent(humanName.replace(' ', '_')); }
+    function formatTimer(date) {
+      const hours = date.getUTCHours();
+      const minutes = date.getUTCMinutes();
+      const seconds = date.getUTCSeconds();
+      let formatted = hours > 0 ? `${String(hours).padStart(2, '0')}:` : '';
+      formatted += `${String(minutes).padStart(2, '0')}:`;
+      formatted += `${String(seconds).padStart(2, '0')}`;
+      return formatted;
+    }
+  </script>
+</body>
+
+</html>

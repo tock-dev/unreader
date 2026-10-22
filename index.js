@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import pkg from 'pg';
 import cors from 'cors';
 import sanitizeHtml from 'sanitize-html';
+import { JSDOM } from 'jsdom';
 
 const { Pool } = pkg;
 const JWT_SECRET = process.env.JWT_SECRET || 'brutalist_secret_key_123';
@@ -208,6 +209,12 @@ async function initDatabase() {
         username TEXT NOT NULL,
         admin_filter TEXT,
         completion BOOLEAN
+      );
+
+      CREATE TABLE IF NOT EXISTS wikipedia (
+        id SERIAL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL,
+        html TEXT NOT NULL
       );
     `);
     log('Structural migration successful.');
@@ -1927,6 +1934,55 @@ app.delete('/api/suggestions/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Server error.' });
   }
 });
+
+let wikipediaIndex = null
+app.get('/api/wikipedia/:page', async (req, res) => {
+  let name = req.params.page
+  if (typeof name !== 'string' || name.trim() === '') {
+    res.status(400).json({
+      type: 'wikipedia_error',
+      error: 'Invalid page'
+    })
+    return
+  }
+  name = name.trim()
+
+  if (!wikipediaIndex) {
+    wikipediaIndex = []
+    const wikipediaIndexQuery = await db.query('SELECT name FROM wikipedia;')
+    for (const row of wikipediaIndexQuery.rows) wikipediaIndex.push(row.name)
+    log('loaded wikipedia index:', wikipediaIndex)
+  }
+  if (wikipediaIndex && wikipediaIndex.includes(name)) {
+    const wikipediaQuery = await db.query('SELECT * FROM wikipedia WHERE name = $1;', [name])
+    res.status(200).send(wikipediaQuery.rows[0].html)
+    return
+  }
+
+  log('requesting', `https://en.wikipedia.org/w/rest.php/v1/page/${name}/html`)
+  const request = await fetch(`https://en.wikipedia.org/w/rest.php/v1/page/${name}/html`)
+  let html = await request.text()
+  html = html.replace(
+    /(<a\b[^>]*?\bhref\s*=\s*["']?)\.?\/([^\/#?'"]+(?:#[^"']*)?)(["']?)/gi,
+    '$1/api/wikipedia/$2$3'
+  ) // prefixes all local links with /api/wikipedia
+  html = html.replace(
+    /<a\b(?=[^>]*\bhref\s*=\s*["'](?:https?:)?\/\/)[^>]*>(.*?)<\/a>/gis,
+    '$1'
+  ) // strips away all external links
+  html = html.replace(
+    /<base.*?>(?:<\/base>)?/gi,
+    ''
+  ) // delete all <base> tags
+  html = html.replace(
+    /(<link.*?rel\s?=\s?['"]?stylesheet['"]?.*?href\s?=\s?['"]?)(.*?)(['"]?.*?>)/,
+    '$1https://en.wikipedia.org/$2$3'
+  ) // add external link prefix to the stylesheet URL
+  res.status(200).send(html)
+
+  await db.query('INSERT INTO wikipedia (name, html) VALUES ($1, $2);', [name, html])
+  wikipediaIndex.push(name)
+})
 
 const P2D_CANVAS_W = 640;
 const P2D_CANVAS_H = 400;

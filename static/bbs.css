@@ -17,6 +17,7 @@
   flex-shrink: 0;
 }
 
+#content-cell,
 #chat-cell {
   vertical-align: top;
   padding: 0;

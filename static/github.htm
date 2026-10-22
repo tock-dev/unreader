@@ -16,7 +16,8 @@
       --border-width: 2px;
     }
 
-    html, body {
+    html,
+    body {
       margin: 0;
       padding: 0;
       width: 100%;
@@ -51,11 +52,19 @@
 
     .title-stripes {
       position: absolute;
-      top: 0; left: 0; right: 0; height: 3px;
-      background: repeating-linear-gradient(45deg, var(--border-color), var(--border-color) 4px, transparent 4px, transparent 8px);
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: repeating-linear-gradient(45deg,
+          var(--border-color),
+          var(--border-color) 4px,
+          transparent 4px,
+          transparent 8px);
     }
 
-    #back-btn, .retro-btn {
+    #back-btn,
+    .retro-btn {
       font-family: inherit;
       font-size: 11px;
       font-weight: bold;
@@ -67,7 +76,10 @@
       text-transform: uppercase;
     }
 
-    #back-btn:active, .retro-btn:active, .page-btn:active, .mod-tray-btn:active {
+    #back-btn:active,
+    .retro-btn:active,
+    .page-btn:active,
+    .mod-tray-btn:active {
       background: var(--text-color);
       color: var(--bg-color);
     }
@@ -237,6 +249,7 @@
       margin-bottom: 10px;
       font-weight: bold;
     }
+
     .admin-msg .message-text {
       color: var(--bg-color) !important;
     }
@@ -262,6 +275,7 @@
       padding: 3px 6px;
       text-transform: uppercase;
     }
+
     .mod-tray-btn:hover {
       background: var(--text-color);
       color: var(--bg-color);
@@ -272,6 +286,7 @@
       border-bottom: 1px dotted var(--border-color);
       font-size: 11px;
     }
+
     .roster-name {
       font-weight: bold;
       cursor: pointer;
@@ -280,13 +295,17 @@
 
     #auth-screen {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 1000;
     }
+
     .auth-box {
       background: var(--bg-color);
       color: var(--text-color);
@@ -296,6 +315,7 @@
       width: 320px;
       box-sizing: border-box;
     }
+
     .auth-box h2 {
       font-size: 14px;
       text-transform: uppercase;
@@ -312,15 +332,22 @@
     <div id="auth-screen">
       <div class="auth-box">
         <h2>GitHub Token Auth</h2>
-        <input type="password" id="token-input" class="retro-input" placeholder="ghp_xxxxxxxxxxxx" style="margin-bottom: 15px;" />
-        <button class="retro-btn" style="width:100%; margin-bottom: 8px;" onclick="saveToken()">SAVE TO LOCAL & ACCOUNT</button>
-        <button class="retro-btn" style="width:100%;" onclick="toggleAuth(false)">CLOSE</button>
+        <input type="password" id="token-input" class="retro-input" placeholder="ghp_xxxxxxxxxxxx"
+          style="margin-bottom: 15px" />
+        <button class="retro-btn" style="width: 100%; margin-bottom: 8px" onclick="saveToken()">
+          SAVE TO LOCAL & ACCOUNT
+        </button>
+        <button class="retro-btn" style="width: 100%" onclick="toggleAuth(false)">
+          CLOSE
+        </button>
       </div>
     </div>
 
     <div class="title-bar">
       <div class="title-stripes"></div>
-      <button id="back-btn" onclick="window.location.href='index.html'">CLOSE</button>
+      <button id="back-btn" onclick="window.location.href = 'index.html'">
+        CLOSE
+      </button>
       <div class="title-text">GitHub E-Ink Workspace</div>
       <div>
         <button id="back-btn" onclick="toggleAuth(true)">KEY</button>
@@ -337,43 +364,65 @@
         </div>
 
         <div class="panel-header">Navigation</div>
-        <div id="nav-home" class="nav-item nav-item-active" onclick="showHome()">Home Dashboard</div>
-        <div id="nav-exit" class="nav-item" style="font-weight: bold; background: #eee;" onclick="showHome()">[<- BACK]</div>
-        <div id="nav-readme" class="nav-item" onclick="switchTab('readme')">README.md</div>
-        <div id="nav-files" class="nav-item" onclick="switchTab('files')">File Explorer</div>
-        <div id="nav-issues" class="nav-item" onclick="switchTab('issues')">Issues</div>
-        <div id="nav-releases" class="nav-item" onclick="switchTab('releases')">Releases</div>
+        <div id="nav-home" class="nav-item nav-item-active" onclick="showHome()">
+          Home Dashboard
+        </div>
+        <div id="nav-exit" class="nav-item" style="font-weight: bold; background: #eee" onclick="showHome()">
+          [<- BACK] </div>
+            <div id="nav-readme" class="nav-item" onclick="switchTab('readme')">
+              README.md
+            </div>
+            <div id="nav-files" class="nav-item" onclick="switchTab('files')">
+              File Explorer
+            </div>
+            <div id="nav-issues" class="nav-item" onclick="switchTab('issues')">
+              Issues
+            </div>
+            <div id="nav-releases" class="nav-item" onclick="switchTab('releases')">
+              Releases
+            </div>
 
-        <div class="panel-header">Repository Info</div>
-        <div id="repo-stats">
-          <div class="roster-user">Current: <span class="roster-name" id="stat-current">Home</span></div>
-          <div class="roster-user">Stars: <span class="roster-name" id="stat-stars">-</span></div>
-          <div class="roster-user">Forks: <span class="roster-name" id="stat-forks">-</span></div>
+            <div class="panel-header">Repository Info</div>
+            <div id="repo-stats">
+              <div class="roster-user">
+                Current: <span class="roster-name" id="stat-current">Home</span>
+              </div>
+              <div class="roster-user">
+                Stars: <span class="roster-name" id="stat-stars">-</span>
+              </div>
+              <div class="roster-user">
+                Forks: <span class="roster-name" id="stat-forks">-</span>
+              </div>
+            </div>
+
+            <div class="panel-header">My Repositories</div>
+            <div id="sidebar-my-repos">
+              <div class="roster-user" style="color: #666">
+                Enter KEY token to load repos.
+              </div>
+            </div>
+
+            <div class="panel-header" id="sidebar-tree-header" style="display: none">
+              File Tree
+            </div>
+            <div id="sidebar-tree"></div>
         </div>
 
-        <div class="panel-header">My Repositories</div>
-        <div id="sidebar-my-repos">
-          <div class="roster-user" style="color: #666;">Enter KEY token to load repos.</div>
-        </div>
+        <div id="chat-cell">
+          <div id="pagination-header-bar">
+            <button class="page-btn" onclick="changePage(-1)">&lt; PREV</button>
+            <span id="page-display-index">Page 1 / 1</span>
+            <button class="page-btn" onclick="changePage(1)">NEXT &gt;</button>
+          </div>
 
-        <div class="panel-header" id="sidebar-tree-header" style="display:none;">File Tree</div>
-        <div id="sidebar-tree"></div>
-      </div>
+          <div id="chat-scroll-wrapper">
+            <div id="main-view">Loading home dashboard...</div>
+          </div>
 
-      <div id="chat-cell">
-        <div id="pagination-header-bar">
-          <button class="page-btn" onclick="changePage(-1)">&lt; PREV</button>
-          <span id="page-display-index">Page 1 / 1</span>
-          <button class="page-btn" onclick="changePage(1)">NEXT &gt;</button>
-        </div>
-
-        <div id="chat-scroll-wrapper">
-          <div id="main-view">Loading home dashboard...</div>
-        </div>
-
-        <div id="input-bar-container">
-          <input type="text" id="content" class="retro-input" placeholder="Search GitHub repos globally..." />
-          <button class="retro-btn" onclick="searchGitHub()">SEARCH</button>
+          <div id="input-bar-container">
+            <input type="text" id="content" class="retro-input" placeholder="Search GitHub repos globally..." />
+            <button class="retro-btn" onclick="searchGitHub()">SEARCH</button>
+          </div>
         </div>
       </div>
     </div>
@@ -392,14 +441,17 @@
     function apiRequest(method, url, acceptHeader, bodyObj, callback) {
       var xhr = new XMLHttpRequest();
       xhr.open(method, url, true);
-      xhr.setRequestHeader('Accept', acceptHeader || 'application/vnd.github+json');
+      xhr.setRequestHeader(
+        'Accept',
+        acceptHeader || 'application/vnd.github+json',
+      );
       if (ghToken) {
         xhr.setRequestHeader('Authorization', 'Bearer ' + ghToken);
       }
       if (bodyObj) {
         xhr.setRequestHeader('Content-Type', 'application/json');
       }
-      xhr.onreadystatechange = function() {
+      xhr.onreadystatechange = function () {
         if (xhr.readyState === 4) {
           if (xhr.status >= 200 && xhr.status < 300) {
             callback(null, xhr.responseText);
@@ -421,17 +473,29 @@
     }
 
     function utf8ToBase64(str) {
-      return window.btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
-        return String.fromCharCode('0x' + p1);
-      }));
+      return window.btoa(
+        encodeURIComponent(str).replace(
+          /%([0-9A-F]{2})/g,
+          function (match, p1) {
+            return String.fromCharCode('0x' + p1);
+          },
+        ),
+      );
     }
 
     function setActiveNav(id) {
-      var ids = ['nav-home', 'nav-readme', 'nav-files', 'nav-issues', 'nav-releases'];
+      var ids = [
+        'nav-home',
+        'nav-readme',
+        'nav-files',
+        'nav-issues',
+        'nav-releases',
+      ];
       for (var i = 0; i < ids.length; i++) {
         var el = document.getElementById(ids[i]);
         if (el) {
-          el.className = (ids[i] === id) ? 'nav-item nav-item-active' : 'nav-item';
+          el.className =
+            ids[i] === id ? 'nav-item nav-item-active' : 'nav-item';
         }
       }
     }
@@ -444,7 +508,8 @@
 
     function renderCurrentPage() {
       document.getElementById('main-view').innerHTML = pages[currentPage];
-      document.getElementById('page-display-index').innerHTML = 'Page ' + (currentPage + 1) + ' / ' + pages.length;
+      document.getElementById('page-display-index').innerHTML =
+        'Page ' + (currentPage + 1) + ' / ' + pages.length;
       document.getElementById('chat-scroll-wrapper').scrollTop = 0;
     }
 
@@ -465,60 +530,99 @@
       document.getElementById('sidebar-tree-header').style.display = 'none';
       document.getElementById('sidebar-tree').innerHTML = '';
 
-      var html = '<div class="admin-msg"><div class="message-text">GITHUB E-INK DASHBOARD // HOME</div></div>';
+      var html =
+        '<div class="admin-msg"><div class="message-text">GITHUB E-INK DASHBOARD // HOME</div></div>';
       html += '<div class="message"><div class="message-text">';
-      html += 'Welcome to your Kindle GitHub client! Enter any repo in Quick Open above, search globally using the bottom bar, or tap KEY in the top right to load your own repositories.<br><br>';
+      html +=
+        'Welcome to your Kindle GitHub client! Enter any repo in Quick Open above, search globally using the bottom bar, or tap KEY in the top right to load your own repositories.<br><br>';
       html += 'Featured Repositories:<br>';
-      html += '- <span class="roster-name" onclick="loadRepo(\'koreader/koreader\')">koreader/koreader</span> (E-ink document reader)<br>';
-      html += '- <span class="roster-name" onclick="loadRepo(\'torvalds/linux\')">torvalds/linux</span> (Linux Kernel source)<br>';
-      html += '- <span class="roster-name" onclick="loadRepo(\'espressif/esp-idf\')">espressif/esp-idf</span> (ESP32 IoT Development)<br>';
-      html += '- <span class="roster-name" onclick="loadRepo(\'git/git\')">git/git</span> (Git source code)<br>';
+      html +=
+        '- <span class="roster-name" onclick="loadRepo(\'koreader/koreader\')">koreader/koreader</span> (E-ink document reader)<br>';
+      html +=
+        '- <span class="roster-name" onclick="loadRepo(\'torvalds/linux\')">torvalds/linux</span> (Linux Kernel source)<br>';
+      html +=
+        '- <span class="roster-name" onclick="loadRepo(\'espressif/esp-idf\')">espressif/esp-idf</span> (ESP32 IoT Development)<br>';
+      html +=
+        '- <span class="roster-name" onclick="loadRepo(\'git/git\')">git/git</span> (Git source code)<br>';
       html += '</div></div>';
 
       if (ghToken) {
-        html += '<div class="admin-msg" style="margin-top:15px;"><div class="message-text">YOUR AUTHENTICATED REPOSITORIES</div></div>';
-        html += '<div id="home-my-repos"><div class="message"><div class="message-text">Loading your repos...</div></div></div>';
-        fetchMyReposForHome(function(repoListHtml) {
+        html +=
+          '<div class="admin-msg" style="margin-top:15px;"><div class="message-text">YOUR AUTHENTICATED REPOSITORIES</div></div>';
+        html +=
+          '<div id="home-my-repos"><div class="message"><div class="message-text">Loading your repos...</div></div></div>';
+        fetchMyReposForHome(function (repoListHtml) {
           var el = document.getElementById('home-my-repos');
           if (el) el.innerHTML = repoListHtml;
         });
       } else {
-        html += '<div class="admin-msg" style="margin-top:15px;"><div class="message-text">YOUR REPOSITORIES</div></div>';
-        html += '<div class="message"><div class="message-text">Tap KEY in the top bar and enter your GitHub Token to see your personal and organization repositories here!</div></div>';
+        html +=
+          '<div class="admin-msg" style="margin-top:15px;"><div class="message-text">YOUR REPOSITORIES</div></div>';
+        html +=
+          '<div class="message"><div class="message-text">Tap KEY in the top bar and enter your GitHub Token to see your personal and organization repositories here!</div></div>';
       }
 
       setPages([html]);
     }
 
     function fetchMyReposForHome(callback) {
-      apiRequest('GET', 'https://api.github.com/user/repos?sort=updated&per_page=12', null, null, function(err, res) {
-        if (err) {
-          callback('<div class="message"><div class="message-text">Failed to load user repos: ' + err + '</div></div>');
-          return;
-        }
-        var repos = JSON.parse(res);
-        if (!repos.length) {
-          callback('<div class="message"><div class="message-text">No repositories found on this account.</div></div>');
-          return;
-        }
-        var html = '';
-        var sidebarHtml = '';
-        for (var i = 0; i < repos.length; i++) {
-          var r = repos[i];
-          html += '<div class="message"><div class="message-text">';
-          html += '<span class="roster-name" onclick="loadRepo(\'' + r.full_name + '\')">' + r.full_name + '</span> (Stars: ' + r.stargazers_count + ')<br>';
-          html += (r.description || 'No description.');
-          html += '</div><div class="mod-action-tray"><button class="mod-tray-btn" onclick="loadRepo(\'' + r.full_name + '\')">Open Repo</button></div></div>';
-          
-          sidebarHtml += '<div class="roster-user"><span class="roster-name" onclick="loadRepo(\'' + r.full_name + '\')">' + r.name + '</span></div>';
-        }
-        document.getElementById('sidebar-my-repos').innerHTML = sidebarHtml;
-        callback(html);
-      });
+      apiRequest(
+        'GET',
+        'https://api.github.com/user/repos?sort=updated&per_page=12',
+        null,
+        null,
+        function (err, res) {
+          if (err) {
+            callback(
+              '<div class="message"><div class="message-text">Failed to load user repos: ' +
+              err +
+              '</div></div>',
+            );
+            return;
+          }
+          var repos = JSON.parse(res);
+          if (!repos.length) {
+            callback(
+              '<div class="message"><div class="message-text">No repositories found on this account.</div></div>',
+            );
+            return;
+          }
+          var html = '';
+          var sidebarHtml = '';
+          for (var i = 0; i < repos.length; i++) {
+            var r = repos[i];
+            html += '<div class="message"><div class="message-text">';
+            html +=
+              '<span class="roster-name" onclick="loadRepo(\'' +
+              r.full_name +
+              '\')">' +
+              r.full_name +
+              '</span> (Stars: ' +
+              r.stargazers_count +
+              ')<br>';
+            html += r.description || 'No description.';
+            html +=
+              '</div><div class="mod-action-tray"><button class="mod-tray-btn" onclick="loadRepo(\'' +
+              r.full_name +
+              '\')">Open Repo</button></div></div>';
+
+            sidebarHtml +=
+              '<div class="roster-user"><span class="roster-name" onclick="loadRepo(\'' +
+              r.full_name +
+              '\')">' +
+              r.name +
+              '</span></div>';
+          }
+          document.getElementById('sidebar-my-repos').innerHTML = sidebarHtml;
+          callback(html);
+        },
+      );
     }
 
     function loadRepoFromInput() {
-      var val = document.getElementById('repo-input').value.replace(/^\s+|\s+$/g, '');
+      var val = document
+        .getElementById('repo-input')
+        .value.replace(/^\s+|\s+$/g, '');
       if (val) loadRepo(val);
     }
 
@@ -526,125 +630,255 @@
       currentRepo = repoName;
       document.getElementById('repo-input').value = repoName;
       document.getElementById('stat-current').innerHTML = repoName;
-      setPages(['<div class="message"><div class="message-text">Fetching ' + repoName + '...</div></div>']);
+      setPages([
+        '<div class="message"><div class="message-text">Fetching ' +
+        repoName +
+        '...</div></div>',
+      ]);
 
-      apiRequest('GET', 'https://api.github.com/repos/' + repoName, null, null, function(err, res) {
-        if (err) {
-          setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
-          return;
-        }
-        var data = JSON.parse(res);
-        document.getElementById('stat-stars').innerHTML = data.stargazers_count;
-        document.getElementById('stat-forks').innerHTML = data.forks_count || 0;
-        document.getElementById('sidebar-tree-header').style.display = 'block';
-        loadDirectory('', true);
-        switchTab('readme');
-      });
+      apiRequest(
+        'GET',
+        'https://api.github.com/repos/' + repoName,
+        null,
+        null,
+        function (err, res) {
+          if (err) {
+            setPages([
+              '<div class="message"><div class="message-text">' +
+              err +
+              '</div></div>',
+            ]);
+            return;
+          }
+          var data = JSON.parse(res);
+          document.getElementById('stat-stars').innerHTML =
+            data.stargazers_count;
+          document.getElementById('stat-forks').innerHTML =
+            data.forks_count || 0;
+          document.getElementById('sidebar-tree-header').style.display =
+            'block';
+          loadDirectory('', true);
+          switchTab('readme');
+        },
+      );
     }
 
     function switchTab(tab) {
       if (!currentRepo) {
-        alert('Please select a repository first from Home or the Quick Open input!');
+        alert(
+          'Please select a repository first from Home or the Quick Open input!',
+        );
         showHome();
         return;
       }
-      if (tab === 'readme') { setActiveNav('nav-readme'); loadReadme(); }
-      if (tab === 'files') { setActiveNav('nav-files'); loadDirectory(''); }
-      if (tab === 'issues') { setActiveNav('nav-issues'); loadIssues(); }
-      if (tab === 'releases') { setActiveNav('nav-releases'); loadReleases(); }
+      if (tab === 'readme') {
+        setActiveNav('nav-readme');
+        loadReadme();
+      }
+      if (tab === 'files') {
+        setActiveNav('nav-files');
+        loadDirectory('');
+      }
+      if (tab === 'issues') {
+        setActiveNav('nav-issues');
+        loadIssues();
+      }
+      if (tab === 'releases') {
+        setActiveNav('nav-releases');
+        loadReleases();
+      }
     }
 
     function loadReadme() {
-      setPages(['<div class="message"><div class="message-text">Loading README.md...</div></div>']);
-      apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/readme', 'application/vnd.github.html+json', null, function(err, html) {
-        if (err) {
-          setPages(['<div class="message"><div class="message-text">No README found in this repository.</div></div>']);
-          return;
-        }
-        var header = '<div class="admin-msg"><div class="message-text">' + currentRepo + ' // README.md</div></div>';
-        var modTray = '<div class="mod-action-tray">MOD ACTIONS: <button class="mod-tray-btn" onclick="viewFile(\'README.md\')">View / Edit README.md</button></div>';
-        setPages([header + modTray + '<div class="message readme-content"><div class="message-text">' + html + '</div></div>']);
-      });
+      setPages([
+        '<div class="message"><div class="message-text">Loading README.md...</div></div>',
+      ]);
+      apiRequest(
+        'GET',
+        'https://api.github.com/repos/' + currentRepo + '/readme',
+        'application/vnd.github.html+json',
+        null,
+        function (err, html) {
+          if (err) {
+            setPages([
+              '<div class="message"><div class="message-text">No README found in this repository.</div></div>',
+            ]);
+            return;
+          }
+          var header =
+            '<div class="admin-msg"><div class="message-text">' +
+            currentRepo +
+            ' // README.md</div></div>';
+          var modTray =
+            '<div class="mod-action-tray">MOD ACTIONS: <button class="mod-tray-btn" onclick="viewFile(\'README.md\')">View / Edit README.md</button></div>';
+          setPages([
+            header +
+            modTray +
+            '<div class="message readme-content"><div class="message-text">' +
+            html +
+            '</div></div>',
+          ]);
+        },
+      );
     }
 
     function loadDirectory(path, sidebarOnly) {
       if (!currentRepo) return;
-      apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, null, null, function(err, res) {
-        if (err) return;
-        var items = JSON.parse(res);
-        var treeHtml = '';
-        var mainHtml = '<div class="admin-msg"><div class="message-text">INDEX OF /' + path + '</div></div>';
+      apiRequest(
+        'GET',
+        'https://api.github.com/repos/' + currentRepo + '/contents/' + path,
+        null,
+        null,
+        function (err, res) {
+          if (err) return;
+          var items = JSON.parse(res);
+          var treeHtml = '';
+          var mainHtml =
+            '<div class="admin-msg"><div class="message-text">INDEX OF /' +
+            path +
+            '</div></div>';
 
-        mainHtml += '<div class="mod-action-tray">MOD ACTIONS: ';
-        if (path !== '') {
-          var parent = path.indexOf('/') === -1 ? '' : path.substring(0, path.lastIndexOf('/'));
-          treeHtml += '<div class="nav-item" onclick="loadDirectory(\'' + parent + '\', false)">.. (UP)</div>';
-          mainHtml += '<button class="mod-tray-btn" onclick="loadDirectory(\'' + parent + '\', false)">Up Dir</button> ';
-        }
-        mainHtml += '<button class="mod-tray-btn" onclick="openNewFileEditor(\'' + path + '\')">+ New File Here</button></div>';
-
-        for (var i = 0; i < items.length; i++) {
-          var it = items[i];
-          if (it.type === 'dir') {
-            treeHtml += '<div class="nav-item" onclick="loadDirectory(\'' + it.path + '\', false)">[DIR] ' + it.name + '/</div>';
-            mainHtml += '<div class="message"><div class="message-text">[DIR] <span class="roster-name" onclick="loadDirectory(\'' + it.path + '\', false)">' + it.name + '/</span></div></div>';
-          } else {
-            treeHtml += '<div class="nav-item" onclick="viewFile(\'' + it.path + '\')">' + it.name + '</div>';
-            mainHtml += '<div class="message"><div class="message-text">[FILE] <span class="roster-name" onclick="viewFile(\'' + it.path + '\')">' + it.name + '</span> (' + it.size + ' B)</div></div>';
+          mainHtml += '<div class="mod-action-tray">MOD ACTIONS: ';
+          if (path !== '') {
+            var parent =
+              path.indexOf('/') === -1
+                ? ''
+                : path.substring(0, path.lastIndexOf('/'));
+            treeHtml +=
+              '<div class="nav-item" onclick="loadDirectory(\'' +
+              parent +
+              '\', false)">.. (UP)</div>';
+            mainHtml +=
+              '<button class="mod-tray-btn" onclick="loadDirectory(\'' +
+              parent +
+              '\', false)">Up Dir</button> ';
           }
-        }
-        document.getElementById('sidebar-tree').innerHTML = treeHtml;
-        if (!sidebarOnly) {
-          setActiveNav('nav-files');
-          setPages([mainHtml]);
-        }
-      });
+          mainHtml +=
+            '<button class="mod-tray-btn" onclick="openNewFileEditor(\'' +
+            path +
+            '\')">+ New File Here</button></div>';
+
+          for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            if (it.type === 'dir') {
+              treeHtml +=
+                '<div class="nav-item" onclick="loadDirectory(\'' +
+                it.path +
+                '\', false)">[DIR] ' +
+                it.name +
+                '/</div>';
+              mainHtml +=
+                '<div class="message"><div class="message-text">[DIR] <span class="roster-name" onclick="loadDirectory(\'' +
+                it.path +
+                '\', false)">' +
+                it.name +
+                '/</span></div></div>';
+            } else {
+              treeHtml +=
+                '<div class="nav-item" onclick="viewFile(\'' +
+                it.path +
+                '\')">' +
+                it.name +
+                '</div>';
+              mainHtml +=
+                '<div class="message"><div class="message-text">[FILE] <span class="roster-name" onclick="viewFile(\'' +
+                it.path +
+                '\')">' +
+                it.name +
+                '</span> (' +
+                it.size +
+                ' B)</div></div>';
+            }
+          }
+          document.getElementById('sidebar-tree').innerHTML = treeHtml;
+          if (!sidebarOnly) {
+            setActiveNav('nav-files');
+            setPages([mainHtml]);
+          }
+        },
+      );
     }
 
     function viewFile(path) {
       setActiveNav('nav-files');
       currentFilePath = path;
-      setPages(['<div class="message"><div class="message-text">Opening ' + path + '...</div></div>']);
+      setPages([
+        '<div class="message"><div class="message-text">Opening ' +
+        path +
+        '...</div></div>',
+      ]);
 
-      apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/contents/' + path, null, null, function(err, res) {
-        if (err) {
-          setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
-          return;
-        }
-        var fileObj = JSON.parse(res);
-        currentFileSha = fileObj.sha;
-        
-        var raw = '';
-        if (fileObj.content) {
-          raw = decodeBase64Utf8(fileObj.content);
-        } else {
-          raw = 'File content empty or binary.';
-        }
-        
-        currentFileRaw = raw;
-        var safe = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        var lines = safe.split('\n');
-        var linesPerPage = 35;
-        var chunks = [];
-
-        var modBar = '<div class="mod-action-tray">FILE MOD: ' +
-          '<button class="mod-tray-btn" onclick="openFileEditor()">Edit File</button>' +
-          '<button class="mod-tray-btn" onclick="deleteCurrentFile()">Delete File</button>' +
-          '</div>';
-
-        for (var i = 0; i < lines.length; i += linesPerPage) {
-          var slice = lines.slice(i, i + linesPerPage);
-          var numbered = '';
-          for (var j = 0; j < slice.length; j++) {
-            var lineNum = i + j + 1;
-            var pad = lineNum < 10 ? '  ' + lineNum : (lineNum < 100 ? ' ' + lineNum : lineNum);
-            numbered += pad + ' | ' + slice[j] + '\n';
+      apiRequest(
+        'GET',
+        'https://api.github.com/repos/' + currentRepo + '/contents/' + path,
+        null,
+        null,
+        function (err, res) {
+          if (err) {
+            setPages([
+              '<div class="message"><div class="message-text">' +
+              err +
+              '</div></div>',
+            ]);
+            return;
           }
-          var header = '<div class="admin-msg"><div class="message-text">FILE: ' + path + ' (Lines ' + (i + 1) + '-' + Math.min(i + linesPerPage, lines.length) + ')</div></div>';
-          chunks.push(header + modBar + '<div class="message"><div class="message-text">' + numbered + '</div></div>');
-        }
-        setPages(chunks);
-      });
+          var fileObj = JSON.parse(res);
+          currentFileSha = fileObj.sha;
+
+          var raw = '';
+          if (fileObj.content) {
+            raw = decodeBase64Utf8(fileObj.content);
+          } else {
+            raw = 'File content empty or binary.';
+          }
+
+          currentFileRaw = raw;
+          var safe = raw
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+          var lines = safe.split('\n');
+          var linesPerPage = 35;
+          var chunks = [];
+
+          var modBar =
+            '<div class="mod-action-tray">FILE MOD: ' +
+            '<button class="mod-tray-btn" onclick="openFileEditor()">Edit File</button>' +
+            '<button class="mod-tray-btn" onclick="deleteCurrentFile()">Delete File</button>' +
+            '</div>';
+
+          for (var i = 0; i < lines.length; i += linesPerPage) {
+            var slice = lines.slice(i, i + linesPerPage);
+            var numbered = '';
+            for (var j = 0; j < slice.length; j++) {
+              var lineNum = i + j + 1;
+              var pad =
+                lineNum < 10
+                  ? '  ' + lineNum
+                  : lineNum < 100
+                    ? ' ' + lineNum
+                    : lineNum;
+              numbered += pad + ' | ' + slice[j] + '\n';
+            }
+            var header =
+              '<div class="admin-msg"><div class="message-text">FILE: ' +
+              path +
+              ' (Lines ' +
+              (i + 1) +
+              '-' +
+              Math.min(i + linesPerPage, lines.length) +
+              ')</div></div>';
+            chunks.push(
+              header +
+              modBar +
+              '<div class="message"><div class="message-text">' +
+              numbered +
+              '</div></div>',
+            );
+          }
+          setPages(chunks);
+        },
+      );
     }
 
     function openFileEditor() {
@@ -653,17 +887,33 @@
         toggleAuth(true);
         return;
       }
-      var safeText = currentFileRaw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      var html = '<div class="admin-msg"><div class="message-text">EDITING // ' + currentFilePath + '</div></div>';
+      var safeText = currentFileRaw
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      var html =
+        '<div class="admin-msg"><div class="message-text">EDITING // ' +
+        currentFilePath +
+        '</div></div>';
       html += '<div class="message"><div class="message-text">';
       html += '<b>Commit Message:</b><br>';
-      html += '<input type="text" id="commit-msg" class="retro-input" style="width:100%;margin:4px 0 10px 0;" value="Update ' + currentFilePath + ' via Kindle"><br>';
+      html +=
+        '<input type="text" id="commit-msg" class="retro-input" style="width:100%;margin:4px 0 10px 0;" value="Update ' +
+        currentFilePath +
+        ' via Kindle"><br>';
       html += '<b>File Content:</b><br>';
-      html += '<textarea id="editor-box" class="retro-input" style="width:100%;height:240px;font-family:monospace;white-space:pre;">' + safeText + '</textarea>';
+      html +=
+        '<textarea id="editor-box" class="retro-input" style="width:100%;height:240px;font-family:monospace;white-space:pre;">' +
+        safeText +
+        '</textarea>';
       html += '</div>';
       html += '<div class="mod-action-tray">';
-      html += '<button class="mod-tray-btn" onclick="commitFileChanges(false)">Commit & Push</button>';
-      html += '<button class="mod-tray-btn" onclick="viewFile(\'' + currentFilePath + '\')">Cancel</button>';
+      html +=
+        '<button class="mod-tray-btn" onclick="commitFileChanges(false)">Commit & Push</button>';
+      html +=
+        '<button class="mod-tray-btn" onclick="viewFile(\'' +
+        currentFilePath +
+        '\')">Cancel</button>';
       html += '</div></div>';
       setPages([html]);
     }
@@ -675,44 +925,76 @@
         return;
       }
       var prefix = folderPath ? folderPath + '/' : '';
-      var html = '<div class="admin-msg"><div class="message-text">CREATE NEW FILE</div></div>';
+      var html =
+        '<div class="admin-msg"><div class="message-text">CREATE NEW FILE</div></div>';
       html += '<div class="message"><div class="message-text">';
       html += '<b>File Path:</b><br>';
-      html += '<input type="text" id="new-file-path" class="retro-input" style="width:100%;margin:4px 0 8px 0;" value="' + prefix + 'newfile.txt"><br>';
+      html +=
+        '<input type="text" id="new-file-path" class="retro-input" style="width:100%;margin:4px 0 8px 0;" value="' +
+        prefix +
+        'newfile.txt"><br>';
       html += '<b>Commit Message:</b><br>';
-      html += '<input type="text" id="commit-msg" class="retro-input" style="width:100%;margin:4px 0 8px 0;" value="Create file via Kindle"><br>';
+      html +=
+        '<input type="text" id="commit-msg" class="retro-input" style="width:100%;margin:4px 0 8px 0;" value="Create file via Kindle"><br>';
       html += '<b>File Content:</b><br>';
-      html += '<textarea id="editor-box" class="retro-input" style="width:100%;height:200px;font-family:monospace;"></textarea>';
+      html +=
+        '<textarea id="editor-box" class="retro-input" style="width:100%;height:200px;font-family:monospace;"></textarea>';
       html += '</div>';
       html += '<div class="mod-action-tray">';
-      html += '<button class="mod-tray-btn" onclick="commitFileChanges(true)">Create & Push</button>';
-      html += '<button class="mod-tray-btn" onclick="loadDirectory(\'' + folderPath + '\', false)">Cancel</button>';
+      html +=
+        '<button class="mod-tray-btn" onclick="commitFileChanges(true)">Create & Push</button>';
+      html +=
+        '<button class="mod-tray-btn" onclick="loadDirectory(\'' +
+        folderPath +
+        '\', false)">Cancel</button>';
       html += '</div></div>';
       setPages([html]);
     }
 
     function commitFileChanges(isNew) {
-      var targetPath = isNew ? document.getElementById('new-file-path').value.replace(/^\s+|\s+$/g, '') : currentFilePath;
-      var msg = document.getElementById('commit-msg').value || 'Updated via Kindle';
+      var targetPath = isNew
+        ? document
+          .getElementById('new-file-path')
+          .value.replace(/^\s+|\s+$/g, '')
+        : currentFilePath;
+      var msg =
+        document.getElementById('commit-msg').value || 'Updated via Kindle';
       var newContent = document.getElementById('editor-box').value;
 
       var payload = {
         message: msg,
-        content: utf8ToBase64(newContent)
+        content: utf8ToBase64(newContent),
       };
       if (!isNew && currentFileSha) {
         payload.sha = currentFileSha;
       }
 
-      setPages(['<div class="message"><div class="message-text">Pushing commit to ' + targetPath + '...</div></div>']);
-      apiRequest('PUT', 'https://api.github.com/repos/' + currentRepo + '/contents/' + targetPath, null, payload, function(err) {
-        if (err) {
-          setPages(['<div class="message"><div class="message-text">COMMIT FAILED:\n' + err + '</div></div>']);
-          return;
-        }
-        loadDirectory('', true);
-        viewFile(targetPath);
-      });
+      setPages([
+        '<div class="message"><div class="message-text">Pushing commit to ' +
+        targetPath +
+        '...</div></div>',
+      ]);
+      apiRequest(
+        'PUT',
+        'https://api.github.com/repos/' +
+        currentRepo +
+        '/contents/' +
+        targetPath,
+        null,
+        payload,
+        function (err) {
+          if (err) {
+            setPages([
+              '<div class="message"><div class="message-text">COMMIT FAILED:\n' +
+              err +
+              '</div></div>',
+            ]);
+            return;
+          }
+          loadDirectory('', true);
+          viewFile(targetPath);
+        },
+      );
     }
 
     function deleteCurrentFile() {
@@ -721,51 +1003,107 @@
         toggleAuth(true);
         return;
       }
-      if (!confirm('Delete ' + currentFilePath + ' from ' + currentRepo + '?')) return;
+      if (
+        !confirm('Delete ' + currentFilePath + ' from ' + currentRepo + '?')
+      )
+        return;
 
       var payload = {
         message: 'Delete ' + currentFilePath + ' via Kindle',
-        sha: currentFileSha
+        sha: currentFileSha,
       };
-      setPages(['<div class="message"><div class="message-text">Deleting ' + currentFilePath + '...</div></div>']);
-      apiRequest('DELETE', 'https://api.github.com/repos/' + currentRepo + '/contents/' + currentFilePath, null, payload, function(err) {
-        if (err) {
-          setPages(['<div class="message"><div class="message-text">DELETE FAILED:\n' + err + '</div></div>']);
-          return;
-        }
-        loadDirectory('', false);
-      });
+      setPages([
+        '<div class="message"><div class="message-text">Deleting ' +
+        currentFilePath +
+        '...</div></div>',
+      ]);
+      apiRequest(
+        'DELETE',
+        'https://api.github.com/repos/' +
+        currentRepo +
+        '/contents/' +
+        currentFilePath,
+        null,
+        payload,
+        function (err) {
+          if (err) {
+            setPages([
+              '<div class="message"><div class="message-text">DELETE FAILED:\n' +
+              err +
+              '</div></div>',
+            ]);
+            return;
+          }
+          loadDirectory('', false);
+        },
+      );
     }
 
     function loadIssues() {
       if (!currentRepo) return;
-      setPages(['<div class="message"><div class="message-text">Loading Issues...</div></div>']);
-      apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/issues?per_page=15', null, null, function(err, res) {
-        if (err) {
-          setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
-          return;
-        }
-        var issues = JSON.parse(res);
-        var chunks = [];
-        var perPage = 4;
-        var modTray = '<div class="mod-action-tray">ISSUES MOD: <button class="mod-tray-btn" onclick="openNewIssueBox()">+ Open New Issue</button></div>';
-
-        if (!issues.length) {
-          setPages(['<div class="admin-msg"><div class="message-text">ISSUES // ' + currentRepo + '</div></div>' + modTray + '<div class="message"><div class="message-text">No open issues.</div></div>']);
-          return;
-        }
-
-        for (var i = 0; i < issues.length; i += perPage) {
-          var html = '<div class="admin-msg"><div class="message-text">ISSUES // ' + currentRepo + '</div></div>' + modTray;
-          for (var j = i; j < Math.min(i + perPage, issues.length); j++) {
-            var iss = issues[j];
-            var bodyText = (iss.body || 'No description.').replace(/</g, '&lt;').substring(0, 280);
-            html += '<div class="message"><div class="message-text"><b>#' + iss.number + ' ' + iss.title + '</b><br>By @' + iss.user.login + ' | Comments: ' + iss.comments + '<br><br>' + bodyText + '...</div></div>';
+      setPages([
+        '<div class="message"><div class="message-text">Loading Issues...</div></div>',
+      ]);
+      apiRequest(
+        'GET',
+        'https://api.github.com/repos/' + currentRepo + '/issues?per_page=15',
+        null,
+        null,
+        function (err, res) {
+          if (err) {
+            setPages([
+              '<div class="message"><div class="message-text">' +
+              err +
+              '</div></div>',
+            ]);
+            return;
           }
-          chunks.push(html);
-        }
-        setPages(chunks);
-      });
+          var issues = JSON.parse(res);
+          var chunks = [];
+          var perPage = 4;
+          var modTray =
+            '<div class="mod-action-tray">ISSUES MOD: <button class="mod-tray-btn" onclick="openNewIssueBox()">+ Open New Issue</button></div>';
+
+          if (!issues.length) {
+            setPages([
+              '<div class="admin-msg"><div class="message-text">ISSUES // ' +
+              currentRepo +
+              '</div></div>' +
+              modTray +
+              '<div class="message"><div class="message-text">No open issues.</div></div>',
+            ]);
+            return;
+          }
+
+          for (var i = 0; i < issues.length; i += perPage) {
+            var html =
+              '<div class="admin-msg"><div class="message-text">ISSUES // ' +
+              currentRepo +
+              '</div></div>' +
+              modTray;
+            for (var j = i; j < Math.min(i + perPage, issues.length); j++) {
+              var iss = issues[j];
+              var bodyText = (iss.body || 'No description.')
+                .replace(/</g, '&lt;')
+                .substring(0, 280);
+              html +=
+                '<div class="message"><div class="message-text"><b>#' +
+                iss.number +
+                ' ' +
+                iss.title +
+                '</b><br>By @' +
+                iss.user.login +
+                ' | Comments: ' +
+                iss.comments +
+                '<br><br>' +
+                bodyText +
+                '...</div></div>';
+            }
+            chunks.push(html);
+          }
+          setPages(chunks);
+        },
+      );
     }
 
     function openNewIssueBox() {
@@ -774,16 +1112,23 @@
         toggleAuth(true);
         return;
       }
-      var html = '<div class="admin-msg"><div class="message-text">NEW ISSUE // ' + currentRepo + '</div></div>';
+      var html =
+        '<div class="admin-msg"><div class="message-text">NEW ISSUE // ' +
+        currentRepo +
+        '</div></div>';
       html += '<div class="message"><div class="message-text">';
       html += '<b>Issue Title:</b><br>';
-      html += '<input type="text" id="issue-title" class="retro-input" style="width:100%;margin:4px 0 8px 0;" placeholder="Bug or feature title"><br>';
+      html +=
+        '<input type="text" id="issue-title" class="retro-input" style="width:100%;margin:4px 0 8px 0;" placeholder="Bug or feature title"><br>';
       html += '<b>Description:</b><br>';
-      html += '<textarea id="issue-body" class="retro-input" style="width:100%;height:180px;font-family:monospace;"></textarea>';
+      html +=
+        '<textarea id="issue-body" class="retro-input" style="width:100%;height:180px;font-family:monospace;"></textarea>';
       html += '</div>';
       html += '<div class="mod-action-tray">';
-      html += '<button class="mod-tray-btn" onclick="submitNewIssue()">Post Issue</button>';
-      html += '<button class="mod-tray-btn" onclick="loadIssues()">Cancel</button>';
+      html +=
+        '<button class="mod-tray-btn" onclick="submitNewIssue()">Post Issue</button>';
+      html +=
+        '<button class="mod-tray-btn" onclick="loadIssues()">Cancel</button>';
       html += '</div></div>';
       setPages([html]);
     }
@@ -792,72 +1137,143 @@
       var title = document.getElementById('issue-title').value;
       var body = document.getElementById('issue-body').value;
       if (!title) return;
-      setPages(['<div class="message"><div class="message-text">Posting issue...</div></div>']);
-      apiRequest('POST', 'https://api.github.com/repos/' + currentRepo + '/issues', null, { title: title, body: body }, function(err) {
-        if (err) {
-          setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
-          return;
-        }
-        loadIssues();
-      });
+      setPages([
+        '<div class="message"><div class="message-text">Posting issue...</div></div>',
+      ]);
+      apiRequest(
+        'POST',
+        'https://api.github.com/repos/' + currentRepo + '/issues',
+        null,
+        { title: title, body: body },
+        function (err) {
+          if (err) {
+            setPages([
+              '<div class="message"><div class="message-text">' +
+              err +
+              '</div></div>',
+            ]);
+            return;
+          }
+          loadIssues();
+        },
+      );
     }
 
     function loadReleases() {
       if (!currentRepo) return;
-      setPages(['<div class="message"><div class="message-text">Loading Releases...</div></div>']);
-      apiRequest('GET', 'https://api.github.com/repos/' + currentRepo + '/releases?per_page=10', null, null, function(err, res) {
-        if (err) {
-          setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
-          return;
-        }
-        var rels = JSON.parse(res);
-        if (!rels.length) {
-          setPages(['<div class="message"><div class="message-text">No releases published for this repo.</div></div>']);
-          return;
-        }
-        var chunks = [];
-        for (var i = 0; i < rels.length; i++) {
-          var r = rels[i];
-          var notes = (r.body || 'No release notes.').replace(/</g, '&lt;');
-          var html = '<div class="admin-msg"><div class="message-text">RELEASE: ' + (r.name || r.tag_name) + ' (' + r.tag_name + ')</div></div>';
-          html += '<div class="message"><div class="message-text">' + notes + '</div></div>';
-          chunks.push(html);
-        }
-        setPages(chunks);
-      });
+      setPages([
+        '<div class="message"><div class="message-text">Loading Releases...</div></div>',
+      ]);
+      apiRequest(
+        'GET',
+        'https://api.github.com/repos/' +
+        currentRepo +
+        '/releases?per_page=10',
+        null,
+        null,
+        function (err, res) {
+          if (err) {
+            setPages([
+              '<div class="message"><div class="message-text">' +
+              err +
+              '</div></div>',
+            ]);
+            return;
+          }
+          var rels = JSON.parse(res);
+          if (!rels.length) {
+            setPages([
+              '<div class="message"><div class="message-text">No releases published for this repo.</div></div>',
+            ]);
+            return;
+          }
+          var chunks = [];
+          for (var i = 0; i < rels.length; i++) {
+            var r = rels[i];
+            var notes = (r.body || 'No release notes.').replace(/</g, '&lt;');
+            var html =
+              '<div class="admin-msg"><div class="message-text">RELEASE: ' +
+              (r.name || r.tag_name) +
+              ' (' +
+              r.tag_name +
+              ')</div></div>';
+            html +=
+              '<div class="message"><div class="message-text">' +
+              notes +
+              '</div></div>';
+            chunks.push(html);
+          }
+          setPages(chunks);
+        },
+      );
     }
 
     function searchGitHub() {
-      var q = document.getElementById('content').value.replace(/^\s+|\s+$/g, '');
+      var q = document
+        .getElementById('content')
+        .value.replace(/^\s+|\s+$/g, '');
       if (!q) return;
-      setPages(['<div class="message"><div class="message-text">Searching GitHub for "' + q + '"...</div></div>']);
-      apiRequest('GET', 'https://api.github.com/search/repositories?q=' + encodeURIComponent(q) + '&per_page=10', null, null, function(err, res) {
-        if (err) {
-          setPages(['<div class="message"><div class="message-text">' + err + '</div></div>']);
-          return;
-        }
-        var items = JSON.parse(res).items;
-        var html = '<div class="admin-msg"><div class="message-text">SEARCH RESULTS FOR: ' + q + '</div></div>';
-        for (var i = 0; i < items.length; i++) {
-          var r = items[i];
-          html += '<div class="message"><div class="message-text">';
-          html += '<span class="roster-name" onclick="loadRepo(\'' + r.full_name + '\')">' + r.full_name + '</span> (Stars: ' + r.stargazers_count + ')<br>';
-          html += (r.description || 'No description.');
-          html += '</div><div class="mod-action-tray"><button class="mod-tray-btn" onclick="loadRepo(\'' + r.full_name + '\')">Open Repo</button></div></div>';
-        }
-        setPages([html]);
-      });
+      setPages([
+        '<div class="message"><div class="message-text">Searching GitHub for "' +
+        q +
+        '"...</div></div>',
+      ]);
+      apiRequest(
+        'GET',
+        'https://api.github.com/search/repositories?q=' +
+        encodeURIComponent(q) +
+        '&per_page=10',
+        null,
+        null,
+        function (err, res) {
+          if (err) {
+            setPages([
+              '<div class="message"><div class="message-text">' +
+              err +
+              '</div></div>',
+            ]);
+            return;
+          }
+          var items = JSON.parse(res).items;
+          var html =
+            '<div class="admin-msg"><div class="message-text">SEARCH RESULTS FOR: ' +
+            q +
+            '</div></div>';
+          for (var i = 0; i < items.length; i++) {
+            var r = items[i];
+            html += '<div class="message"><div class="message-text">';
+            html +=
+              '<span class="roster-name" onclick="loadRepo(\'' +
+              r.full_name +
+              '\')">' +
+              r.full_name +
+              '</span> (Stars: ' +
+              r.stargazers_count +
+              ')<br>';
+            html += r.description || 'No description.';
+            html +=
+              '</div><div class="mod-action-tray"><button class="mod-tray-btn" onclick="loadRepo(\'' +
+              r.full_name +
+              '\')">Open Repo</button></div></div>';
+          }
+          setPages([html]);
+        },
+      );
     }
 
     function toggleAuth(show) {
-      document.getElementById('auth-screen').style.display = show ? 'flex' : 'none';
+      document.getElementById('auth-screen').style.display = show
+        ? 'flex'
+        : 'none';
       if (show && ghToken) {
         document.getElementById('token-input').value = ghToken;
       }
     }
 
     function saveToken() {
-      ghToken = document.getElementById('token-input').value.replace(/^\s+|\s+$/g, '');
+      ghToken = document
+        .getElementById('token-input')
+        .value.replace(/^\s+|\s+$/g, '');
       localStorage.setItem('gh_token', ghToken);
       toggleAuth(false);
       showHome();
@@ -865,7 +1281,9 @@
 
     function flashInk() {
       document.body.style.filter = 'invert(100%)';
-      setTimeout(function() { document.body.style.filter = 'none'; }, 180);
+      setTimeout(function () {
+        document.body.style.filter = 'none';
+      }, 180);
     }
 
     // Initialize application home state on boot
