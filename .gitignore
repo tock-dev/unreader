@@ -248,3 +248,6 @@ pnpm-lock.yaml
 run.sh
 
 .kilo
+
+idea.txt 
+#We don't wanna leak ideas, do we?

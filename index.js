@@ -1330,10 +1330,16 @@ app.get('/api/profile/:username', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/profile', authenticateToken, async (req, res) => {
-  let { bio, location, avatar_emoji, image_data } = req.body;
+  let { bio, location, avatar_emoji, avatar_type, image_data } = req.body;
   bio = sanitize(bio);
   location = sanitize(location);
   avatar_emoji = sanitize(avatar_emoji);
+
+  if (avatar_type !== undefined && !['emoji', 'picture'].includes(avatar_type))
+    return res.status(400).json({ error: 'Choose an emoji or picture avatar.' });
+  if (avatar_type === 'emoji') image_data = '';
+  if (avatar_type === 'picture' && !validProfileImage(image_data))
+    return res.status(400).json({ error: 'Draw or import a picture before saving.' });
 
   if (image_data !== undefined && image_data !== null && image_data !== '') {
     if (!validProfileImage(image_data))

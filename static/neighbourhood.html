@@ -27,6 +27,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.2/purify.min.js"></script>
     <script src="common.js"></script>
     <style type="text/css">
+      @font-face {
+        font-family: 'Pusab';
+        src: url('./pusab.ttf') format('truetype');
+      }
+      @font-face {
+        font-family: 'Determination Mono';
+        src: url('./DTM-Mono.ttf') format('truetype');
+      }
+
       #active-users {
         display: flex;
         justify-content: space-between;
@@ -447,6 +456,7 @@
                 margin: 8px;
               "
             >
+              <label>Avatar type <select id="edit-avatar-type" onchange="setProfileAvatarType(this.value)"><option value="emoji">Emoji</option><option value="picture">Picture</option></select></label>
               <div style="display: flex">
                 <input
                   type="text"
@@ -469,7 +479,7 @@
                 class="paper-input"
                 style="margin-top: 6px; resize: none; height: max-content"
               ></textarea>
-              <fieldset class="profile-picture-editor">
+              <fieldset id="edit-picture-editor" class="profile-picture-editor">
                 <legend>Profile picture</legend>
                 <label
                   >Size
@@ -1495,6 +1505,11 @@
         xhr.send();
       }
 
+      function setProfileAvatarType(type) {
+        document.getElementById('edit-avatar').style.display = type === 'emoji' ? '' : 'none';
+        document.getElementById('edit-picture-editor').style.display = type === 'picture' ? '' : 'none';
+      }
+
       function showProfileInModal(p) {
         log('Profile modal view active.');
         var overlay = document.getElementById('modal-overlay');
@@ -1526,6 +1541,8 @@
           document.getElementById('edit-location').value = p.location;
           document.getElementById('edit-bio').value = p.bio;
           setupProfilePictureEditor(p.image_data);
+          document.getElementById('edit-avatar-type').value = p.image_data ? 'picture' : 'emoji';
+          setProfileAvatarType(document.getElementById('edit-avatar-type').value);
           document.getElementById('change-pass-current').value = '';
           document.getElementById('change-pass-new').value = '';
         } else {
@@ -1606,8 +1623,11 @@
 
       function saveProfileChanges() {
         var av = document.getElementById('edit-avatar').value.trim();
+        var avatarType = document.getElementById('edit-avatar-type').value;
         var loc = document.getElementById('edit-location').value.trim();
         var bio = document.getElementById('edit-bio').value.trim();
+        var imageData = avatarType === 'picture' ? getProfilePictureBase64() : '';
+        if (avatarType === 'picture' && !imageData) return unAlert('Draw or import a picture before saving.');
         log('Sending profile update packet.');
         var xhr = new XMLHttpRequest();
         xhr.open('POST', BACKEND_URL + '/api/profile', true);
@@ -1624,7 +1644,8 @@
             bio: bio,
             location: loc,
             avatar_emoji: av,
-            image_data: getProfilePictureBase64(),
+            avatar_type: avatarType,
+            image_data: imageData,
           }),
         );
       }
