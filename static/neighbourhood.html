@@ -804,6 +804,7 @@
       var socket = null;
       var isRegisterMode = false;
       var currentHistoryIndex = 0;
+      var openCommentSections = Object.create(null);
       var modModeActive = false;
       var userRoles = {
         role: { role: '', prefix: '', style: '', class: '' },
@@ -970,13 +971,6 @@
         socket.onopen = function () {
           log('WS Link connected. Authenticating...');
           socket.send(JSON.stringify({ type: 'auth', token: token }));
-          socket.send(
-            JSON.stringify({
-              type: 'switch_context',
-              mode: 'neighborhood',
-              target: '',
-            }),
-          );
         };
         socket.onmessage = async function (event) {
           var data = JSON.parse(event.data);
@@ -991,6 +985,13 @@
             if (data.userRoles.role.role && isAdminUser(data.userRoles)) {
               show('#kick-all-btn');
             }
+            socket.send(
+              JSON.stringify({
+                type: 'switch_context',
+                mode: 'neighborhood',
+                target: '',
+              }),
+            );
             return;
           }
           if (data.type === 'error_alert') {
@@ -1187,8 +1188,9 @@
           var timeStr = formatTimeToken(data.timestamp);
           var effectiveUsername =
             data.username || data.sender || 'UNKNOWN_NODE';
+          var postRole = data.role || {};
           var nameDisplay = DOMPurify.sanitize(
-            (data.role.prefix || '') + ' @' + effectiveUsername,
+            (postRole.prefix || '') + ' @' + effectiveUsername,
           ).trim();
           box.innerHTML =
             '<div class="nb-header" style="cursor:pointer;">' +
@@ -1203,7 +1205,11 @@
             ')">Comments</button>' +
             '<div class="comment-area" id="comment-area-for-' +
             data.id +
-            '">' +
+            '" data-post-id="' +
+            data.id +
+            '" style="display:' +
+            (openCommentSections[data.id] ? 'block' : 'none') +
+            ';">' +
             '<div class="comment-list"></div>' +
             '<div style="margin-top:6px; display:flex;">' +
             '<input type="text" class="paper-input" placeholder="Write response..." id="input-comment-for-' +
@@ -1238,8 +1244,9 @@
               } else {
                 var cEffectiveUsername =
                   c.username || c.sender || 'UNKNOWN_NODE';
+                var commentRole = c.role || {};
                 var cName = DOMPurify.sanitize(
-                  c.role.prefix + '@' + cEffectiveUsername,
+                  (commentRole.prefix || '') + '@' + cEffectiveUsername,
                 );
                 cDiv.innerHTML =
                   '<strong style="cursor:pointer;">' +
@@ -1297,24 +1304,27 @@
 
       function toggleCommentsSection(postId) {
         var target = document.getElementById('comment-area-for-' + postId);
-        target.style.display =
-          target.style.display === 'block' ? 'none' : 'block';
+        var isOpen = target.style.display !== 'block';
+        target.style.display = isOpen ? 'block' : 'none';
+        openCommentSections[postId] = isOpen;
       }
 
       function submitComment(postId) {
         var inp = document.getElementById('input-comment-for-' + postId);
         var text = inp.value.trim();
         if (!text) return;
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          log('Broadcasting neighborhood comment packet.');
-          socket.send(
-            JSON.stringify({
-              type: 'neighborhood_comment',
-              post_id: postId,
-              content: text,
-            }),
-          );
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          unAlert('Not connected to the server. Your comment was not sent.');
+          return;
         }
+        log('Broadcasting neighborhood comment packet.');
+        socket.send(
+          JSON.stringify({
+            type: 'neighborhood_comment',
+            post_id: postId,
+            content: text,
+          }),
+        );
         inp.value = '';
       }
 
@@ -1413,6 +1423,13 @@
           currentHistoryIndex,
         );
         var wrapper = document.getElementById('chat-scroll-wrapper');
+        openCommentSections = Object.create(null);
+        var expandedSections = wrapper.querySelectorAll('.comment-area');
+        for (var i = 0; i < expandedSections.length; i++) {
+          if (expandedSections[i].style.display === 'block') {
+            openCommentSections[expandedSections[i].getAttribute('data-post-id')] = true;
+          }
+        }
         wrapper.innerHTML = '';
         var xhr = new XMLHttpRequest();
         var endpoint = '/neighborhood-history?index=';

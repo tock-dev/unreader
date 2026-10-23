@@ -227,6 +227,14 @@ async function initDatabase() {
         name TEXT UNIQUE NOT NULL,
         html TEXT NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS github_changelog_cache (
+        page INTEGER NOT NULL,
+        per_page INTEGER NOT NULL,
+        commits JSONB NOT NULL,
+        expires_at BIGINT NOT NULL,
+        PRIMARY KEY (page, per_page)
+      );
     `);
     log('Structural migration successful.');
   } catch (err) {
@@ -416,8 +424,23 @@ app.get('/api/commits', async (req, res) => {
   }
 
   const key = `${page}:${perPage}`;
-  const cached = changelogCache.get(key);
+  let cached = changelogCache.get(key);
   const now = Date.now();
+  if (!cached || cached.expiresAt <= now) {
+    try {
+      const result = await db.query(
+        'SELECT commits, expires_at FROM github_changelog_cache WHERE page = $1 AND per_page = $2',
+        [page, perPage],
+      );
+      const row = result.rows[0];
+      if (row && (!cached || Number(row.expires_at) > cached.expiresAt)) {
+        cached = { commits: row.commits, expiresAt: Number(row.expires_at) };
+        changelogCache.set(key, cached);
+      }
+    } catch (error) {
+      log('Persistent changelog cache read failed:', error.message);
+    }
+  }
   if (cached && cached.expiresAt > now) {
     return res
       .set('Cache-Control', 'public, max-age=300')
@@ -451,13 +474,30 @@ app.get('/api/commits', async (req, res) => {
         const commits = await response.json();
         if (!Array.isArray(commits)) throw new Error('Invalid GitHub response');
 
+        const expiresAt = Date.now() + CHANGELOG_CACHE_TTL_MS;
         changelogCache.delete(key);
-        changelogCache.set(key, {
-          commits,
-          expiresAt: Date.now() + CHANGELOG_CACHE_TTL_MS,
-        });
+        changelogCache.set(key, { commits, expiresAt });
         while (changelogCache.size > CHANGELOG_CACHE_MAX_ENTRIES) {
           changelogCache.delete(changelogCache.keys().next().value);
+        }
+        try {
+          await db.query(
+            `INSERT INTO github_changelog_cache (page, per_page, commits, expires_at)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (page, per_page) DO UPDATE
+             SET commits = EXCLUDED.commits, expires_at = EXCLUDED.expires_at`,
+            [page, perPage, JSON.stringify(commits), expiresAt],
+          );
+          await db.query(
+            `DELETE FROM github_changelog_cache
+             WHERE ctid IN (
+               SELECT ctid FROM github_changelog_cache
+               ORDER BY expires_at DESC OFFSET $1
+             )`,
+            [CHANGELOG_CACHE_MAX_ENTRIES],
+          );
+        } catch (error) {
+          log('Persistent changelog cache write failed:', error.message);
         }
         return commits;
       } finally {
@@ -1919,7 +1959,7 @@ app.get('/neighborhood-history', authenticateToken, async (req, res) => {
   for (let row of posts.rows) {
     row.role = (await getUserRoles(row.username)).role;
     for (let comment of row.comments) {
-      comment.role = await getUserRoles(comment.username).role;
+      comment.role = (await getUserRoles(comment.username)).role;
     }
     result.push(row);
   }
