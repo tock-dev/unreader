@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Search and read song lyrics from LRCLIB.">
+  <title>Un-Reader Lyrics</title>
+  <style>
+    * { box-sizing: border-box; transition: none !important; animation: none !important; }
+    body { margin: 0; padding: 8px; color: #000; background: #e5e5e5; font-family: Arial, Verdana, sans-serif; }
+    .window { width: 100%; max-width: 760px; min-height: 90vh; margin: 0 auto; border: 2px solid #000; background: #fff; box-shadow: 4px 4px 0 #000; }
+    .title-bar { position: relative; min-height: 42px; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #000; padding: 4px; }
+    .stripes { position: absolute; top: 7px; right: 7px; bottom: 7px; left: 7px; background: repeating-linear-gradient(to bottom, #000 0, #000 2px, #fff 2px, #fff 4px); }
+    .title { position: relative; z-index: 1; padding: 0 10px; background: #fff; font-weight: bold; }
+    .home { position: absolute; z-index: 2; left: 8px; top: 6px; min-height: 28px; padding: 4px 8px; border: 2px solid #000; box-shadow: 2px 2px 0 #000; color: #000; background: #fff; font: bold 12px Arial, sans-serif; text-decoration: none; }
+    main { padding: 12px; }
+    .intro { margin: 0 0 12px; font-size: 13px; }
+    label { display: block; margin: 8px 0 4px; font-size: 12px; font-weight: bold; }
+    .search-row { display: flex; align-items: stretch; }
+    input, button { min-height: 48px; border: 2px solid #000; border-radius: 0; font: 14px Arial, sans-serif; }
+    input { flex: 1; min-width: 0; padding: 8px; }
+    button { padding: 6px 12px; color: #000; background: #fff; box-shadow: 2px 2px 0 #000; font-weight: bold; cursor: pointer; }
+    .search-row button { margin-left: 8px; }
+    button:disabled { color: #666; box-shadow: none; }
+    button:active:not(:disabled) { color: #fff; background: #000; }
+    #status { min-height: 22px; margin: 10px 0; font-size: 12px; }
+    #results { margin: 0; padding: 0; list-style: none; }
+    .result { margin: 0 0 8px; }
+    .result button { display: block; width: 100%; text-align: left; }
+    .result-title { display: block; margin-bottom: 3px; }
+    .result-meta { display: block; font-size: 12px; font-weight: normal; }
+    #reader { margin-top: 14px; border: 2px solid #000; box-shadow: 2px 2px 0 #aaa; }
+    #reader[hidden] { display: none; }
+    .reader-head { padding: 10px; border-bottom: 1px solid #000; }
+    .reader-head h2 { margin: 0 0 4px; font-size: 17px; }
+    .reader-meta { font-size: 12px; }
+    #back-to-results { min-height: 40px; margin-top: 8px; }
+    .lyric-controls { padding: 8px 10px 0; }
+    .lyric-controls button { min-height: 40px; margin: 0 6px 4px 0; }
+    .lyric-controls button[aria-pressed="true"] { color: #fff; background: #000; }
+    #lyrics { margin: 0; padding: 12px; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word; font: 14px/1.5 Arial, Verdana, sans-serif; }
+    .credit { margin: 12px 0 0; font-size: 11px; }
+    .credit a { color: #000; }
+    @media (max-width: 420px) {
+      .title { margin-left: 72px; font-size: 13px; }
+      .search-row { display: block; }
+      .search-row button { width: 100%; margin: 8px 0 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="window">
+    <header class="title-bar">
+      <div class="stripes" aria-hidden="true"></div>
+      <a class="home" href="index.html">&lt; HOME</a>
+      <div class="title">LYRICS</div>
+    </header>
+    <main>
+      <p class="intro">Search song titles, artists, or albums, then choose a result to read its lyrics.</p>
+      <form id="search-form">
+        <label for="search-query">Song or artist</label>
+        <div class="search-row">
+          <input id="search-query" type="search" maxlength="160" autocomplete="off" required>
+          <button id="search-button" type="submit">SEARCH</button>
+        </div>
+      </form>
+      <div id="status" role="status" aria-live="polite">Search lyrics from LRCLIB.</div>
+      <section id="reader" aria-live="polite" hidden>
+        <div class="reader-head">
+          <h2 id="track-title"></h2>
+          <div id="track-meta" class="reader-meta"></div>
+          <button id="back-to-results" type="button">BACK TO RESULTS</button>
+        </div>
+        <div class="lyric-controls" aria-label="Lyrics format">
+          <button id="plain-button" type="button" aria-pressed="true">PLAIN</button>
+          <button id="synced-button" type="button" aria-pressed="false">SYNCED</button>
+        </div>
+        <pre id="lyrics"></pre>
+      </section>
+      <ul id="results" aria-label="Lyrics search results"></ul>
+      <p class="credit">Lyrics provided by <a href="https://lrclib.net" target="_blank" rel="noopener noreferrer">LRCLIB</a>.</p>
+    </main>
+  </div>
+  <script>
+    (function () {
+      var form = document.getElementById('search-form');
+      var queryInput = document.getElementById('search-query');
+      var searchButton = document.getElementById('search-button');
+      var status = document.getElementById('status');
+      var results = document.getElementById('results');
+      var reader = document.getElementById('reader');
+      var plainButton = document.getElementById('plain-button');
+      var syncedButton = document.getElementById('synced-button');
+      var activeRecord = null;
+      var retryAt = 0;
+      var lastRequestAt = 0;
+      var requestInProgress = false;
+
+      function setStatus(message) {
+        status.textContent = message;
+      }
+
+      function trackDuration(seconds) {
+        if (!seconds || seconds < 1) return '';
+        var minutes = Math.floor(seconds / 60);
+        var remaining = Math.floor(seconds % 60);
+        return minutes + ':' + (remaining < 10 ? '0' : '') + remaining;
+      }
+
+      function showLyrics(useSynced) {
+        if (!activeRecord) return;
+        var plain = activeRecord.plainLyrics || '';
+        var synced = activeRecord.syncedLyrics || '';
+        var useSyncedLyrics = (useSynced && !!synced) || (!plain && !!synced);
+        var text = useSyncedLyrics ? synced : plain;
+        document.getElementById('lyrics').textContent = text || (activeRecord.instrumental ? 'This track is instrumental.' : 'No lyrics are available for this result.');
+        plainButton.setAttribute('aria-pressed', useSyncedLyrics ? 'false' : 'true');
+        syncedButton.setAttribute('aria-pressed', useSyncedLyrics ? 'true' : 'false');
+        plainButton.disabled = !plain;
+        syncedButton.disabled = !synced;
+      }
+
+      function openRecord(record) {
+        activeRecord = record;
+        document.getElementById('track-title').textContent = record.trackName || record.name || 'Untitled track';
+        var details = record.artistName || 'Unknown artist';
+        if (record.albumName) details += ' - ' + record.albumName;
+        var duration = trackDuration(record.duration);
+        if (duration) details += ' (' + duration + ')';
+        document.getElementById('track-meta').textContent = details;
+        reader.hidden = false;
+        showLyrics(false);
+        reader.scrollIntoView(true);
+      }
+
+      function addResult(record) {
+        var item = document.createElement('li');
+        var button = document.createElement('button');
+        var title = document.createElement('span');
+        var meta = document.createElement('span');
+        item.className = 'result';
+        title.className = 'result-title';
+        meta.className = 'result-meta';
+        title.textContent = record.trackName || record.name || 'Untitled track';
+        meta.textContent = (record.artistName || 'Unknown artist') + (record.instrumental ? ' - instrumental' : record.syncedLyrics ? ' - synced lyrics' : ' - plain lyrics');
+        button.type = 'button';
+        button.appendChild(title);
+        button.appendChild(meta);
+        button.onclick = function () { openRecord(record); };
+        item.appendChild(button);
+        results.appendChild(item);
+      }
+
+      form.onsubmit = function (event) {
+        event.preventDefault();
+        var query = queryInput.value.trim();
+        if (!query || requestInProgress) return;
+        var wait = retryAt - Date.now();
+        if (wait > 0) {
+          setStatus('Please wait ' + Math.ceil(wait / 1000) + ' seconds before searching again.');
+          return;
+        }
+
+        requestInProgress = true;
+        searchButton.disabled = true;
+        results.textContent = '';
+        reader.hidden = true;
+        setStatus('Searching LRCLIB...');
+
+        var delay = Math.max(0, 250 - (Date.now() - lastRequestAt));
+        window.setTimeout(function () {
+          var request = new XMLHttpRequest();
+          request.open('GET', 'https://lrclib.net/api/search?q=' + encodeURIComponent(query), true);
+          request.setRequestHeader('X-User-Agent', 'UnReader Lyrics/1.0 (https://github.com/tock-dev/unreader)');
+          request.timeout = 15000;
+          lastRequestAt = Date.now();
+          request.onreadystatechange = function () {
+            if (request.readyState !== 4) return;
+            requestInProgress = false;
+            searchButton.disabled = false;
+            if (request.status === 429) {
+              var retrySeconds = Number(request.getResponseHeader('Retry-After')) || 60;
+              retryAt = Date.now() + retrySeconds * 1000;
+              setStatus('LRCLIB rate limit reached. Please wait ' + retrySeconds + ' seconds before searching again.');
+              return;
+            }
+            if (request.status < 200 || request.status >= 300) {
+              setStatus(request.status === 0 ? 'Could not reach LRCLIB. Check your connection and try again.' : 'LRCLIB could not complete the search (' + request.status + ').');
+              return;
+            }
+            var rows;
+            try { rows = JSON.parse(request.responseText); } catch (error) { rows = null; }
+            if (!Array.isArray(rows)) {
+              setStatus('LRCLIB returned an unexpected response.');
+              return;
+            }
+            rows.forEach(addResult);
+            setStatus(rows.length ? rows.length + ' result' + (rows.length === 1 ? '' : 's') + '. Select one to read the lyrics.' : 'No matching tracks found.');
+          };
+          request.onerror = function () {
+            requestInProgress = false;
+            searchButton.disabled = false;
+            setStatus('Could not reach LRCLIB. Check your connection and try again.');
+          };
+          request.ontimeout = request.onerror;
+          request.send();
+        }, delay);
+      };
+
+      plainButton.onclick = function () { showLyrics(false); };
+      syncedButton.onclick = function () { showLyrics(true); };
+      document.getElementById('back-to-results').onclick = function () {
+        results.scrollIntoView(true);
+      };
+    })();
+  </script>
+</body>
+</html>

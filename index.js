@@ -61,8 +61,10 @@ const USER_ROLE_CACHE_TTL = Number(process.env.USER_ROLE_CACHE_TTL_MS || 30000);
 const userRoleCache = new Map();
 const bannedIpCache = new Map();
 const BANNED_IP_CACHE_TTL = Number(process.env.BANNED_IP_CACHE_TTL_MS || 30000);
-const CHANGELOG_CACHE_TTL_MS = 60 * 60 * 1000;
+const CHANGELOG_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHANGELOG_CACHE_MAX_ENTRIES = 200;
+const CHANGELOG_LATEST_PAGE_SIZE = 25;
+const CHANGELOG_REFRESH_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const changelogCache = new Map();
 const changelogRequests = new Map();
 const BANNED_IP_DB_RETRY_MS = Math.max(
@@ -242,7 +244,7 @@ async function initDatabase() {
     process.exit(1);
   }
 }
-initDatabase();
+const databaseReady = initDatabase();
 
 const app = express();
 app.set('trust proxy', true);
@@ -413,6 +415,108 @@ app.get('/portal-2d-editor.html', (req, res) => {
 
 app.use(express.static('./static/'));
 
+function requestChangelogPage(page, perPage) {
+  const key = `${page}:${perPage}`;
+  let request = changelogRequests.get(key);
+  if (request) return request;
+
+  request = (async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const url = new URL('https://api.github.com/repos/tock-dev/unreader/commits');
+      url.searchParams.set('per_page', String(perPage));
+      url.searchParams.set('page', String(page));
+      const response = await fetch(url, {
+        headers: {
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'Unreader-Changelog',
+        },
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        const error = new Error(`GitHub returned HTTP ${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
+      const commits = await response.json();
+      if (!Array.isArray(commits)) throw new Error('Invalid GitHub response');
+
+      const expiresAt = Date.now() + CHANGELOG_CACHE_TTL_MS;
+      changelogCache.delete(key);
+      changelogCache.set(key, { commits, expiresAt });
+      while (changelogCache.size > CHANGELOG_CACHE_MAX_ENTRIES) {
+        changelogCache.delete(changelogCache.keys().next().value);
+      }
+      try {
+        await db.query(
+          `INSERT INTO github_changelog_cache (page, per_page, commits, expires_at)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (page, per_page) DO UPDATE
+           SET commits = EXCLUDED.commits, expires_at = EXCLUDED.expires_at`,
+          [page, perPage, JSON.stringify(commits), expiresAt],
+        );
+        await db.query(
+          `DELETE FROM github_changelog_cache
+           WHERE ctid IN (
+             SELECT ctid FROM github_changelog_cache
+             ORDER BY expires_at DESC OFFSET $1
+           )`,
+          [CHANGELOG_CACHE_MAX_ENTRIES],
+        );
+      } catch (error) {
+        log('Persistent changelog cache write failed:', error.message);
+      }
+      return commits;
+    } finally {
+      clearTimeout(timeout);
+    }
+  })();
+  changelogRequests.set(key, request);
+  const clearRequest = () => {
+    if (changelogRequests.get(key) === request) changelogRequests.delete(key);
+  };
+  request.then(clearRequest, clearRequest);
+  return request;
+}
+
+async function refreshLatestChangelog() {
+  const page = 1;
+  const perPage = CHANGELOG_LATEST_PAGE_SIZE;
+  const key = `${page}:${perPage}`;
+  let cached = changelogCache.get(key);
+  if (!cached || cached.expiresAt <= Date.now()) {
+    try {
+      const result = await db.query(
+        'SELECT commits, expires_at FROM github_changelog_cache WHERE page = $1 AND per_page = $2',
+        [page, perPage],
+      );
+      if (result.rows[0]) {
+        cached = {
+          commits: result.rows[0].commits,
+          expiresAt: Number(result.rows[0].expires_at),
+        };
+        changelogCache.set(key, cached);
+      }
+    } catch (error) {
+      log('Persistent changelog cache read failed:', error.message);
+    }
+  }
+  if (cached && cached.expiresAt > Date.now()) return;
+
+  try {
+    await requestChangelogPage(page, perPage);
+    log('Daily GitHub changelog refresh completed.');
+  } catch (error) {
+    log('Daily GitHub changelog refresh failed:', error.message);
+  }
+}
+
+databaseReady.then(() => {
+  refreshLatestChangelog();
+  setInterval(refreshLatestChangelog, CHANGELOG_REFRESH_CHECK_INTERVAL_MS);
+});
+
 app.get('/api/commits', async (req, res) => {
   const page = Number.parseInt(req.query.page, 10);
   const perPage = Number.parseInt(req.query.per_page, 10);
@@ -448,64 +552,7 @@ app.get('/api/commits', async (req, res) => {
       .json(cached.commits);
   }
 
-  let request = changelogRequests.get(key);
-  if (!request) {
-    request = (async () => {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
-      try {
-        const url = new URL(
-          `https://api.github.com/repos/tock-dev/unreader/commits`,
-        );
-        url.searchParams.set('per_page', String(perPage));
-        url.searchParams.set('page', String(page));
-        const response = await fetch(url, {
-          headers: {
-            Accept: 'application/vnd.github+json',
-            'User-Agent': 'Unreader-Changelog',
-          },
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          const error = new Error(`GitHub returned HTTP ${response.status}`);
-          error.status = response.status;
-          throw error;
-        }
-        const commits = await response.json();
-        if (!Array.isArray(commits)) throw new Error('Invalid GitHub response');
-
-        const expiresAt = Date.now() + CHANGELOG_CACHE_TTL_MS;
-        changelogCache.delete(key);
-        changelogCache.set(key, { commits, expiresAt });
-        while (changelogCache.size > CHANGELOG_CACHE_MAX_ENTRIES) {
-          changelogCache.delete(changelogCache.keys().next().value);
-        }
-        try {
-          await db.query(
-            `INSERT INTO github_changelog_cache (page, per_page, commits, expires_at)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (page, per_page) DO UPDATE
-             SET commits = EXCLUDED.commits, expires_at = EXCLUDED.expires_at`,
-            [page, perPage, JSON.stringify(commits), expiresAt],
-          );
-          await db.query(
-            `DELETE FROM github_changelog_cache
-             WHERE ctid IN (
-               SELECT ctid FROM github_changelog_cache
-               ORDER BY expires_at DESC OFFSET $1
-             )`,
-            [CHANGELOG_CACHE_MAX_ENTRIES],
-          );
-        } catch (error) {
-          log('Persistent changelog cache write failed:', error.message);
-        }
-        return commits;
-      } finally {
-        clearTimeout(timeout);
-      }
-    })();
-    changelogRequests.set(key, request);
-  }
+  const request = requestChangelogPage(page, perPage);
 
   try {
     const commits = await request;
@@ -525,8 +572,6 @@ app.get('/api/commits', async (req, res) => {
     res.status(502).json({
       error: rateLimited ? 'rate_limited' : 'github_unavailable',
     });
-  } finally {
-    if (changelogRequests.get(key) === request) changelogRequests.delete(key);
   }
 });
 
