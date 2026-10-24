@@ -6,7 +6,7 @@ A retro, brutalist, e-ink style Bulletin Board System (BBS) designed for ultra-l
 
 ## Usage
 
-go to: https://unreader-v4yf.onrender.com
+go to: https://unreader-2lz0.onrender.com (More backups set up later.)
 
 ## Key Features
 
@@ -64,4 +64,5 @@ On another note, he added a streaming system (Not in use, but is being ported to
 - **[SuprUsr124](https://github.com/SuprUsr123)** — Beta Tester, Maintainer (tock almost left the site 4 dead, at least he got his mac back and fixed bugs) (oh that was mb sorry guys - tock), Oregon Trail (Kindle Web Port), Reversi (Kindle Web Port), Portal: The Kindle Version (a remake), Rewrote Pokedex, fixed Dark Mode, and very minor additions.
 
 
-## Also when can we recruit more this is might put some stress on full time maintenance later (hinting at @blockwobble and @snipecut13 and their RK fork)
+## HOW TO HOST YOUR OWN RELEASE
+Visit [Hosting](hosting.md) to host your own version for testing.
