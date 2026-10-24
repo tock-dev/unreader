@@ -17,23 +17,24 @@
     .tools { display: flex; flex-wrap: wrap; align-items: center; }
     .tools > * { margin: 0 8px 8px 0; }
     .tools button, .tools input, .pet-publisher button { min-height: 48px; }
+    #pet-action { display: block; width: 100%; min-height: 48px; margin: 4px 0 8px; border: 2px solid #000; border-radius: 0; background: #fff; font: inherit; }
+    .section-label { display: block; margin: 12px 0 4px; font-weight: bold; }
     .pet-rgb-picker { display: grid; grid-template-columns: minmax(0, 1fr); margin: 8px 0; }
     .pet-rgb-picker label { display: grid; grid-template-columns: 16px minmax(0, 1fr) 32px; align-items: center; min-height: 48px; }
     .pet-rgb-picker input[type="range"] { width: 100%; height: 48px; margin: 0; }
     .pet-rgb-picker output { text-align: right; font-family: monospace; }
-    #pet-color-preview { width: 48px; height: 48px; border: 2px solid #000; background: #111; }
+    #pet-color-preview { display: inline-block; width: 32px; height: 32px; margin-left: 8px; vertical-align: middle; border: 2px solid #000; background: #111; }
     .pet-swatches { display: grid; grid-template-columns: repeat(4, minmax(48px, 1fr)); margin: 4px -2px 8px; }
     .pet-swatches button { min-width: 48px; min-height: 48px; margin: 2px; padding: 5px; }
     .pet-swatches button span { display: block; width: 100%; height: 100%; min-height: 32px; border: 1px solid #000; }
     #pet-canvas-wrap { position: relative; width: 100%; max-width: 384px; margin: 8px auto; }
     #pet-canvas { display: block; box-sizing: border-box; width: 100%; height: auto; border: 2px solid #000; background: #fff; image-rendering: pixelated; touch-action: none; }
     #pet-grid { position: absolute; top: 2px; right: 2px; bottom: 2px; left: 2px; pointer-events: none; background-image: linear-gradient(to right, rgba(0,0,0,.28) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,.28) 1px, transparent 1px); background-size: var(--pet-cell-size) var(--pet-cell-size); }
-    #action-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 8px; margin: 8px 0; }
-    .action-group { border: 1px solid #000; padding: 6px; }
-    .action-group h3 { margin: 0 0 6px; font-size: 12px; }
-    .action-frames { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-    .frame-button { min-height: 48px; border: 2px solid #000; background: #fff; color: #000; font: inherit; }
+    #action-frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 6px; margin: 8px 0; }
+    .frame-button { min-height: 48px; border: 2px solid #000; background: #fff; color: #000; font: bold 12px Arial, sans-serif; }
     .frame-button.selected { background: #000; color: #fff; }
+    .custom-color { margin: 4px 0 8px; }
+    .custom-color summary { min-height: 40px; padding: 10px 4px; cursor: pointer; font-weight: bold; }
     #frame-label { font-weight: bold; }
     #pet-status { min-height: 1.4em; }
     .pet-publisher { margin-top: 18px; padding-top: 12px; border-top: 2px solid #000; }
@@ -45,6 +46,12 @@
     .pet-card-name { font-weight: 900; word-break: break-word; }
     .pet-card-meta { font-size: 11px; }
     .pet-card button { min-height: 48px; }
+    .pet-swatches { grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); }
+    .pet-swatches button[aria-pressed="true"] { outline: 4px solid #000; }
+    .frame-button { display: flex; flex-direction: column; align-items: center; padding: 4px; }
+    .frame-button img { width: 40px; height: 40px; image-rendering: pixelated; background: #fff; border: 1px solid #888; }
+    .tool-btn.selected, .size-btn.selected, .toggle-btn.selected { background: #000 !important; color: #fff !important; }
+    #pet-preview { display: block; width: 128px; height: 128px; margin: 8px 0; border: 2px solid #000; background: #fff; image-rendering: pixelated; }
     @media (max-width: 380px) {
       .creator-content { padding: 8px; }
       .pet-card { flex-wrap: wrap; }
@@ -60,15 +67,19 @@
       <div class="title-text">NEKO PET CREATOR</div>
     </header>
     <section class="creator-content">
-      <p>Draw each 32x32 pose. Add frames inside an action to extend its animation.</p>
-      <div id="action-groups" aria-label="Pet action frames"></div>
-      <p id="frame-label" aria-live="polite"></p>
-      <div class="pet-rgb-picker" aria-label="RGB brush color">
-        <label>R <input id="pet-red" type="range" min="0" max="255" value="17"><output id="pet-red-value">17</output></label>
-        <label>G <input id="pet-green" type="range" min="0" max="255" value="17"><output id="pet-green-value">17</output></label>
-        <label>B <input id="pet-blue" type="range" min="0" max="255" value="17"><output id="pet-blue-value">17</output></label>
-        <span id="pet-color-preview" aria-label="Selected brush color"></span>
+      <p>Make your pet one pose at a time. Choose a motion, draw its frame, and save.</p>
+      <label class="section-label" for="pet-action">Motion</label>
+      <select id="pet-action"></select>
+      <p class="section-label">Frames</p>
+      <div id="action-frames" aria-label="Frames for this motion"></div>
+      <div class="tools">
+        <button id="pet-add-frame" type="button" class="paper-btn">ADD FRAME</button>
+        <button id="pet-import-frame" type="button" class="paper-btn">IMPORT IMAGE / GIF</button>
       </div>
+      <p id="frame-label" aria-live="polite"></p>
+      <h2>Draw</h2>
+      <p>Tap or drag on the grid to draw.</p>
+      <p class="section-label">Brush color <span id="pet-color-preview"></span></p>
       <div class="pet-swatches" aria-label="Quick colors">
         <button type="button" class="pet-color-swatch" data-color="#000000" aria-label="Black"><span style="background:#000000"></span></button>
         <button type="button" class="pet-color-swatch" data-color="#ffffff" aria-label="White"><span style="background:#ffffff"></span></button>
@@ -79,14 +90,61 @@
         <button type="button" class="pet-color-swatch" data-color="#ff00ff" aria-label="Magenta"><span style="background:#ff00ff"></span></button>
         <button type="button" class="pet-color-swatch" data-color="#00ffff" aria-label="Cyan"><span style="background:#00ffff"></span></button>
       </div>
+      <details class="custom-color">
+        <summary>Choose a custom RGB color</summary>
+        <div class="pet-rgb-picker" aria-label="Custom RGB brush color">
+          <label>R <input id="pet-red" type="range" min="0" max="255" value="0"><output id="pet-red-value">0</output></label>
+          <label>G <input id="pet-green" type="range" min="0" max="255" value="0"><output id="pet-green-value">0</output></label>
+          <label>B <input id="pet-blue" type="range" min="0" max="255" value="0"><output id="pet-blue-value">0</output></label>
+        </div>
+      </details>
       <div class="tools">
-        <button id="pet-erase" type="button" class="paper-btn" aria-pressed="false">ERASER: OFF</button>
+        <button type="button" class="paper-btn tool-btn" data-tool="draw">DRAW</button>
+        <button type="button" class="paper-btn tool-btn" data-tool="erase">ERASE</button>
+        <button type="button" class="paper-btn tool-btn" data-tool="fill">FILL</button>
+        <button type="button" class="paper-btn tool-btn" data-tool="pick">PICK COLOR</button>
+        <button id="pet-undo" type="button" class="paper-btn">UNDO</button>
+        <button id="pet-redo" type="button" class="paper-btn">REDO</button>
         <button id="pet-clear" type="button" class="paper-btn">CLEAR FRAME</button>
       </div>
       <div id="pet-canvas-wrap">
         <canvas id="pet-canvas" width="32" height="32" aria-label="Draw the selected pet frame"></canvas>
         <div id="pet-grid" aria-hidden="true"></div>
       </div>
+      <details class="custom-color">
+        <summary>More tools</summary>
+        <p class="section-label">Shapes (tap start, then tap end)</p>
+        <div class="tools">
+          <button type="button" class="paper-btn tool-btn" data-tool="line">LINE</button>
+          <button type="button" class="paper-btn tool-btn" data-tool="box">BOX</button>
+        </div>
+        <p class="section-label">Brush size</p>
+        <div class="tools">
+          <button type="button" class="paper-btn size-btn selected" data-size="1">1</button>
+          <button type="button" class="paper-btn size-btn" data-size="2">2</button>
+          <button type="button" class="paper-btn size-btn" data-size="3">3</button>
+          <button id="pet-mirror" type="button" class="paper-btn toggle-btn">MIRROR: OFF</button>
+          <button id="pet-gridtoggle" type="button" class="paper-btn toggle-btn selected">GRID: ON</button>
+        </div>
+        <p class="section-label">Move or flip this frame</p>
+        <div class="tools">
+          <button type="button" class="paper-btn" data-dx="-1" data-dy="0">LEFT</button>
+          <button type="button" class="paper-btn" data-dx="1" data-dy="0">RIGHT</button>
+          <button type="button" class="paper-btn" data-dx="0" data-dy="-1">UP</button>
+          <button type="button" class="paper-btn" data-dx="0" data-dy="1">DOWN</button>
+          <button id="pet-flip-h" type="button" class="paper-btn">FLIP H</button>
+          <button id="pet-flip-v" type="button" class="paper-btn">FLIP V</button>
+        </div>
+        <p class="section-label">This frame</p>
+        <div class="tools">
+          <button id="pet-copy-frame" type="button" class="paper-btn">COPY FRAME</button>
+          <button id="pet-del-frame" type="button" class="paper-btn">REMOVE FRAME</button>
+        </div>
+        <p class="section-label">Preview this motion</p>
+        <canvas id="pet-preview" width="64" height="64" aria-label="Motion preview"></canvas>
+        <div class="tools"><button id="pet-preview-btn" type="button" class="paper-btn">PLAY PREVIEW</button></div>
+      </details>
+      <h2>Save your pet</h2>
       <div class="tools">
         <button id="pet-save" type="button" class="paper-btn">SAVE PET</button>
         <button id="pet-reset" type="button" class="paper-btn">RESET TO NEKO</button>
@@ -135,11 +193,12 @@
     var red = document.getElementById('pet-red');
     var green = document.getElementById('pet-green');
     var blue = document.getElementById('pet-blue');
-    var brushColor = '#111111';
+    var brushColor = '#000000';
     var frameData = [];
     var currentFrame = 0;
+    var currentActionState = ACTIONS[0].state;
     var drawing = false;
-    var erasing = false;
+    var tool = 'draw', brushSize = 1, mirror = false, anchor = null, undoStack = [], redoStack = [], brushChannels = [0, 0, 0], previewTimer = null;
     var lastPoint = null;
     var imageLoadNumber = 0;
     var frameReady = true;
@@ -154,6 +213,7 @@
         return Math.max(0, Math.min(255, Number(input.value) || 0));
       });
       brushColor = 'rgb(' + channels.join(',') + ')';
+      brushChannels = channels;
       document.getElementById('pet-color-preview').style.backgroundColor = brushColor;
       ['red', 'green', 'blue'].forEach(function (name, index) {
         document.getElementById('pet-' + name + '-value').textContent = channels[index];
@@ -168,6 +228,15 @@
     }
 
     [red, green, blue].forEach(function (input) { input.oninput = updateBrushColor; });
+    ['#444444', '#888888', '#cccccc', '#8b5a2b', '#ff8800', '#ffaaaa', '#8800cc', '#005500'].forEach(function (color) {
+      var swatch = document.createElement('button');
+      swatch.type = 'button';
+      swatch.className = 'pet-color-swatch';
+      swatch.setAttribute('data-color', color);
+      swatch.setAttribute('aria-label', color);
+      swatch.innerHTML = '<span style="background:' + color + '"></span>';
+      document.querySelector('.pet-swatches').appendChild(swatch);
+    });
     var colorSwatches = document.querySelectorAll('.pet-color-swatch');
     for (var swatchIndex = 0; swatchIndex < colorSwatches.length; swatchIndex++) {
       colorSwatches[swatchIndex].onclick = function () {
@@ -217,6 +286,8 @@
 
     function applyPetData(decoded) {
       frameData = decoded.frames;
+      currentActionState = ACTIONS[0].state;
+      actionSelect.value = currentActionState;
       if (decoded.actions) {
         decoded.actions.forEach(function (action) {
           var target = ACTIONS.filter(function (item) { return item.state === action.state; })[0];
@@ -254,12 +325,12 @@
     function drawFrame(index) {
       var requestNumber = ++imageLoadNumber;
       currentFrame = index;
+      undoStack = []; redoStack = []; anchor = null;
       frameReady = false;
       canvas.style.pointerEvents = 'none';
       context.clearRect(0, 0, 32, 32);
-      document.getElementById('frame-label').textContent = 'FRAME ' + index + ' - ' + ACTIONS.filter(function (action) {
-        return action.frames.indexOf(index) !== -1;
-      }).map(function (action) { return action.name; }).join(' / ');
+      var selectedAction = ACTIONS.filter(function (action) { return action.state === currentActionState; })[0];
+      document.getElementById('frame-label').textContent = selectedAction.name + ' - FRAME ' + (index + 1);
       var buttons = document.querySelectorAll('.frame-button');
       for (var i = 0; i < buttons.length; i++) {
         buttons[i].classList.toggle('selected', Number(buttons[i].getAttribute('data-frame')) === index);
@@ -292,50 +363,61 @@
       drawFrame(index);
     }
 
-    function renderActionButtons() {
-      var groups = document.getElementById('action-groups');
-      while (groups.firstChild) groups.removeChild(groups.firstChild);
-      ACTIONS.forEach(function (action) {
-        var group = document.createElement('section');
-        group.className = 'action-group';
-        var heading = document.createElement('h3');
-        heading.textContent = action.name;
-        var frames = document.createElement('div');
-        frames.className = 'action-frames';
-        action.frames.forEach(function (frame) {
-          var button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'frame-button';
-          button.setAttribute('data-frame', frame);
-          button.textContent = 'FRAME ' + frame;
-          button.onclick = function () { selectFrame(frame); };
-          frames.appendChild(button);
-        });
-        var importButton = document.createElement('button');
-        importButton.type = 'button';
-        importButton.className = 'frame-button';
-        importButton.textContent = 'IMPORT IMAGE/GIF';
-        importButton.setAttribute('aria-label', 'Import image or GIF frames into ' + action.name);
-        importButton.hidden = !canImportImages;
-        importButton.disabled = frameData.length >= MAX_FRAME_COUNT;
-        importButton.onclick = function () { chooseImageForAction(action); };
-        var addButton = document.createElement('button');
-        addButton.type = 'button';
-        addButton.className = 'frame-button';
-        addButton.textContent = 'ADD FRAME';
-        addButton.disabled = frameData.length >= MAX_FRAME_COUNT;
-        addButton.onclick = function () {
-          storeCurrentFrame();
-          if (frameData.length >= MAX_FRAME_COUNT) return;
-          frameData.push('');
-          action.frames.push(frameData.length - 1);
-          renderActionButtons();
-          selectFrame(frameData.length - 1);
-        };
-        group.append(heading, frames, importButton, addButton);
-        groups.appendChild(group);
-      });
+    function currentAction() {
+      return ACTIONS.filter(function (action) { return action.state === currentActionState; })[0];
     }
+
+    function renderActionButtons() {
+      var frameList = document.getElementById('action-frames');
+      while (frameList.firstChild) frameList.removeChild(frameList.firstChild);
+      var action = currentAction();
+      action.frames.forEach(function (frame) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'frame-button';
+        button.setAttribute('data-frame', frame);
+        var thumb = document.createElement('img');
+        thumb.src = frameData[frame] || blankFrameData;
+        thumb.alt = '';
+        button.appendChild(thumb);
+        button.appendChild(document.createTextNode('FRAME ' + (frame + 1)));
+        if (frame === currentFrame) button.className += ' selected';
+        button.onclick = function () { selectFrame(frame); };
+        frameList.appendChild(button);
+      });
+      var atLimit = frameData.length >= MAX_FRAME_COUNT;
+      document.getElementById('pet-add-frame').disabled = atLimit;
+      document.getElementById('pet-import-frame').disabled = atLimit;
+    }
+
+    var actionSelect = document.getElementById('pet-action');
+    ACTIONS.forEach(function (action) {
+      var option = document.createElement('option');
+      option.value = action.state;
+      option.textContent = action.name;
+      actionSelect.appendChild(option);
+    });
+    actionSelect.onchange = function () {
+      currentActionState = Number(this.value);
+      var action = ACTIONS.filter(function (item) { return item.state === currentActionState; })[0];
+      renderActionButtons();
+      selectFrame(action.frames[0]);
+    };
+
+    document.getElementById('pet-add-frame').onclick = function () {
+      var action = currentAction();
+      if (frameData.length >= MAX_FRAME_COUNT) return;
+      storeCurrentFrame();
+      frameData.push('');
+      action.frames.push(frameData.length - 1);
+      renderActionButtons();
+      selectFrame(frameData.length - 1);
+    };
+    var importFrameButton = document.getElementById('pet-import-frame');
+    importFrameButton.hidden = !canImportImages;
+    importFrameButton.onclick = function () {
+      chooseImageForAction(currentAction());
+    };
 
     function chooseImageForAction(action) {
       if (!canImportImages) return;
@@ -456,59 +538,229 @@
     }
 
     function paint(point) {
-      if (erasing) context.clearRect(point.x, point.y, 1, 1);
-      else {
-        context.fillStyle = brushColor;
-        context.fillRect(point.x, point.y, 1, 1);
-      }
+      var n = brushSize;
+      var xs = mirror ? [point.x, 32 - n - point.x] : [point.x];
+      context.fillStyle = brushColor;
+      xs.forEach(function (x) {
+        if (tool === 'erase') context.clearRect(x, point.y, n, n);
+        else context.fillRect(x, point.y, n, n);
+      });
     }
 
     updateGridSize();
     window.addEventListener('resize', updateGridSize);
-    var savedFrames = decodePetFrames(localStorage.getItem('unreader-neko-sprite'));
+    var savedFrames = decodePetFrames(localStorage.getItem('unreader-neko-draft')) || decodePetFrames(localStorage.getItem('unreader-neko-sprite'));
     applyPetData(savedFrames || { frames: Array(MIN_FRAME_COUNT).fill(''), actions: null });
     drawFrame(currentFrame);
 
+    function each(selector, fn) { Array.prototype.forEach.call(document.querySelectorAll(selector), fn); }
+    function say(text) { document.getElementById('pet-status').textContent = text; }
+    function saveDraft() {
+      try {
+        localStorage.setItem('unreader-neko-draft', serializedPetFrames());
+        say('Draft kept. Tap SAVE PET to use it.');
+      } catch (error) {}
+    }
+    function commit() { storeCurrentFrame(); renderActionButtons(); saveDraft(); }
+    function pushUndo() {
+      undoStack.push(context.getImageData(0, 0, 32, 32));
+      if (undoStack.length > 20) undoStack.shift();
+      redoStack = [];
+    }
+    function restore(from, to) {
+      if (!from.length || !frameReady) return;
+      to.push(context.getImageData(0, 0, 32, 32));
+      context.putImageData(from.pop(), 0, 0);
+      commit();
+    }
+    function line(a, b) {
+      var steps = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) || 1;
+      for (var s = 0; s <= steps; s++) {
+        paint({ x: Math.round(a.x + (b.x - a.x) * s / steps), y: Math.round(a.y + (b.y - a.y) * s / steps) });
+      }
+    }
+    function shape(a, b) {
+      if (tool === 'line') { line(a, b); return; }
+      line(a, { x: b.x, y: a.y }); line({ x: b.x, y: a.y }, b);
+      line(b, { x: a.x, y: b.y }); line({ x: a.x, y: b.y }, a);
+    }
+    function floodFill(point) {
+      var img = context.getImageData(0, 0, 32, 32), d = img.data;
+      var start = (point.y * 32 + point.x) * 4;
+      var target = [d[start], d[start + 1], d[start + 2], d[start + 3]];
+      var fill = brushChannels.concat([255]);
+      if (target.join() === fill.join()) return;
+      var stack = [[point.x, point.y]];
+      while (stack.length) {
+        var p = stack.pop(), i = (p[1] * 32 + p[0]) * 4;
+        if (p[0] < 0 || p[1] < 0 || p[0] > 31 || p[1] > 31 || d[i] !== target[0] || d[i + 1] !== target[1] ||
+          d[i + 2] !== target[2] || d[i + 3] !== target[3]) continue;
+        d[i] = fill[0]; d[i + 1] = fill[1]; d[i + 2] = fill[2]; d[i + 3] = 255;
+        stack.push([p[0] + 1, p[1]], [p[0] - 1, p[1]], [p[0], p[1] + 1], [p[0], p[1] - 1]);
+      }
+      context.putImageData(img, 0, 0);
+    }
+    function setTool(name) {
+      tool = name;
+      anchor = null;
+      each('.tool-btn', function (button) {
+        var on = button.getAttribute('data-tool') === name;
+        button.classList.toggle('selected', on);
+        button.setAttribute('aria-pressed', String(on));
+      });
+    }
+    function transform(map) {
+      if (!frameReady) return;
+      pushUndo();
+      var src = context.getImageData(0, 0, 32, 32), out = context.createImageData(32, 32);
+      for (var y = 0; y < 32; y++) {
+        for (var x = 0; x < 32; x++) {
+          var from = map(x, y);
+          if (from[0] < 0 || from[0] > 31 || from[1] < 0 || from[1] > 31) continue;
+          for (var c = 0; c < 4; c++) out.data[(y * 32 + x) * 4 + c] = src.data[(from[1] * 32 + from[0]) * 4 + c];
+        }
+      }
+      context.putImageData(out, 0, 0);
+      commit();
+    }
+
     canvas.onpointerdown = function (event) {
-      drawing = true;
-      lastPoint = pointFromEvent(event);
-      if (canvas.setPointerCapture && event.pointerId !== undefined) canvas.setPointerCapture(event.pointerId);
-      paint(lastPoint);
       event.preventDefault();
+      var point = pointFromEvent(event);
+      if (tool === 'pick') {
+        var pixel = context.getImageData(point.x, point.y, 1, 1).data;
+        if (!pixel[3]) { setTool('erase'); say('Empty spot: eraser selected.'); return; }
+        red.value = pixel[0]; green.value = pixel[1]; blue.value = pixel[2];
+        updateBrushColor();
+        setTool('draw');
+        return;
+      }
+      if ((tool === 'line' || tool === 'box') && anchor) {
+        shape(anchor, point);
+        anchor = null;
+        commit();
+        return;
+      }
+      pushUndo();
+      if (tool === 'fill') { floodFill(point); commit(); return; }
+      paint(point);
+      if (tool === 'line' || tool === 'box') {
+        anchor = point;
+        say(tool === 'box' ? 'Now tap the opposite corner.' : 'Now tap the end point.');
+        return;
+      }
+      drawing = true;
+      lastPoint = point;
+      if (canvas.setPointerCapture && event.pointerId !== undefined) canvas.setPointerCapture(event.pointerId);
     };
     canvas.onpointermove = function (event) {
       if (!drawing || !lastPoint) return;
       var point = pointFromEvent(event);
-      var steps = Math.max(Math.abs(point.x - lastPoint.x), Math.abs(point.y - lastPoint.y));
-      for (var step = 1; step <= steps; step++) {
-        var progress = step / steps;
-        paint({
-          x: Math.round(lastPoint.x + (point.x - lastPoint.x) * progress),
-          y: Math.round(lastPoint.y + (point.y - lastPoint.y) * progress),
-        });
-      }
+      line(lastPoint, point);
       lastPoint = point;
       event.preventDefault();
     };
     canvas.onpointerup = canvas.onpointercancel = function () {
+      if (!drawing) return;
       drawing = false;
       lastPoint = null;
-      storeCurrentFrame();
+      commit();
     };
 
-    document.getElementById('pet-erase').onclick = function () {
-      erasing = !erasing;
-      this.textContent = erasing ? 'ERASER: ON' : 'ERASER: OFF';
-      this.setAttribute('aria-pressed', String(erasing));
+    each('.tool-btn', function (button) { button.onclick = function () { setTool(button.getAttribute('data-tool')); }; });
+    each('.size-btn', function (button) {
+      button.onclick = function () {
+        brushSize = Number(button.getAttribute('data-size'));
+        each('.size-btn', function (other) { other.classList.toggle('selected', other === button); });
+      };
+    });
+    document.getElementById('pet-mirror').onclick = function () {
+      mirror = !mirror;
+      this.textContent = 'MIRROR: ' + (mirror ? 'ON' : 'OFF');
+      this.classList.toggle('selected', mirror);
     };
+    document.getElementById('pet-gridtoggle').onclick = function () {
+      var on = document.getElementById('pet-grid').style.display === 'none';
+      document.getElementById('pet-grid').style.display = on ? '' : 'none';
+      this.textContent = 'GRID: ' + (on ? 'ON' : 'OFF');
+      this.classList.toggle('selected', on);
+    };
+    document.getElementById('pet-undo').onclick = function () { restore(undoStack, redoStack); };
+    document.getElementById('pet-redo').onclick = function () { restore(redoStack, undoStack); };
     document.getElementById('pet-clear').onclick = function () {
+      pushUndo();
       context.clearRect(0, 0, 32, 32);
-      storeCurrentFrame();
+      commit();
     };
+    each('[data-dx]', function (button) {
+      button.onclick = function () {
+        var dx = Number(button.getAttribute('data-dx')), dy = Number(button.getAttribute('data-dy'));
+        transform(function (x, y) { return [x - dx, y - dy]; });
+      };
+    });
+    document.getElementById('pet-flip-h').onclick = function () { transform(function (x, y) { return [31 - x, y]; }); };
+    document.getElementById('pet-flip-v').onclick = function () { transform(function (x, y) { return [x, 31 - y]; }); };
+
+    document.getElementById('pet-copy-frame').onclick = function () {
+      if (frameData.length >= MAX_FRAME_COUNT) { say('This pet already has the maximum of 64 frames.'); return; }
+      storeCurrentFrame();
+      frameData.push(frameData[currentFrame] || '');
+      currentAction().frames.push(frameData.length - 1);
+      renderActionButtons();
+      selectFrame(frameData.length - 1);
+      saveDraft();
+    };
+    document.getElementById('pet-del-frame').onclick = function () {
+      var action = currentAction();
+      if (action.frames.length < 2) { say('Each motion needs at least one frame.'); return; }
+      storeCurrentFrame();
+      var removed = currentFrame, at = action.frames.indexOf(removed);
+      action.frames.splice(at, 1);
+      var stillUsed = ACTIONS.some(function (item) { return item.frames.indexOf(removed) >= 0; });
+      if (!stillUsed) {
+        if (removed >= MIN_FRAME_COUNT) {
+          frameData.splice(removed, 1);
+          ACTIONS.forEach(function (item) {
+            item.frames = item.frames.map(function (index) { return index > removed ? index - 1 : index; });
+          });
+        } else frameData[removed] = '';
+      }
+      renderActionButtons();
+      drawFrame(action.frames[Math.min(at, action.frames.length - 1)]);
+      saveDraft();
+    };
+
+    var previewContext = document.getElementById('pet-preview').getContext('2d');
+    var previewButton = document.getElementById('pet-preview-btn');
+    previewContext.imageSmoothingEnabled = false;
+    function stopPreview() {
+      clearInterval(previewTimer);
+      previewTimer = null;
+      previewButton.textContent = 'PLAY PREVIEW';
+    }
+    previewButton.onclick = function () {
+      if (previewTimer) { stopPreview(); return; }
+      storeCurrentFrame();
+      var images = currentAction().frames.map(function (index) {
+        var image = new Image();
+        image.src = frameData[index] || blankFrameData;
+        return image;
+      });
+      var step = 0;
+      previewButton.textContent = 'STOP PREVIEW';
+      previewTimer = setInterval(function () {
+        if (step >= images.length * 3) { stopPreview(); return; }
+        previewContext.clearRect(0, 0, 64, 64);
+        previewContext.drawImage(images[step % images.length], 0, 0, 64, 64);
+        step++;
+      }, 500);
+    };
+    setTool('draw');
 
     function savePetLocally() {
       var petData = serializedPetFrames();
       localStorage.setItem('unreader-neko-sprite', petData);
+      localStorage.setItem('unreader-neko-draft', petData);
       if (window.applyNekoSprite) window.applyNekoSprite(petData);
       document.getElementById('pet-status').textContent = 'Pet saved and applied.';
       return petData;
@@ -517,6 +769,7 @@
     document.getElementById('pet-save').onclick = savePetLocally;
     document.getElementById('pet-reset').onclick = function () {
       localStorage.removeItem('unreader-neko-sprite');
+      localStorage.removeItem('unreader-neko-draft');
       frameData = Array(MIN_FRAME_COUNT).fill('');
       applyPetData({ frames: frameData, actions: null });
       drawFrame(0);
@@ -554,6 +807,7 @@
       drawFrame(0);
       var petData = serializedPetFrames();
       localStorage.setItem('unreader-neko-sprite', petData);
+      localStorage.setItem('unreader-neko-draft', petData);
       if (window.applyNekoSprite) window.applyNekoSprite(petData);
       document.getElementById('pet-status').textContent = 'Using ' + pet.name + '.';
     }
@@ -623,6 +877,7 @@
         var petData = serializedPetFrames();
         await petApi('/api/pets', { method: 'POST', body: JSON.stringify({ name: name, pet_data: petData }) });
         localStorage.setItem('unreader-neko-sprite', petData);
+      localStorage.setItem('unreader-neko-draft', petData);
         if (window.applyNekoSprite) window.applyNekoSprite(petData);
         publisherStatus.textContent = 'Published ' + name + '.';
         loadPetLibrary();
